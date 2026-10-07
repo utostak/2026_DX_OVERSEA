@@ -1,0 +1,29 @@
+# Dashboard - Flask Requirements
+# Python 3.9+
+
+# Web Framework
+Flask==3.0.2
+Flask-CORS==4.0.0
+Flask-Session==0.8.0
+
+# Data Processing
+pandas==2.2.1
+numpy==1.26.4
+
+# BigQuery
+google-cloud-bigquery==3.18.0
+google-cloud-bigquery-storage==2.24.0
+db-dtypes==1.2.0
+
+# Utilities
+python-dotenv==1.0.1
+pytz==2024.1
+
+# Production Server
+gunicorn==21.2.0
+
+# PostgreSQL (마스터 테이블 관리)
+psycopg2-binary==2.9.12
+
+# 비밀번호 해시
+bcrypt==5.0.0

@@ -1,0 +1,27 @@
+# Dashboard - Requirements
+# Python 3.9+
+
+# 웹 프레임워크
+streamlit==1.32.0
+streamlit-option-menu==0.3.12
+
+# 데이터 처리
+pandas==2.2.1
+numpy==1.26.4
+
+# BigQuery 연결
+google-cloud-bigquery==3.18.0
+google-cloud-bigquery-storage==2.24.0
+db-dtypes==1.2.0
+
+# 시각화
+plotly==5.20.0
+matplotlib==3.8.3
+seaborn==0.13.2
+
+# 유틸리티
+python-dotenv==1.0.1
+pytz==2024.1
+
+# PostgreSQL (마스터 테이블 관리)
+psycopg2-binary==2.9.12
