@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--background);
+        }
+        .login-wrap {
+            width: 100%;
+            max-width: 400px;
+            padding: 1.5rem;
+        }
+
+        /* 브랜드 헤더 */
+        .login-brand {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-brand-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 14px;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .login-brand-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--foreground);
+            letter-spacing: 0.04em;
+        }
+        .login-brand-sub {
+            font-size: 0.8rem;
+            color: var(--muted-foreground);
+            margin-top: 2px;
+        }
+
+        /* 카드 */
+        .login-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2rem 2rem 1.75rem;
+            box-shadow: var(--shadow-md);
+        }
+        .login-card h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--foreground);
+            margin: 0 0 1.5rem;
+        }
+
+        /* 폼 */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--muted-foreground);
+            margin-bottom: 0.35rem;
+        }
+        .form-input-wrap {
+            position: relative;
+        }
+        .form-input-wrap i {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted-foreground);
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+        .form-input-wrap .input {
+            width: 100%;
+            padding-left: 2.2rem;
+        }
+        .input {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--foreground);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            box-sizing: border-box;
+        }
+        .input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 15%, transparent);
+        }
+
+        /* 에러 메시지 */
+        .login-error {
+            display: none;
+            background: var(--rose-50);
+            border: 1px solid var(--rose-200);
+            color: var(--rose-700);
+            border-radius: var(--radius);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .login-error.show { display: flex; align-items: center; gap: 0.5rem; }
+
+        /* 버튼 */
+        .btn-login {
+            width: 100%;
+            padding: 0.65rem;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
+            margin-top: 0.5rem;
+        }
+        .btn-login:hover   { opacity: .88; }
+        .btn-login:active  { opacity: .75; }
+        .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-spinner { display: none; }
+        .btn-login.loading .btn-text { display: none; }
+        .btn-login.loading .btn-spinner { display: inline; }
+
+        /* SSO 로그인 버튼 (secondary) */
+        .btn-sso {
+            width: 100%;
+            padding: 0.65rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--card);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s, opacity .15s;
+        }
+        .btn-sso:hover  { background: var(--surface); opacity: .95; }
+        .btn-sso:active { opacity: .8; }
+
+        /* 개발 힌트 */
+        .login-hint {
+            margin-top: 1.25rem;
+            font-size: 0.78rem;
+            color: var(--muted-foreground);
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* 패스워드 설정 패널 */
+        .set-pwd-panel {
+            display: none;
+        }
+        .set-pwd-panel.show {
+            display: block;
+        }
+        .set-pwd-info {
+            background: oklch(0.97 0.02 230);
+            border: 1px solid oklch(0.80 0.06 230);
+            color: oklch(0.35 0.08 230);
+            border-radius: var(--radius);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.84rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* 회원가입 링크 */
+        .signup-link {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.83rem;
+            color: var(--muted-foreground);
+        }
+        .signup-link a {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .signup-link a:hover { text-decoration: underline; }
+
+        /* 회원가입 패널 */
+        .register-panel { display: none; }
+        .register-panel.show { display: block; }
+
+        /* 인증코드 행 */
+        .code-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .code-row .input { flex: 1; }
+        .btn-send-code {
+            white-space: nowrap;
+            padding: 0.55rem 0.85rem;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+        .btn-send-code:hover   { opacity: .88; }
+        .btn-send-code:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* 성공 메시지 */
+        .login-success {
+            display: none;
+            background: oklch(0.96 0.04 145);
+            border: 1px solid oklch(0.75 0.10 145);
+            color: oklch(0.35 0.12 145);
+            border-radius: var(--radius);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .login-success.show { display: flex; }
+
+        /* select 스타일 */
+        select.input {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrap">
+        <!-- 브랜드 -->
+        <div class="login-brand">
+            <div class="login-brand-icon"><i class="fas fa-truck"></i></div>
+            <div class="login-brand-title">LIW</div>
+            <div class="login-brand-sub">Logistics Innovation Web</div>
+            <div class="login-brand-sub">Built by Oversea Sales BI Team</div>
+        </div>
+
+        <!-- 카드 -->
+        <div class="login-card">
+            <h2 id="cardTitle">Sign In</h2>
+
+            <div class="login-error" id="loginError">
+                <i class="fas fa-circle-exclamation"></i>
+                <span id="loginErrorMsg"></span>
+            </div>
+
+            <!-- 로그인 폼 -->
+            <form id="loginForm" onsubmit="doLogin(event)" class="login-panel">
+                <div class="form-group">
+                    <label for="userId">User ID (EP ID)</label>
+                    <div class="form-input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="userId" class="input" placeholder="Enter your EP ID"
+                               autocomplete="username" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="form-input-wrap">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" class="input" placeholder="Password" autocomplete="current-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span class="btn-text">Sign In</span>
+                    <span class="btn-spinner"><i class="fas fa-circle-notch spin"></i> Signing in…</span>
+                </button>
+                <button type="button" class="btn-sso" id="ssoLoginBtn" onclick="goSsoLogin()">
+                    <i class="fas fa-id-badge"></i>
+                    <span>Sign in with SSO</span>
+                </button>
+                <div class="signup-link" style="margin-top:0.75rem;">
+                    <a onclick="showResetPanel()">Forgot password or account locked?</a>
+                </div>
+            </form>
+
+            <!-- 패스워드 설정 패널 -->
+            <div id="setPwdPanel" class="set-pwd-panel">
+                <div class="set-pwd-info">
+                    <i class="fas fa-key"></i>
+                    <span>First login detected. Please set your password.</span>
+                </div>
+                <form id="setPwdForm" onsubmit="doSetPassword(event)">
+                    <div class="form-group">
+                        <label for="newPassword">New Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="newPassword" class="input" placeholder="At least 4 characters" required minlength="4" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="confirmPassword" class="input" placeholder="Re-enter password" required autocomplete="new-password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-login" id="setPwdBtn">
+                        <span class="btn-text">Set Password & Sign In</span>
+                        <span class="btn-spinner"><i class="fas fa-circle-notch spin"></i> Processing…</span>
+                    </button>
+                </form>
+            </div>
+
+            {% if app_env in ('dev', 'development') %}
+            <div class="login-hint">
+                🛠️ Development Environment
+            </div>
+            {% endif %}
+
+            <!-- Sign Up link (shown on login panel only) -->
+            <div class="signup-link" id="signupLinkArea">
+                Don't have an account? <a onclick="showRegisterPanel()">Sign Up</a>
+                <div style="margin-top:0.4rem;">
+                    No account yet? <a onclick="showAccessRequestPanel()">Request Account Access</a>
+                </div>
+            </div>
+
+            <!-- Reset Password panel -->
+            <div id="resetPanel" class="register-panel">
+                <div class="login-success" id="resetSuccess">
+                    <i class="fas fa-circle-check"></i>
+                    <span id="resetSuccessMsg"></span>
+                </div>
+                <form id="resetForm" onsubmit="doResetPassword(event)">
+                    <div class="form-group">
+                        <label for="resetUserId">User ID (EP ID) <span style="color:var(--rose-600);">*</span></label>
+                        <div class="code-row">
+                            <div class="form-input-wrap" style="flex:1;position:relative;">
+                                <i class="fas fa-user"></i>
+                                <input type="text" id="resetUserId" class="input" placeholder="Your User ID" required autocomplete="off"
+                                       oninput="const btn=document.getElementById('resetSendCodeBtn');btn.disabled=!this.value.trim();btn.style.opacity=this.value.trim()?'':'0.5';btn.style.cursor=this.value.trim()?'':'not-allowed';"
+                                       onkeydown="if(event.key==='Enter'){event.preventDefault();doResetSendCode();}">
+                            </div>
+                            <button type="button" class="btn-send-code" id="resetSendCodeBtn" onclick="doResetSendCode()" disabled style="opacity:0.5;cursor:not-allowed;">
+                                Send Code
+                            </button>
+                        </div>
+                        <div id="resetEmailHint" style="font-size:0.78rem;color:var(--muted-foreground);margin-top:0.3rem;"></div>
+                    </div>
+                    <div class="form-group" id="resetCodeGroup" style="display:none;">
+                        <label for="resetCode">Verification Code <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-key"></i>
+                            <input type="text" id="resetCode" class="input" placeholder="6-digit code sent to your email"
+                                   maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                        </div>
+                        <div id="resetCodeTimer" style="font-size:0.78rem;color:var(--muted-foreground);margin-top:0.3rem;"></div>
+                    </div>
+                    <div class="form-group" id="resetPwdGroup" style="display:none;">
+                        <label for="resetNewPassword">New Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="resetNewPassword" class="input" placeholder="At least 4 characters" minlength="4" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="form-group" id="resetPwdConfirmGroup" style="display:none;">
+                        <label for="resetConfirmPassword">Confirm Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="resetConfirmPassword" class="input" placeholder="Re-enter password" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-login" id="resetBtn" style="display:none;">
+                        <span class="btn-text">Reset Password</span>
+                        <span class="btn-spinner"><i class="fas fa-circle-notch spin"></i> Processing…</span>
+                    </button>
+                </form>
+                <div class="signup-link" style="margin-top:0.75rem;">
+                    <a onclick="showLoginPanel()">Back to Sign In</a>
+                </div>
+            </div>
+
+            <!-- Sign Up panel -->
+            <div id="registerPanel" class="register-panel">
+                <div class="login-success" id="registerSuccess">
+                    <i class="fas fa-circle-check"></i>
+                    <span id="registerSuccessMsg"></span>
+                </div>
+                <form id="registerForm" onsubmit="doRegister(event)">
+                    <div class="form-group">
+                        <label for="regUserId">User ID <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="regUserId" class="input" placeholder="LG EP Portal ID" required autocomplete="off"
+                                   oninput="syncEmail(this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regUserName">Full Name <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-id-card"></i>
+                            <input type="text" id="regUserName" class="input" placeholder="Your full name" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regSubsdr">Company <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-building"></i>
+                            <select id="regSubsdr" class="input" required>
+                                <option value="LGEPH">LGEPH</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email</label>
+                        <div class="code-row">
+                            <div class="form-input-wrap" style="flex:1;position:relative;">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="regEmail" class="input" placeholder="Enter User ID above"
+                                       readonly autocomplete="off"
+                                       style="background:var(--surface);color:var(--muted-foreground);cursor:default;">
+                            </div>
+                            <button type="button" class="btn-send-code" id="sendCodeBtn" onclick="doSendCode()">
+                                Send Code
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group" id="codeGroup" style="display:none;">
+                        <label for="regCode">Verification Code <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-key"></i>
+                            <input type="text" id="regCode" class="input" placeholder="6-digit code sent to your email"
+                                   maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                        </div>
+                        <div id="codeTimer" style="font-size:0.78rem;color:var(--muted-foreground);margin-top:0.3rem;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="regPassword" class="input" placeholder="At least 4 characters" required minlength="4" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regConfirmPassword">Confirm Password <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="regConfirmPassword" class="input" placeholder="Re-enter password" required autocomplete="new-password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-login" id="registerBtn">
+                        <span class="btn-text">Create Account</span>
+                        <span class="btn-spinner"><i class="fas fa-circle-notch spin"></i> Processing…</span>
+                    </button>
+                </form>
+                <div class="signup-link" style="margin-top:0.75rem;">
+                    Already have an account? <a onclick="showLoginPanel()">Sign In</a>
+                </div>
+            </div><!-- /.register-panel -->
+
+            <!-- Request Account Access panel -->
+            <div id="accessRequestPanel" class="register-panel">
+                <div class="set-pwd-info">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Your account was not found. Submit a request — the administrator will review and approve it.</span>
+                </div>
+
+                <div class="login-success" id="arSuccess">
+                    <i class="fas fa-circle-check"></i>
+                    <span id="arSuccessMsg"></span>
+                </div>
+
+                <form id="accessRequestForm" onsubmit="submitAccessRequest(event)">
+                    <div class="form-group">
+                        <label for="arUserId">User ID (EP ID) <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="arUserId" class="input" placeholder="LG EP Portal ID" required autocomplete="off"
+                                   oninput="syncArEmail(this.value)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="arEmail">Email</label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="arEmail" class="input" placeholder="Enter User ID above"
+                                   readonly autocomplete="off"
+                                   style="background:var(--surface);color:var(--muted-foreground);cursor:default;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="arSubsdr">Subsidiary <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap">
+                            <i class="fas fa-building"></i>
+                            <select id="arSubsdr" class="input" required>
+                                <option value="" disabled selected>Loading…</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="arReason">Request Reason <span style="color:var(--rose-600);">*</span></label>
+                        <div class="form-input-wrap" style="align-items:flex-start;">
+                            <i class="fas fa-comment-dots" style="top:0.85rem;"></i>
+                            <textarea id="arReason" class="input" rows="3" maxlength="500" required
+                                      placeholder="Please describe why you need access to this system…"
+                                      style="resize:vertical;min-height:80px;padding-top:0.6rem;"
+                                      oninput="document.getElementById('arReasonCounter').textContent=this.value.length+' / 500';"></textarea>
+                        </div>
+                        <div style="text-align:right;font-size:0.75rem;color:var(--muted-foreground);margin-top:0.25rem;" id="arReasonCounter">0 / 500</div>
+                    </div>
+                    <button type="submit" class="btn-login" id="arSubmitBtn">
+                        <span class="btn-text">Submit Request</span>
+                        <span class="btn-spinner"><i class="fas fa-circle-notch spin"></i> Submitting…</span>
+                    </button>
+                </form>
+                <div class="signup-link" style="margin-top:0.75rem;">
+                    <a onclick="showLoginPanel()">Back to Sign In</a>
+                </div>
+            </div><!-- /.access-request-panel -->
+
+        </div><!-- /.login-card -->
+    </div><!-- /.login-wrap -->
+
+    <script>
+    const _NEXT = new URLSearchParams(location.search).get('next') || '';
+    let _pendingUserId = '';  // 패스워드 설정이 필요한 user_id
+
+    // ── next page 정보가 있으면 자동으로 SSO 로그인으로 이동 ──────────────
+    // next 가 없을 때만 로컬(수동) 로그인 화면 노출.
+    // ?local=1 파라미터가 있으면 자동 이동 없이 로컬 로그인 화면 유지 (수동 로그인 fallback).
+    const _FORCE_LOCAL = new URLSearchParams(location.search).get('local') === '1';
+    const _AUTO_SSO = !!_NEXT && !_FORCE_LOCAL;
+
+    // SSO 로그인 시작 — API 로 next page 를 서버 세션에 저장한 뒤 SSO 포털로 이동.
+    async function goSsoLogin() {
+        const btn = document.getElementById('ssoLoginBtn');
+        if (btn) btn.disabled = true;
+        try {
+            const res  = await fetch('/api/user/sso-start', {
+                method : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body   : JSON.stringify({ next: _NEXT || '' })
+            });
+            const data = await res.json();
+            if (data.success && data.sso_url) {
+                location.href = data.sso_url;
+            } else {
+                _ssoStartFailed('Failed to start SSO login. Please try again.');
+                if (btn) btn.disabled = false;
+            }
+        } catch (err) {
+            _ssoStartFailed('Failed to connect to server.');
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // SSO 시작 실패 처리 — 자동 SSO 모드였다면 로컬 로그인 화면으로 복구
+    function _ssoStartFailed(msg) {
+        showError(msg);
+        if (_AUTO_SSO) {
+            // 리다이렉트 안내 스피너 제거 후 로컬 로그인 폼 노출
+            document.querySelectorAll('.sso-redirect-spinner').forEach(el => el.remove());
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) loginForm.style.display = '';
+            const signupArea = document.getElementById('signupLinkArea');
+            if (signupArea) signupArea.style.display = '';
+            const cardTitle = document.getElementById('cardTitle');
+            if (cardTitle) cardTitle.textContent = 'Sign In';
+        }
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('loginError');
+        document.getElementById('loginErrorMsg').textContent = msg;
+        el.classList.add('show');
+    }
+    function hideError() {
+        document.getElementById('loginError').classList.remove('show');
+    }
+
+    function showSetPwdPanel(userId) {
+        _pendingUserId = userId;
+        document.getElementById('loginForm').style.display   = 'none';
+        document.getElementById('setPwdPanel').classList.add('show');
+        document.getElementById('cardTitle').textContent = 'Set Password';
+        hideError();
+        document.getElementById('newPassword').focus();
+    }
+
+    // 브라우저 localStorage 에 저장된 마지막 선택 법인 코드 반환 (없으면 빈 문자열)
+    // 로그인 시 서버로 넘겨 로그인 직후 첫 페이지를 해당 법인 기준으로 지정.
+    function _storedLegalEntity() {
+        try { return localStorage.getItem('scm_tms_legal_entity') || ''; }
+        catch (e) { return ''; }
+    }
+
+    async function doLogin(e) {
+        e.preventDefault();
+        hideError();
+        const btn    = document.getElementById('loginBtn');
+        const userId = document.getElementById('userId').value.trim();
+        const pwd    = document.getElementById('password').value;
+
+        btn.disabled = true;
+        btn.classList.add('loading');
+        try {
+            const res  = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, password: pwd, legal_entity: _storedLegalEntity() }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.href = _NEXT || data.redirect_url || '/active-orders';
+            } else if (data.need_set_password) {
+                showSetPwdPanel(userId);
+            } else {
+                showError(data.message || 'Login failed.');
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    }
+
+    async function doSetPassword(e) {
+        e.preventDefault();
+        hideError();
+        const btn     = document.getElementById('setPwdBtn');
+        const newPwd  = document.getElementById('newPassword').value;
+        const cfmPwd  = document.getElementById('confirmPassword').value;
+
+        if (newPwd !== cfmPwd) {
+            showError('Passwords do not match.');
+            return;
+        }
+        if (newPwd.length < 4) {
+            showError('Password must be at least 4 characters.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.classList.add('loading');
+        try {
+            const res  = await fetch('/api/auth/set-initial-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: _pendingUserId, new_password: newPwd }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                location.href = _NEXT || data.redirect_url || '/active-orders';
+            } else {
+                showError(data.message || 'Failed to set password.');
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    }
+
+    // 엔터키 처리
+    document.getElementById('userId').focus();
+
+    // ── next page 정보가 있으면 로컬 로그인 대신 자동으로 SSO 로그인으로 이동 ──
+    if (_AUTO_SSO) {
+        // 로그인 카드를 SSO 리다이렉트 안내로 전환
+        const spinnerHtml =
+            '<div class="sso-redirect-spinner" style="text-align:center;padding:0.5rem 0;">' +
+              '<i class="fas fa-circle-notch spin" style="font-size:1.6rem;color:var(--primary);"></i>' +
+              '<div style="margin-top:0.75rem;font-size:0.9rem;color:var(--muted-foreground);">Redirecting to SSO login…</div>' +
+              '<div style="margin-top:0.9rem;font-size:0.8rem;">' +
+                '<a href="' + location.pathname + '?local=1' + (_NEXT ? '&next=' + encodeURIComponent(_NEXT) : '') + '" ' +
+                   'style="color:var(--primary);text-decoration:underline;cursor:pointer;">Use local login instead</a>' +
+              '</div>' +
+            '</div>';
+        const cardTitle = document.getElementById('cardTitle');
+        if (cardTitle) cardTitle.textContent = 'SSO Login';
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) loginForm.insertAdjacentHTML('beforebegin', spinnerHtml);
+        if (loginForm) loginForm.style.display = 'none';
+        const signupArea = document.getElementById('signupLinkArea');
+        if (signupArea) signupArea.style.display = 'none';
+        // 자동 SSO 이동
+        goSsoLogin();
+    }
+
+    // ══════════════════════════════════════════
+    // 회원가입 패널 전환
+    // ══════════════════════════════════════════
+    function syncEmail(userId) {
+        const emailEl = document.getElementById('regEmail');
+        emailEl.value = userId.trim() ? userId.trim() + '@lge.com' : '';
+    }
+
+    function showRegisterPanel() {
+        document.getElementById('loginForm').style.display    = 'none';
+        document.getElementById('setPwdPanel').style.display  = 'none';
+        document.getElementById('signupLinkArea').style.display = 'none';
+        document.getElementById('accessRequestPanel').classList.remove('show');
+        document.getElementById('registerPanel').classList.add('show');
+        document.getElementById('cardTitle').textContent = 'Sign Up';
+        hideError();
+        document.getElementById('regUserId').focus();
+    }
+
+    function showResetPanel() {
+        document.getElementById('loginForm').style.display      = 'none';
+        document.getElementById('setPwdPanel').style.display    = 'none';
+        document.getElementById('signupLinkArea').style.display = 'none';
+        document.getElementById('registerPanel').classList.remove('show');
+        document.getElementById('resetPanel').classList.add('show');
+        document.getElementById('accessRequestPanel').classList.remove('show');
+        document.getElementById('cardTitle').textContent = 'Reset Password';
+        hideError();
+        hideResetSuccess();
+
+        // 패널 초기화
+        clearResetCodeTimer();
+        document.getElementById('resetForm').reset();
+        const userIdInput = document.getElementById('resetUserId');
+        userIdInput.readOnly = false;
+        userIdInput.style.background = '';
+        userIdInput.style.color = '';
+        document.getElementById('resetEmailHint').textContent = '';
+        document.getElementById('resetCodeGroup').style.display      = 'none';
+        document.getElementById('resetPwdGroup').style.display       = 'none';
+        document.getElementById('resetPwdConfirmGroup').style.display = 'none';
+        document.getElementById('resetBtn').style.display            = 'none';
+        const btn = document.getElementById('resetSendCodeBtn');
+        btn.textContent = 'Send Code';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+
+        userIdInput.focus();
+    }
+
+    function showLoginPanel() {
+        document.getElementById('registerPanel').classList.remove('show');
+        document.getElementById('resetPanel').classList.remove('show');
+        document.getElementById('accessRequestPanel').classList.remove('show');
+        document.getElementById('loginForm').style.display    = '';
+        document.getElementById('setPwdPanel').classList.remove('show');
+        document.getElementById('signupLinkArea').style.display = '';
+        document.getElementById('cardTitle').textContent = 'Sign In';
+        hideError();
+        hideRegisterSuccess();
+        hideResetSuccess();
+        clearCodeTimer();
+        clearResetCodeTimer();
+        document.getElementById('userId').focus();
+    }
+
+    // ══════════════════════════════════════════
+    // 계정 접근 요청 (Access Request)
+    // ══════════════════════════════════════════
+    let _arSubsdrLoaded = false;
+
+    function syncArEmail(userId) {
+        const emailEl = document.getElementById('arEmail');
+        emailEl.value = userId.trim() ? userId.trim() + '@lge.com' : '';
+    }
+
+    function hideArSuccess() {
+        document.getElementById('arSuccess').classList.remove('show');
+    }
+    function showArSuccess(msg) {
+        const el = document.getElementById('arSuccess');
+        document.getElementById('arSuccessMsg').textContent = msg;
+        el.classList.add('show');
+    }
+
+    function showAccessRequestPanel() {
+        document.getElementById('loginForm').style.display      = 'none';
+        document.getElementById('setPwdPanel').style.display    = 'none';
+        document.getElementById('signupLinkArea').style.display = 'none';
+        document.getElementById('registerPanel').classList.remove('show');
+        document.getElementById('resetPanel').classList.remove('show');
+        document.getElementById('accessRequestPanel').classList.add('show');
+        document.getElementById('cardTitle').textContent = 'Request Access';
+        hideError();
+        hideArSuccess();
+
+        // 폼 초기화
+        document.getElementById('accessRequestForm').reset();
+        document.getElementById('arEmail').value = '';
+        document.getElementById('arReasonCounter').textContent = '0 / 500';
+
+        if (!_arSubsdrLoaded) loadArSubsdrList();
+
+        document.getElementById('arUserId').focus();
+    }
+
+    async function loadArSubsdrList() {
+        const sel = document.getElementById('arSubsdr');
+        sel.innerHTML = '<option value="" disabled selected>Loading…</option>';
+        try {
+            const res  = await fetch('/api/user/access-request/subsdr-list');
+            const data = await res.json();
+            sel.innerHTML = '<option value="" disabled selected>-- Select Subsidiary --</option>';
+            if (data.success && Array.isArray(data.data)) {
+                data.data.forEach(nm => {
+                    const opt = document.createElement('option');
+                    opt.value = nm; opt.textContent = nm;
+                    sel.appendChild(opt);
+                });
+                _arSubsdrLoaded = true;
+            } else {
+                sel.innerHTML = '<option value="" disabled selected>Failed to load</option>';
+            }
+        } catch (e) {
+            sel.innerHTML = '<option value="" disabled selected>Failed to load</option>';
+        }
+    }
+
+    async function submitAccessRequest(e) {
+        e.preventDefault();
+        hideError();
+        hideArSuccess();
+
+        const userId = document.getElementById('arUserId').value.trim();
+        const subsdr = document.getElementById('arSubsdr').value;
+        const reason = document.getElementById('arReason').value.trim();
+
+        if (!userId) { showError('Please enter your User ID.'); return; }
+        if (!subsdr) { showError('Please select a subsidiary.'); return; }
+        if (!reason) { showError('Please enter a request reason.'); return; }
+
+        const btn = document.getElementById('arSubmitBtn');
+        btn.disabled = true;
+        btn.classList.add('loading');
+
+        const payload = {
+            email_id            : document.getElementById('arEmail').value.trim(),
+            subsdr_nm           : subsdr,
+            user_id             : userId,
+            user_emp_no         : '',
+            request_reason_desc : reason
+        };
+
+        try {
+            const res  = await fetch('/api/user/access-request/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                document.getElementById('accessRequestForm').style.display = 'none';
+                showArSuccess('Request submitted! The administrator will review and contact you at ' + (payload.email_id || 'your email') + '.');
+                setTimeout(() => {
+                    document.getElementById('accessRequestForm').style.display = '';
+                    showLoginPanel();
+                }, 3000);
+            } else if (res.status === 409) {
+                showError(data.message || 'An access request for this account already exists.');
+            } else {
+                showError(data.message || 'Failed to submit request. Please try again.');
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    }
+    function showRegisterSuccess(msg) {
+        const el = document.getElementById('registerSuccess');
+        document.getElementById('registerSuccessMsg').textContent = msg;
+        el.classList.add('show');
+    }
+    function hideRegisterSuccess() {
+        document.getElementById('registerSuccess').classList.remove('show');
+    }
+
+    // ══════════════════════════════════════════
+    // 인증코드 타이머
+    // ══════════════════════════════════════════
+    let _codeTimerInterval = null;
+    let _codeExpireAt = 0;
+
+    function startCodeTimer(seconds) {
+        clearCodeTimer();
+        _codeExpireAt = Date.now() + seconds * 1000;
+        const el = document.getElementById('codeTimer');
+        function tick() {
+            const remain = Math.max(0, Math.round((_codeExpireAt - Date.now()) / 1000));
+            const m = String(Math.floor(remain / 60)).padStart(2, '0');
+            const s = String(remain % 60).padStart(2, '0');
+            el.textContent = remain > 0 ? `⏱ Expires in ${m}:${s}` : '⏱ Verification code has expired.';
+            if (remain === 0) clearCodeTimer();
+        }
+        tick();
+        _codeTimerInterval = setInterval(tick, 1000);
+    }
+
+    function clearCodeTimer() {
+        if (_codeTimerInterval) { clearInterval(_codeTimerInterval); _codeTimerInterval = null; }
+        const el = document.getElementById('codeTimer');
+        if (el) el.textContent = '';
+    }
+
+    // ══════════════════════════════════════════
+    // 인증코드 발송
+    // ══════════════════════════════════════════
+    async function doSendCode() {
+        hideError();
+        hideRegisterSuccess();
+
+        const userId   = document.getElementById('regUserId').value.trim();
+        const userName = document.getElementById('regUserName').value.trim();
+        const email    = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const cfmPwd   = document.getElementById('regConfirmPassword').value;
+        const subsdr   = document.getElementById('regSubsdr').value;
+
+        if (!userId)    { showError('Please enter your User ID.'); return; }
+        if (!userName)  { showError('Please enter your full name.'); return; }
+        if (!password)  { showError('Please enter a password.'); return; }
+        if (password.length < 4) { showError('Password must be at least 4 characters.'); return; }
+        if (password !== cfmPwd) { showError('Passwords do not match.'); return; }
+
+        const btn = document.getElementById('sendCodeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+
+        try {
+            const res  = await fetch('/api/auth/register/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, user_name: userName,
+                                       email, password, subsdr_name: subsdr }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('codeGroup').style.display = '';
+                startCodeTimer(600);
+                showRegisterSuccess(data.message || 'Verification code sent.');
+                document.getElementById('regCode').focus();
+                btn.textContent = 'Resend';
+            } else {
+                showError(data.message || 'Failed to send verification code.');
+                btn.textContent = 'Send Code';
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+            btn.textContent = 'Send Code';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // ══════════════════════════════════════════
+    // 회원가입 제출
+    // ══════════════════════════════════════════
+    async function doRegister(e) {
+        e.preventDefault();
+        hideError();
+        hideRegisterSuccess();
+
+        const email = document.getElementById('regEmail').value.trim();
+        const code  = document.getElementById('regCode').value.trim();
+
+        if (!code) { showError('Please enter the verification code.'); return; }
+
+        const btn = document.getElementById('registerBtn');
+        btn.disabled = true;
+        btn.classList.add('loading');
+
+        try {
+            const res  = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                clearCodeTimer();
+                showRegisterSuccess(data.message || 'Account created successfully.');
+                setTimeout(() => {
+                    showLoginPanel();
+                    showRegisterSuccess(data.message || 'Account created. Please sign in.');
+                }, 1500);
+            } else {
+                showError(data.message || 'Registration failed.');
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    }
+
+    // ══════════════════════════════════════════
+    // 비밀번호 재설정
+    // ══════════════════════════════════════════
+    let _resetTimerInterval = null;
+    let _resetExpireAt = 0;
+
+    function showResetSuccess(msg) {
+        const el = document.getElementById('resetSuccess');
+        document.getElementById('resetSuccessMsg').textContent = msg;
+        el.classList.add('show');
+    }
+    function hideResetSuccess() {
+        document.getElementById('resetSuccess').classList.remove('show');
+    }
+
+    function startResetCodeTimer(seconds) {
+        clearResetCodeTimer();
+        _resetExpireAt = Date.now() + seconds * 1000;
+        const el = document.getElementById('resetCodeTimer');
+        function tick() {
+            const remain = Math.max(0, Math.round((_resetExpireAt - Date.now()) / 1000));
+            const m = String(Math.floor(remain / 60)).padStart(2, '0');
+            const s = String(remain % 60).padStart(2, '0');
+            el.textContent = remain > 0 ? `⏱ Expires in ${m}:${s}` : '⏱ Verification code has expired.';
+            if (remain === 0) {
+                clearResetCodeTimer();
+                const btn = document.getElementById('resetSendCodeBtn');
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+                btn.textContent = 'Resend';
+            }
+        }
+        tick();
+        _resetTimerInterval = setInterval(tick, 1000);
+    }
+    function clearResetCodeTimer() {
+        if (_resetTimerInterval) { clearInterval(_resetTimerInterval); _resetTimerInterval = null; }
+        const el = document.getElementById('resetCodeTimer');
+        if (el) el.textContent = '';
+    }
+
+    async function doResetSendCode() {
+        hideError();
+        hideResetSuccess();
+        const userId = document.getElementById('resetUserId').value.trim();
+        if (!userId) { showError('Please enter your User ID.'); return; }
+
+        const btn = document.getElementById('resetSendCodeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+
+        try {
+            const res  = await fetch('/api/auth/reset-password/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('resetCodeGroup').style.display     = '';
+                document.getElementById('resetPwdGroup').style.display      = '';
+                document.getElementById('resetPwdConfirmGroup').style.display = '';
+                document.getElementById('resetBtn').style.display           = '';
+                if (data.email_hint) {
+                    document.getElementById('resetEmailHint').textContent = `📧 Code sent to ${data.email_hint}`;
+                }
+                // User ID 수정 불가 처리
+                const userIdInput = document.getElementById('resetUserId');
+                userIdInput.readOnly = true;
+                userIdInput.style.background = 'var(--muted, #f3f4f6)';
+                userIdInput.style.color = 'var(--muted-foreground, #6b7280)';
+                // Resend 버튼 비활성화 (타이머 만료 시 자동 활성화)
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                startResetCodeTimer(600);
+                showResetSuccess(data.message || 'Verification code sent.');
+                document.getElementById('resetCode').focus();
+                btn.textContent = 'Resend';
+            } else {
+                showError(data.message || 'Failed to send verification code.');
+                btn.textContent = 'Send Code';
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+            btn.textContent = 'Send Code';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function doResetPassword(e) {
+        e.preventDefault();
+        hideError();
+        hideResetSuccess();
+
+        const userId  = document.getElementById('resetUserId').value.trim();
+        const code    = document.getElementById('resetCode').value.trim();
+        const newPwd  = document.getElementById('resetNewPassword').value;
+        const cfmPwd  = document.getElementById('resetConfirmPassword').value;
+
+        if (!code)   { showError('Please enter the verification code.'); return; }
+        if (!newPwd) { showError('Please enter a new password.'); return; }
+        if (newPwd.length < 4) { showError('Password must be at least 4 characters.'); return; }
+        if (newPwd !== cfmPwd) { showError('Passwords do not match.'); return; }
+
+        const btn = document.getElementById('resetBtn');
+        btn.disabled = true;
+        btn.classList.add('loading');
+
+        try {
+            const res  = await fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, code, new_password: newPwd }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                clearResetCodeTimer();
+                showResetSuccess(data.message || 'Password reset successfully.');
+                setTimeout(() => showLoginPanel(), 2000);
+            } else {
+                showError(data.message || 'Failed to reset password.');
+            }
+        } catch (err) {
+            showError('Failed to connect to server.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    }
+    </script>
+</body>
+</html>

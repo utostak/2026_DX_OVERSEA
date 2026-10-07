@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Order Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <!-- AG Grid Enterprise -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <style>
+        #orderGrid { width: 100%; height: calc(100vh - 280px); min-height: 480px; }
+        .model-expand-btn {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:18px; height:18px; padding:0; border:none; border-radius:3px;
+            background:rgba(0,0,0,.08); color:var(--muted-foreground);
+            cursor:pointer; font-size:10px; flex-shrink:0; line-height:1;
+            transition: background .15s, color .15s;
+        }
+        .model-expand-btn:hover { background:var(--primary); color:#fff; }
+        .model-expand-btn.active { background:var(--primary); color:#fff; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'order' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+
+        <!-- ── Division / Date Filter Bar ── -->
+        <div class="section" style="padding:0.6rem 1.25rem; margin-bottom:0; border-bottom:1px solid var(--border);">
+            <div class="filter-inline">
+                <label>Division</label>
+                <select id="globalDivision" class="input" style="width:160px;">
+                    {% for div in divisions_list %}
+                    <option value="{{ div.div_nm }}">{{ div.div_nm }}</option>
+                    {% endfor %}
+                </select>
+                <label style="margin-left:0.75rem;">Currency</label>
+                <select id="currencyFilter" class="input" style="width:90px;">
+                    <option value="USD">USD</option>
+                </select>
+                <label style="margin-left:0.75rem;">Order Date</label>
+                <input type="date" class="input" id="startDate">
+                <label>~</label>
+                <input type="date" class="input" id="endDate">
+            </div>
+        </div>
+
+        <!-- ── KPI section ── -->
+        <section class="section" style="position:relative;">
+            <div id="kpiLoadingOverlay" class="loading-overlay" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="section-header">
+                <div style="display:flex; align-items:flex-end; gap:1.25rem; flex-wrap:wrap;">
+                    <div>
+                        <h1 class="section-title">Order KPI</h1>
+                        <p class="section-subtitle">Order line summary for selected period · Excl. RETURN</p>
+                    </div>
+                </div>
+                <button class="btn btn-sm" id="btnKpiToggle" onclick="toggleKpi()" title="Toggle KPI section">
+                    <i class="fas fa-chevron-up" id="iconKpiToggle"></i>
+                </button>
+            </div>
+
+            <div id="kpiCollapse" style="margin-top: 1rem;">
+                <div class="kpi-row" id="kpiRow">
+
+                    <!-- Order Lines -->
+                    <div class="kpi-card" onclick="filterByKpi(this, null)" title="Show All">
+                        <div class="kpi-title"><i class="kpi-icon fas fa-layer-group" style="color: var(--muted-foreground);"></i> Order Lines</div>
+                        <div class="kpi-value" id="kpiOrderLines">-</div>
+                        <div class="kpi-usd" id="kpiOrderLinesUsd">-</div>
+                    </div>
+
+                    <!-- Closed -->
+                    <div class="kpi-card" id="kpiClosedCard" onclick="filterByKpi(this, '900.Closed', 'delivery_status_group', 'CLOSED')" title="Filter: Closed">
+                        <div class="kpi-ring">
+                            <svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-val" id="ringClosed" cx="29" cy="29" r="24" stroke="oklch(0.66 0.16 150)" stroke-dasharray="0 151"/></svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="ringClosedPct">-</div>
+                        </div>
+                        <div class="kpi-title"><i class="kpi-icon fas fa-check-circle" style="color: var(--success);"></i> Closed</div>
+                        <div class="kpi-value" id="kpiClosed">-</div>
+                        <div class="kpi-usd" id="kpiClosedUsd">-</div>
+                        <button class="kpi-expand-btn" onclick="event.stopPropagation(); toggleKpiSub('closed')"><i class="fas fa-chevron-down" id="kpiClosedIcon"></i></button>
+                    </div>
+
+                    <!-- Open -->
+                    <div class="kpi-card" id="kpiOpenCard" onclick="filterByKpi(this, '200.Open', 'delivery_status_group', 'OPEN')" title="Filter: Open">
+                        <div class="kpi-ring">
+                            <svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-val" id="ringOpen" cx="29" cy="29" r="24" stroke="oklch(0.62 0.16 240)" stroke-dasharray="0 151"/></svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="ringOpenPct">-</div>
+                        </div>
+                        <div class="kpi-title"><i class="kpi-icon fas fa-stream" style="color: var(--accent);"></i> Open</div>
+                        <div class="kpi-value" id="kpiOpen">-</div>
+                        <div class="kpi-usd" id="kpiOpenUsd">-</div>
+                        <button class="kpi-expand-btn" onclick="event.stopPropagation(); toggleKpiSub('open')"><i class="fas fa-chevron-down" id="kpiOpenIcon"></i></button>
+                    </div>
+
+                    <!-- Cancelled -->
+                    <div class="kpi-card" onclick="filterByKpi(this, '999.Cancelled')" title="Filter: Cancelled">
+                        <div class="kpi-ring">
+                            <svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-val" id="ringCancelled" cx="29" cy="29" r="24" stroke="oklch(0.5 0.02 20)" stroke-dasharray="0 151"/></svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="ringCancelledPct">-</div>
+                        </div>
+                        <div class="kpi-title"><i class="kpi-icon fas fa-times-circle" style="color: var(--muted-foreground);"></i> Cancelled</div>
+                        <div class="kpi-value" id="kpiCancelled">-</div>
+                        <div class="kpi-usd" id="kpiCancelledUsd">-</div>
+                    </div>
+
+                    <!-- Back-Order -->
+                    <div class="kpi-card" onclick="filterByKpi(this, 'Back-Order', 'BACK_ORDER_HOLD', 'Y')" title="Filter: Back-Order">
+                        <div class="kpi-ring">
+                            <svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-val" id="ringBackorder" cx="29" cy="29" r="24" stroke="oklch(0.78 0.15 75)" stroke-dasharray="0 151"/></svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="ringBackorderPct">-</div>
+                        </div>
+                        <div class="kpi-title"><i class="kpi-icon fas fa-hourglass-half" style="color: var(--warning);"></i> Back-Order</div>
+                        <div class="kpi-value" id="kpiBackorder">-</div>
+                        <div class="kpi-usd" id="kpiBackorderUsd">-</div>
+                    </div>
+
+                    <!-- Rescheduled -->
+                    <div class="kpi-card" onclick="filterByKpi(this, 'Rescheduled', 'is_rescheduled', 'Y')" title="Filter: Rescheduled">
+                        <div class="kpi-ring">
+                            <svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-val" id="ringRescheduled" cx="29" cy="29" r="24" stroke="oklch(0.541 0.281 293)" stroke-dasharray="0 151"/></svg>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="ringRescheduledPct">-</div>
+                        </div>
+                        <div class="kpi-title"><i class="kpi-icon fas fa-calendar-alt" style="color: var(--violet-600);"></i> Rescheduled</div>
+                        <div class="kpi-value" id="kpiRescheduled">-</div>
+                        <div class="kpi-usd" id="kpiRescheduledUsd">-</div>
+                    </div>
+                </div>
+
+                <!-- KPI sub-cards (Closed/Open detail) -->
+                <div id="kpiSubSection" class="collapse-section">
+                    <div id="kpiClosedSub" style="display:none;">
+                        <div class="kpi-row" style="padding-top:12px; margin-top:12px; border-top:2px dashed color-mix(in oklab, var(--success) 50%, transparent);">
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '900.Closed (On-Time)')" title="Filter: On-Time">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-clock" style="color: var(--accent);"></i> On-Time</div>
+                                <div class="kpi-value" id="kpiOntime">-</div>
+                                <div><span class="kpi-pct blue" id="kpiOntimePct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '900.Closed (Delayed)', 'delivery_status', '900.Closed (Delayed)')" title="Filter: Delayed">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-exclamation-circle" style="color: var(--danger);"></i> Delayed</div>
+                                <div class="kpi-value" id="kpiDelayed">-</div>
+                                <div><span class="kpi-pct red" id="kpiDelayedPct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '900.Closed (No RAD or No Shipment Date)', 'delivery_status', '900.Closed (No RAD or No Shipment Date)')" title="Filter: No RAD">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-question-circle" style="color: var(--muted-foreground);"></i> No RAD</div>
+                                <div class="kpi-value" id="kpiClosedNoRad">-</div>
+                                <div><span class="kpi-pct" id="kpiClosedNoRadPct">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="kpiOpenSub" style="display:none;">
+                        <div class="kpi-row" style="padding-top:12px; margin-top:12px; border-top:2px dashed color-mix(in oklab, var(--accent) 50%, transparent);">
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '100.Entered', 'delivery_status', '100.Entered')" title="Filter: Entered">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-inbox" style="color: var(--muted-foreground);"></i> Entered</div>
+                                <div class="kpi-value" id="kpiEntered">-</div>
+                                <div><span class="kpi-pct" id="kpiEnteredPct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '200.Booked', 'delivery_status', '200.Booked')" title="Filter: Booked">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-bookmark" style="color: var(--accent);"></i> Booked</div>
+                                <div class="kpi-value" id="kpiBooked">-</div>
+                                <div><span class="kpi-pct blue" id="kpiBookedPct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '300.Pick Release', 'delivery_status', '300.Pick Release')" title="Filter: Pick Release">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-dolly" style="color: var(--warning);"></i> Pick Release</div>
+                                <div class="kpi-value" id="kpiPickRelease">-</div>
+                                <div><span class="kpi-pct orange" id="kpiPickReleasePct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '400.Picked', 'delivery_status', '400.Picked')" title="Filter: Picked">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-boxes" style="color: var(--success);"></i> Picked</div>
+                                <div class="kpi-value" id="kpiPicked">-</div>
+                                <div><span class="kpi-pct green" id="kpiPickedPct">-</span></div>
+                            </div>
+                            <div class="kpi-card kpi-sub" onclick="filterByKpi(this, '500.Shipped', 'delivery_status', '500.Shipped')" title="Filter: Shipped">
+                                <div class="kpi-title"><i class="kpi-icon fas fa-shipping-fast" style="color: var(--accent);"></i> Shipped</div>
+                                <div class="kpi-value" id="kpiShipped">-</div>
+                                <div><span class="kpi-pct blue" id="kpiShippedPct">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Order Raw table ── -->
+        <section class="section section-flush">
+            <div class="section-header">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <h2 class="section-title">Order Raw</h2>
+                    <span id="rawRowCount" class="pill pill-slate">— rows</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="search-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="gridSearch" class="input input-search" placeholder="Quick filter…">
+                    </div>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+
+            <div style="position:relative;">
+                <div id="loadingOverlay" class="loading-overlay">
+                    <div class="spinner"></div>
+                </div>
+                <div class="grid-scroll-wrap">
+                    <div id="orderGrid" class="ag-theme-alpine"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {% include 'module/common_select2_init.html' %}
+    <script src="{{ url_for('static', filename='js/model-header-comp.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+
+    <script>
+    // ── Date Defaults (최근 7일 ~ 오늘) ──
+    (function() {
+        const today = new Date();
+        const d7 = new Date(); d7.setDate(today.getDate() - 7);
+        const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        document.getElementById('startDate').value = fmt(d7);
+        document.getElementById('endDate').value   = fmt(today);
+    })();
+
+    // ── KPI toggle ──
+    let kpiVisible = true;
+    function toggleKpi() {
+        kpiVisible = !kpiVisible;
+        document.getElementById('kpiCollapse').style.display = kpiVisible ? '' : 'none';
+        document.getElementById('iconKpiToggle').className = kpiVisible ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+    }
+
+    // ── Ring helper ──
+    const CIRC = 2 * Math.PI * 24;
+    function setRing(id, pct) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const fill = (pct / 100) * CIRC;
+        el.setAttribute('stroke-dasharray', `${fill.toFixed(1)} ${(CIRC - fill).toFixed(1)}`);
+    }
+
+    function buildQuery() {
+        return new URLSearchParams({
+            start_date:     document.getElementById('startDate').value,
+            end_date:       document.getElementById('endDate').value,
+            legal_entity:   getGlobalLegalEntity(),
+            division:       getGlobalDivision(),
+            order_status:   'ALL',
+            line_status:    'ALL',
+            line_category:  'ORDER',
+            order_category: 'ALL',
+            currency:       getCurrency(),
+        }).toString();
+    }
+
+    function getCurrency() {
+        return document.getElementById('currencyFilter').value || 'USD';
+    }
+
+    // ── 통화 금액 포맷 ──
+    // $계열(CAD/AUD/HKD/SGD 등): symbol → CA$, A$, HK$ (USD와 구분)
+    // 나머지: narrowSymbol → Rp(IDR), zł(PLN), ₫(VND), RM(MYR) …
+    const _DOLLAR_CURRENCIES = new Set(['USD','CAD','AUD','HKD','SGD','NZD','TWD','MXN','CLP','COP','ARS','BRL']);
+    function fmtCurrency(v) {
+        if (v == null || !isFinite(v)) return '-';
+        const cur = getCurrency();
+        const display = _DOLLAR_CURRENCIES.has(cur) ? 'symbol' : 'narrowSymbol';
+        try {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency', currency: cur,
+                currencyDisplay: display, maximumFractionDigits: 0,
+            }).format(Math.round(v));
+        } catch(e) {
+            try {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency', currency: cur, maximumFractionDigits: 0,
+                }).format(Math.round(v));
+            } catch(e2) {
+                return Math.round(v).toLocaleString() + ' ' + cur;
+            }
+        }
+    }
+
+    function loadCurrencies() {
+        fetch('/api/order/currencies?legal_entity=' + encodeURIComponent(getGlobalLegalEntity()))
+            .then(r => r.json())
+            .then(res => {
+                const sel = document.getElementById('currencyFilter');
+                const prev = sel.value;
+                const currencies = (res.success && res.data && res.data.length) ? res.data : ['USD'];
+                sel.innerHTML = '';
+                currencies.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c;
+                    if (c === 'USD') opt.selected = true;
+                    sel.appendChild(opt);
+                });
+                // 이전 선택값 복원 (목록에 있을 경우)
+                if (currencies.includes(prev)) sel.value = prev;
+            })
+            .catch(() => {});
+    }
+
+    // ── Render KPI ──
+    function renderKpi(d) {
+        const total       = d.total_lines        || 0;
+        const closed      = d.closed_lines       || 0;
+        const ontime      = d.ontime_lines       || 0;
+        const delayed     = d.delayed_lines      || 0;
+        const closedNoRad = d.closed_no_rad_lines|| 0;
+        const open        = d.open_lines         || 0;
+        const entered     = d.entered_lines      || 0;
+        const booked      = d.booked_lines       || 0;
+        const pickRelease = d.pick_release_lines || 0;
+        const picked      = d.picked_lines       || 0;
+        const shipped     = d.shipped_lines      || 0;
+        const back        = d.backorder_lines    || 0;
+        const resched     = d.rescheduled_lines  || 0;
+        const cancel      = d.cancelled_lines    || 0;
+
+        const fmt = n => n.toLocaleString();
+        const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+        const pctTxt = (a, b) => pct(a, b) + '%';
+        const fmtUsd = v => fmtCurrency(v);
+
+        document.getElementById('kpiOrderLines').textContent     = fmt(total);
+        document.getElementById('kpiClosed').textContent         = fmt(closed);
+        document.getElementById('kpiOntime').textContent         = fmt(ontime);
+        document.getElementById('kpiOntimePct').textContent      = pctTxt(ontime, closed);
+        document.getElementById('kpiDelayed').textContent        = fmt(delayed);
+        document.getElementById('kpiDelayedPct').textContent     = pctTxt(delayed, closed);
+        document.getElementById('kpiClosedNoRad').textContent    = fmt(closedNoRad);
+        document.getElementById('kpiClosedNoRadPct').textContent = pctTxt(closedNoRad, closed);
+        document.getElementById('kpiOpen').textContent           = fmt(open);
+        document.getElementById('kpiEntered').textContent        = fmt(entered);
+        document.getElementById('kpiEnteredPct').textContent     = pctTxt(entered, open);
+        document.getElementById('kpiBooked').textContent         = fmt(booked);
+        document.getElementById('kpiBookedPct').textContent      = pctTxt(booked, open);
+        document.getElementById('kpiPickRelease').textContent    = fmt(pickRelease);
+        document.getElementById('kpiPickReleasePct').textContent = pctTxt(pickRelease, open);
+        document.getElementById('kpiPicked').textContent         = fmt(picked);
+        document.getElementById('kpiPickedPct').textContent      = pctTxt(picked, open);
+        document.getElementById('kpiShipped').textContent        = fmt(shipped);
+        document.getElementById('kpiShippedPct').textContent     = pctTxt(shipped, open);
+        document.getElementById('kpiBackorder').textContent      = fmt(back);
+        document.getElementById('kpiRescheduled').textContent    = fmt(resched);
+        document.getElementById('kpiCancelled').textContent      = fmt(cancel);
+
+        document.getElementById('kpiOrderLinesUsd').textContent  = fmtUsd(d.total_usd);
+        document.getElementById('kpiClosedUsd').textContent      = fmtUsd(d.closed_usd);
+        document.getElementById('kpiOpenUsd').textContent        = fmtUsd(d.open_usd);
+        document.getElementById('kpiBackorderUsd').textContent   = fmtUsd(d.backorder_usd);
+        document.getElementById('kpiRescheduledUsd').textContent = fmtUsd(d.rescheduled_usd);
+        document.getElementById('kpiCancelledUsd').textContent   = fmtUsd(d.cancelled_usd);
+
+        const closedPct  = pct(closed, total);
+        const openPct    = pct(open, total);
+        const backPct    = pct(back, total);
+        const reschedPct = pct(resched, total);
+        const cancelPct  = pct(cancel, total);
+
+        document.getElementById('ringClosedPct').textContent     = closedPct + '%';
+        document.getElementById('ringOpenPct').textContent       = openPct + '%';
+        document.getElementById('ringBackorderPct').textContent  = backPct + '%';
+        document.getElementById('ringRescheduledPct').textContent= reschedPct + '%';
+        document.getElementById('ringCancelledPct').textContent  = cancelPct + '%';
+
+        setRing('ringClosed',      closedPct);
+        setRing('ringOpen',        openPct);
+        setRing('ringBackorder',   backPct);
+        setRing('ringRescheduled', reschedPct);
+        setRing('ringCancelled',   cancelPct);
+    }
+
+    // ── KPI 그룹 확장/축소 ──
+    let _kpiOpenType = null;
+    function toggleKpiSub(type) {
+        const section    = document.getElementById('kpiSubSection');
+        const closedSub  = document.getElementById('kpiClosedSub');
+        const openSub    = document.getElementById('kpiOpenSub');
+        const closedIcon = document.getElementById('kpiClosedIcon');
+        const openIcon   = document.getElementById('kpiOpenIcon');
+
+        const isSame = (_kpiOpenType === type);
+
+        closedSub.style.display = 'none';
+        openSub.style.display   = 'none';
+        closedIcon.className = 'fas fa-chevron-down';
+        openIcon.className   = 'fas fa-chevron-down';
+
+        if (isSame) {
+            section.style.maxHeight = '0';
+            section.style.marginTop = '0';
+            _kpiOpenType = null;
+        } else {
+            if (type === 'closed') {
+                closedSub.style.display = 'block';
+                closedIcon.className = 'fas fa-chevron-up';
+            } else {
+                openSub.style.display = 'block';
+                openIcon.className = 'fas fa-chevron-up';
+            }
+            section.style.maxHeight = '260px';
+            section.style.marginTop = '0';
+            _kpiOpenType = type;
+        }
+    }
+
+    // ── KPI 카드 클릭 → 그리드 필터 ──
+    function filterByKpi(card, value, field, filterValue) {
+        if (!orderGridApi) return;
+
+        const isAlreadyActive = card && card.classList.contains('kpi-active');
+        document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('kpi-active'));
+
+        if (isAlreadyActive || value === null) {
+            orderGridApi.setFilterModel(null);
+            return;
+        }
+
+        card.classList.add('kpi-active');
+
+        if (field === 'delivery_status_group') {
+            const CLOSED_VALS = [
+                '900.Closed (On-Time)',
+                '900.Closed (Delayed)',
+                '900.Closed (No RAD or No Shipment Date)'
+            ];
+            const OPEN_VALS = [
+                '100.Entered', '200.Booked', '300.Pick Release',
+                '300.Picked', '400.Shipped', '500.Invoiced'
+            ];
+            const vals = filterValue === 'CLOSED' ? CLOSED_VALS : OPEN_VALS;
+            orderGridApi.setFilterModel({ delivery_status: { filterType: 'set', values: vals } });
+        } else {
+            const col = field || 'delivery_status';
+            const val = filterValue || value;
+            orderGridApi.setFilterModel({ [col]: { filterType: 'set', values: [val] } });
+        }
+
+        document.getElementById('orderGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── AG Grid License ──
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    let orderGridApi = null;
+
+    function cellStyleStatus(p) {
+        const map = {
+            '900.Closed (On-Time)': { color:'#fff', backgroundColor:'oklch(0.66 0.16 150)', fontWeight:'500' },
+            '900.Closed (Delayed)': { color:'#fff', backgroundColor:'oklch(0.55 0.2 20)',   fontWeight:'500' },
+            '900.Closed (No RAD or No Shipment Date)': { color:'#fff', backgroundColor:'oklch(0.5 0.02 20)', fontWeight:'500' },
+            '999.Cancelled':  { color:'#fff', backgroundColor:'oklch(0.5 0.02 20)',  fontWeight:'500' },
+            '100.Entered':    { color:'oklch(0.22 0.02 20)', backgroundColor:'oklch(0.929 0.013 255.5)', fontWeight:'500' },
+            '200.Booked':     { color:'oklch(0.22 0.02 20)', backgroundColor:'oklch(0.901 0.058 230.9)', fontWeight:'500' },
+            '300.Picked':     { color:'oklch(0.22 0.02 20)', backgroundColor:'oklch(0.924 0.12 95.7)',   fontWeight:'500' },
+            '400.Shipped':    { color:'#fff', backgroundColor:'oklch(0.62 0.16 240)', fontWeight:'500' },
+            '500.Invoiced':   { color:'#fff', backgroundColor:'oklch(0.66 0.16 150)', fontWeight:'500' },
+        };
+        return map[p.value] || null;
+    }
+
+    const colDefs = [
+        c('delivery_status',         'Progress Status',  { width:120, pinned:'left', cellStyle:cellStyleStatus, filter:'agSetColumnFilter' }),
+        setCol('PROGRESS_STATUS',     'Flow Stage',       { width:130, pinned:'left',
+            cellStyle: p => {
+                const map = {
+                    'ENTERED':'oklch(0.929 0.013 255.5)','BOOKED':'oklch(0.901 0.058 230.9)','HOLD':'oklch(0.55 0.2 20)',
+                    'PICK_RELEASE':'oklch(0.78 0.15 75)','LOAD_CREATION':'oklch(0.541 0.281 293)',
+                    'WH_RELEASE':'oklch(0.66 0.16 150)','SHIPPING_CONFIRM':'oklch(0.62 0.16 240)','SHIPPED':'oklch(0.62 0.16 240)',
+                };
+                const bg = map[p.value];
+                if (!bg) return null;
+                const isLight = ['ENTERED','BOOKED'].includes(p.value);
+                return { color: isLight ? 'oklch(0.22 0.02 20)' : '#fff', backgroundColor: bg, fontWeight:'500' };
+            }
+        }),
+        c('is_rescheduled',          'Rescheduled',     { width:110, pinned:'left', filter:'agSetColumnFilter',
+            cellStyle: p => p.value === 'Y' ? { color:'#fff', backgroundColor:'oklch(0.541 0.281 293)', fontWeight:'500' } : null
+        }),
+        c('risk_alert',              'Risk Alert',      { width:90, pinned:'left', filter:'agSetColumnFilter',
+            cellStyle: p => p.value === 'Y' ? { color:'#fff', backgroundColor:'oklch(0.55 0.2 20)', fontWeight:'600', textAlign:'center' } : null
+        }),
+        setCol('BACK_ORDER_HOLD',    'Back Order Hold', { width:100, pinned:'left' }),
+        setCol('SUBSDR_NAME',        'Subsidiary',      { width:150, pinned:'left', hide:true }),
+        setCol('DIV_NM',             'Division',        { width:120, pinned:'left' }),
+        txtCol('SALES_ORDER_NO',     'Order No.',          { width:140, cellClass:'num' }),
+        c('SALES_ORDER_LINE_NO',     'Line No.',        { width:90, cellClass:'num'}),
+        c('ORDER_LINE_ID',           'Line ID',         { width:110, hide:true}), 
+        setCol('ORDER_TYPE_NAME',     'Order Type',        { width:120, pinned:'left'  }),
+        // txtCol('PICK_NO',            'Pick No.',           { width:120, cellClass:'num' }),
+        txtCol('CUST_PO_NO',         'Cust PO No.',     { width:150, hide:true }),
+        setCol('ORDER_STATUS_CODE',  'Order Status',    { width:120 }),
+        setCol('LINE_STATUS_CODE',   'Line Status',     { width:120 }),
+        setCol('LINE_CATEGORY_CODE', 'Line Category',   { width:120, hide:true }),
+        setCol('ORDER_CATEGORY_CODE','Order Category',  { width:130, hide:true }),
+        txtCol('CUSTOMER_CODE',      'Customer',        { width:120, cellClass:'num' }),
+        txtCol('CUSTOMER_NAME',      'Customer Name',   { width:200 }),
+        txtCol('MODEL_CODE',              'Model',           { width:175, cellClass:'num', headerComponent: ModelHeaderComp }),
+        setCol('PRODUCT_LEVEL1_NAME',     'Product L1',      { width:160, hide:true }),
+        setCol('PRODUCT_LEVEL2_NAME',     'Product L2',      { width:160, hide:true }),
+        setCol('PRODUCT_LEVEL3_NAME',     'Product L3',      { width:160, hide:true }),
+        setCol('PRODUCT_LEVEL4_NAME',     'Product L4',      { width:160, hide:true }),
+        qtyCol('ORDER_QTY',          'Order Qty'),
+        qtyCol('CANCEL_QTY',         'Cancel Qty',      { valueFormatter: p => (p.value != null && isFinite(p.value) && p.value > 0) ? Math.trunc(p.value).toLocaleString() : '-' }),
+        setCol('CURRENCY_CODE',      'Currency',        { width:80 }),
+        numCol('UNIT_SELLING_PRICE', 'Unit Price',      { width:120 }),
+        numCol('ORDER_AMOUNT',       'Order Amt',       { width:130 }),
+        c('USD_ORDER_AMOUNT',         'Order Amt (USD)', {
+            type:'numericColumn', width:145, cellClass:'num',
+            valueFormatter: p => (p.value != null && isFinite(p.value))
+                ? '$' + Math.round(p.value).toLocaleString() : '-',
+        }),
+        dateCol('CUST_PO_DATE',               'Cust PO Date',{ hide:true }),
+        dateCol('ORDERED_DATE',               'Ordered Date'),
+        dateCol('BOOKED_DATE',                'Booked Date'),
+        dateCol('REQUEST_SHIPPING_DATE',      'Req Ship Date'),
+        dateCol('PICK_RELEASE_DATE',          'Pick Release Date'),
+        dateCol('PICKING_DATE',               'Picking Date'),
+        dateCol('PROMISED_SHIP_DATE',         'Promised Ship Date'),
+        dateCol('ACTUAL_SHIPMENT_DATE',       'Actual Shipment Date'),
+        dateCol('SALES_DATE',                 'Sales Date'),
+        dateCol('RAD_DATE',               'RAD'),
+        dateCol('REQUEST_ARRIVAL_FROM_DATE',  'Req Arr From'),
+        dateCol('REQUEST_ARRIVAL_TO_DATE',    'Req Arr To'),
+        dateCol('promised_arrival_date',      'Promised Arr'),
+        dateCol('INIT_PROMISED_ARRIVAL_DATE', 'Init PAD'),
+        dateCol('appointment_from_date',      'Appt From'),
+        dateCol('appointment_to_date',        'Appt To'),
+        c('lead_time_days', 'Lead Time(d)', {
+            width:110, type:'numericColumn', cellClass:'num',
+            valueFormatter: p => (p.value != null && isFinite(p.value)) ? p.value + 'd' : '-',
+            cellStyle: p => {
+                if (p.value == null || !isFinite(p.value)) return null;
+                if (p.value <= 3)  return { color:'oklch(0.66 0.16 150)', fontWeight:'500' };
+                if (p.value <= 7)  return { color:'oklch(0.66 0.18 60)',  fontWeight:'500' };
+                return { color:'oklch(0.55 0.2 20)', fontWeight:'500' };
+            }
+        }),
+        setCol('OPEN_FLAG',          'Open',            { width:75 }),
+        setCol('HOLD_FLAG',          'Hold',            { width:75 }),
+        setCol('PICK_RELEASE_YN',    'Pick Released',   { width:110 }),
+        setCol('WAREHOUSE_CODE',     'Warehouse',       { width:110 }),
+        setCol('SHIPPING_METHOD_CODE','Ship Method',    { width:120 }),
+        txtCol('SALESPERSON_NAME',   'Salesperson',     { width:150 }),
+    ];
+
+    const gridOptions = {
+        columnDefs: colDefs,
+        defaultColDef: {
+            resizable: true, sortable: true, filter: true, wrapHeaderText: true, autoHeaderHeight: true,
+            menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        },
+        rowData: [],
+        pagination: true,
+        paginationPageSize: 500,
+        paginationPageSizeSelector: [100, 500, 1000, 2000, 5000],
+        rowSelection: 'multiple',
+        suppressRowClickSelection: true,
+        enableRangeSelection: true,
+        enableCharts: true,
+        sideBar: { toolPanels: ['filters', 'columns'] },
+        statusBar: {
+            statusPanels: [
+                { statusPanel: 'agSelectedRowCountComponent', align: 'left' },
+                { statusPanel: 'agAggregationComponent',      align: 'right' },
+            ]
+        },
+        onGridReady: (params) => { orderGridApi = params.api; },
+    };
+
+    function exportGrid() {
+        if (orderGridApi) orderGridApi.exportDataAsExcel({ fileName: 'order_raw.xlsx' });
+    }
+
+    function loadAll() {
+        const q = buildQuery();
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('kpiLoadingOverlay').style.display = 'flex';
+
+        fetch('/api/order/kpi?' + q).then(r => r.json()).then(kpiRes => {
+            if (kpiRes.success && kpiRes.data.length) renderKpi(kpiRes.data[0]);
+        }).catch(err => console.error('kpi error', err))
+          .finally(() => { document.getElementById('kpiLoadingOverlay').style.display = 'none'; });
+
+        fetch('/api/order/raw?' + q).then(r => r.json()).then(rawRes => {
+            if (rawRes.success) {
+                orderGridApi.setGridOption('rowData', rawRes.data);
+                const cnt = (rawRes.data || []).length;
+                document.getElementById('rawRowCount').textContent = cnt.toLocaleString() + ' rows';
+            }
+        }).catch(err => console.error('raw error', err))
+          .finally(() => { document.getElementById('loadingOverlay').style.display = 'none'; });
+    }
+
+    document.getElementById('startDate').addEventListener('change', loadAll);
+    document.getElementById('endDate').addEventListener('change', loadAll);
+
+    function onLegalEntityChange() {
+        loadCurrencies();   // 법인 변경 시 통화 목록 갱신
+        loadAll();
+    }
+
+    $(document).ready(function() {
+        const el = document.getElementById('orderGrid');
+        agGrid.createGrid(el, gridOptions);
+
+        document.getElementById('gridSearch').addEventListener('input', e => {
+            if (orderGridApi) orderGridApi.setQuickFilter(e.target.value);
+        });
+
+        initGlobalDivision();
+
+        document.getElementById('currencyFilter').addEventListener('change', loadAll);
+        initGlobalLegalEntity(onLegalEntityChange);
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

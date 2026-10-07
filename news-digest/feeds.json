@@ -1,0 +1,19 @@
+{
+  "IT": {
+    "sources": [
+      "https://rss.etnews.com/Section901.xml",
+      "https://rss.etnews.com/Section902.xml"
+    ]
+  },
+  "반도체": {
+    "sources": [
+      "https://www.thelec.kr/rss/S1N2.xml"
+    ]
+  },
+  "특징주": {
+    "sources": [
+      "https://www.yna.co.kr/rss/market.xml"
+    ],
+    "keywords": ["특징주"]
+  }
+}

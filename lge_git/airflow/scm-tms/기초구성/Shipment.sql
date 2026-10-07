@@ -1,0 +1,527 @@
+/*
+1️⃣ 쿼리 한 줄 요약	
+Oracle TMS(GTM) 기반 Shipment(출하/배송) 단위 데이터를 기준으로	
+Shipment Leg(구간) + Container(모델/수량) + Booking(예약/배정) + Hub/XDock + Due Date + KPI용 파생컬럼까지	
+“출하 대시보드/리포트용 플랫 데이터”를 생성하는 조회 쿼리	
+2️⃣ 전체 쿼리 구조 설명 (큰 흐름)	
+📐 전체 구조	
+SQL	
+OUTER SELECT	
+└─ pagination (rownum, devonindex)	
+└─ 정렬 (shpm_num desc, shipment_leg)	
+└─ 메인 SELECT (AA)	
+├─ Shipment + Leg + Container + Order 조인	
+├─ Booking History 서브쿼리	
+├─ Hub / XDock / Due Date 계산	
+└─ 각종 상태/파생 컬럼 계산	
+``	
+Show more lines	
+✅ 1. 페이징 처리 구조 (DevOn UI 스타일)	
+SQL	
+rownum <= ('0'+1) * '100'	
+devonindex between '1' and '1'+99	
+``	
+Show more lines	
+DevOn Framework(구 LG CNS UI) 에서 많이 쓰던 Oracle paging 패턴	
+한 페이지당 100건	
+devonindex	
+는 화면 Row 번호용	
+📌 업무적 의미	
+이 쿼리는 UI 리스트 화면 (Shipment 조회 화면) 을 직접 지원	
+3️⃣ 핵심 조회 대상 개념 정리	
+구분	개념
+Shipment	하나의 출하 단위 (SHPM_NUM)
+Shipment Leg	Hub/경유지 포함한 운송 구간
+Container	모델/수량/CBM/중량
+Booking	Appointment/예약 요청·확정 정보
+Due Date	LC/AR/AC/TA/WR/SC 관리
+XDock	Cross Dock 여부 / 상태
+Hub	멀티 Leg 여부
+4️⃣ 주요 비즈니스 로직 설명	
+✅ 4.1 Shipment + Shipment Leg 중심 구조	
+기준 테이블	
+SQL	
+TMSPROD.LD_LEG_DETL_T LEGD	
+``	
+Show more lines	
+Shipment를 물류 구간(Leg) 단위로 쪼갠 테이블	
+SEQ_NUM	
+	100
+	: 보통 최초 출고 Leg
+	200/300 : Hub 이후 Leg
+SQL	
+AND LEGD.SEQ_NUM IN (100)	
+	
+Show more lines	
+📌 즉, 이 쿼리는 “최초 출고 구간 기준 Shipment 조회”	
+✅ 4.2 Shipment 기본 정보	
+SQL	
+TB_GTM_SHIPMENT_TMS_S_IF SHIP	
+TMSPROD.SHPM_T SHPM	
+	
+Show more lines	
+컬럼	의미
+SHPM_NUM	출하 번호 (PK)
+GERP_ORDER_NO	ERP Order
+GERP_PICK_NO	Pick 번호
+CUSTOMER_ORDER_NO	고객 주문
+PICK_RELEASE_DATE	출고일 (중요 필터)
+SYSTEMPLANID = '400101'	특정 Plan 전용
+📌	
+PICK_RELEASE_DATE BETWEEN 2026-03-10 ~ 2026-04-09	
+→ 출고 기준 리포트	
+✅ 4.3 Container / 모델 / 수량 / CBM / 중량 계산	
+SQL	
+TB_GTM_CONTAINER_TMS_S_IF CNTR	
+TB_GTM_MODEL MODL	
+	
+Show more lines	
+계산 컬럼	설명
+TOTAL_CBM	수량 × 모델 부피
+TOTAL_WEIGHT	수량 × 모델 중량
+EXPECTED_PALLET_QTY	CBM ÷ 표준 팔레트
+SQL	
+CEIL(TOTAL_CBM / STD_PALLET)	
+``	
+Show more lines	
+📌 적재/팔레트 예상 개수 계산용	
+✅ 4.4 Booking / Appointment 상태 (가장 복잡)	
+SQL	
+TB_GTM_BOOKING	
+Show more lines	
+모든 APPOINTMENT 관련 정보는 여기서 서브쿼리로 1건만 추출	
+INDEX_DESC + ROWNUM = 1	
+→ 최신 Booking 이력	
+컬럼	설명
+APPOINTMENT_REQ_DATE	예약 요청일
+APPOINTMENT_DATE	예약 확정일
+APPOINTMENT_STATUS	상태
+APPOINTMENT_STATUS_NAME	상태명
+REFERENCE_NO	예약 번호
+REQUEST_NAME	요청자
+📌 STATUS 필터	
+SQL	
+APPOINTMENT_STATUS IN ('CANCEL','CMPT','DELAY','HOLD','NR','REQD','SC','N/A	
+Show more lines	
+✅ 4.5 Booking Completion Flag (업무 핵심 로직)	
+SQL	
+CASE	
+WHEN BOOKING_NEED_FLAG = 'N' THEN 'Y'	
+WHEN BOOKING_NEED_FLAG = 'Y'	
+AND APPOINTMENT_REQ_DATE IS NOT NULL	
+AND APPOINTMENT_STATUS = 'CMPT'	
+THEN 'Y'	
+ELSE 'N'	
+END	
+``	
+Show more lines	
+📌 의미	
+Booking 필요 없으면 → 완료	
+Booking 필요 + 요청 존재 + 완료 상태 → 완료	
+그 외 → 미완료	
+➡ 운영 KPI에서 매우 중요한 컬럼	
+✅ 4.6 Hub 판단 로직	
+SQL	
+CASE WHEN LD_LEG_DETL_T row count > 1 THEN 'Y'	
+Show more lines	
+Shipment에 leg가 2개 이상 → Hub 경유	
+HUB_YN	
+추가로 우편번호 기반 HUB_CODE 자동 산출	
+✅ 4.7 XDOCK 관련 로직	
+SQL	
+DECODE(ORD.SUBINVENTORY_CODE,'GS-XDOCK','Y','N')	
+Show more lines	
+컬럼	설명
+XDOCK_FLAG	크로스도킹 여부
+XDOCK_STATUS	상태
+XDOCK_ETA / ETW	ETA / Time Window
+📌 서브인벤토리 코드 기반으로 판별	
+✅ 4.8 Due Date 관리 (RITM2628561)	
+SQL	
+TB_GTM_DUE_DATE_CALC	
+Show more lines	
+컬럼	의미
+LC_BY	Load Create Due
+AR_BY	Appointment Request Due
+AC_BY	Appointment Confirm Due
+TA_BY	Tender Accept Due
+WR_BY	Release to WH Due
+SC_BY	Ship Confirm Due
+📌 SLA / 지연 관리 리포트 핵심	
+5️⃣ 테이블별 상세 설명 & 특이사항	
+📦 TMSPROD.LD_LEG_DETL_T	
+Shipment Leg 마스터	
+Hub/Multi-leg 판단의 기준 테이블	
+SEQ_NUM	
+,	
+LGST_GRP_CD	
+,	
+DIV_CD	
+중요	
+🚚 TB_GTM_SHIPMENT_TMS_S_IF	
+GTM ↔ TMS 인터페이스 Shipment	
+대부분 화면에 보여주는 기본 Shipment 속성 보유	
+⚠️ 행 수 많고 조인 핵심 → 성능 영향 큼	
+📦 TB_GTM_CONTAINER_TMS_S_IF	
+출하 모델/수량/부피/중량	
+CBM, 무게, 팔레트 계산의 기준	
+📘 TB_GTM_BOOKINGHISTORY	
+Appointment 관련 “이력 테이블”	
+항상	
+ROWNUM=1 + INDEX_DESC	
+패턴	
+⚠️ 서브쿼리 남발 → 성능 병목 포인트	
+🕘 TB_GTM_DUE_DATE_CALC	
+Due Date 계산 결과 테이블	
+과거에는 Package 함수 사용 → 성능 개선 목적의 테이블	
+🧭 TMSPROD.ZN_T / GEO_AREA_T	
+Zone / Hub 정보	
+우편번호 → Hub 자동 매핑	
+🏷 TB_GTM_CODE_MST / CODEMAPPING_MST	
+코드값 → 명칭 변환	
+팔레트 용량, 고객 타입, 상태 명칭 등	
+6️⃣ 이 쿼리의 “정체성”	
+✔ 단순 조회 아님	
+✔ 운영 + KPI + SLA + Booking + Hub + XDock 통합 Shipment 기준 데이터셋	
+✔ Dashboard / Excel Export / 운영 모니터링 화면용
+구분	테이블명	역할 / 용도	주요 데이터	특이사항
+Shipment Leg	TMSPROD.LD_LEG_DETL_T	Shipment를 Leg(운송 구간) 단위로 관리	FROM/TO 배송지, HUB 구간, SEQ_NUM	"SEQ_NUM=100
+→ 최초 출고 Leg
+Leg 수로 Hub 여부 계산"
+Shipment (IF)	TB_GTM_SHIPMENT_TMS_S_IF	GTM ↔ TMS Shipment 인터페이스	주문번호, 출고일, 배송유형, 상태	"쿼리의 중심 테이블
+조인 및 필터 기준"
+Shipment Master	TMSPROD.SHPM_T	Shipment 마스터	SHPM_NUM, 생성일	시스템 기준 Shipment
+Container	TB_GTM_CONTAINER_TMS_S_IF	출하 모델/수량 정보	수량, 부피, 중량	CBM / 중량 계산 기준
+Model	TB_GTM_MODEL	제품 모델 마스터	MODEL, VOL, WEIGHT	"Container와 조인
+MODEL_CODE 기반"
+Booking History	TB_GTM_BOOKINGHISTORY	Appointment / Booking 이력	요청일, 확정일, 상태	"최신 1건만 사용 (ROWNUM=1)
+서브쿼리 다수"
+Ship To	TB_GTM_SHIPTO	배송지 마스터	고객 유형, 고객명, Multi-drop	CUSTOMER_TYPE 필터
+Order (ERP)	TB_GTM_ORDERS_GERP_R_IF	ERP 주문 인터페이스	통화, XDOCK 정보	MOVE_ORDER_LINE_ID 기준
+Shipment Detail	TB_GTM_SHIPMENT_DETAIL	Shipment 부가 정보	XDOCK ETA/ETW	ATTRIBUTE 컬럼 활용
+Appointment	TMSPROD.APT_T	Appointment 상태	CUR_STAT_ID	Drop Appointment 상태용
+Zone	TMSPROD.ZN_T	Zone / Hub 정보	ZN_CD, ZN_DESC	Hub 판단 및 Route
+Geo Area	TMSPROD.GEO_AREA_T	우편번호 → Hub 매핑	PSTL_CD 범위	HUB_CODE 자동 산출
+Address	TMSPROD.ADDR_T	주소 마스터	국가/주/도시 코드	최종 도착지 기준
+Country	TMSPROD.CTRY_T	국가 코드	CTRY_NAME	주소 보조
+State	TMSPROD.STA_T	주/도 코드	ST_NAME	주소 보조
+Code Master	TB_GTM_CODE_MST	코드 → 명칭 변환	상태명, 유형명	공통 코드
+Code Mapping	TB_GTM_CODEMAPPING_MST	법인별 코드 매핑	팔레트 용량 등	EXPECTED_PALLET_QTY 계산
+Due Date Calc	TB_GTM_DUE_DATE_CALC	Due Date 계산 결과	LC/AR/AC/TA/WR/SC	SLA / KPI 핵심
+*/
+
+
+
+select * from (
+ select inner_temp.*, rownum as devonindex from  ( 
+            SELECT
+        FRM_SHPG_LOC_NAME,
+        TO_SHPG_LOC_NAME,
+        FRM_SHPG_LOC_CD,
+        TO_SHPG_LOC_CD,
+        SHPM_NUM,
+        GERP_ORDER_NO,
+        GERP_PICK_NO,
+        CUSTOMER_ORDER_NO,
+        ORDER_TYPE,
+        TO_CHAR(GERP_REQUEST_ARRIVAL_DATE,'YYYY-MM-DD HH24:MI:SS') AS GERP_REQUEST_ARRIVAL_DATE,
+        TO_CHAR(APPOINTMENT_REQ_DATE,'YYYY-MM-DD HH24:MI:SS') AS APPOINTMENT_REQ_DATE,
+        TO_CHAR(ORDER_ENTRY_DATE,'YYYY-MM-DD HH24:MI:SS') AS ORDER_ENTRY_DATE,
+        TO_CHAR(PICK_RELEASE_DATE,'YYYY-MM-DD HH24:MI:SS') AS PICK_RELEASE_DATE,
+        TO_CHAR(NVL(SUGGESTED_PLAN_DATE,APPOINTMENT_DATE-NVL(LEAD_TIME,1)),'YYYY-MM-DD HH24:MI:SS') AS SUGGESTED_PLAN_DATE,
+        LEAD_TIME,
+        TO_CHAR(APPOINTMENT_FROM_DATE,'YYYY-MM-DD HH24:MI:SS') AS APPOINTMENT_FROM_DATE,
+        TO_CHAR(APPOINTMENT_DATE,'YYYY-MM-DD HH24:MI:SS') AS APPOINTMENT_DATE,
+        PL1,
+        PL4,
+        MODEL_SUFFIX,
+        MODEL_DESC,
+        SUB_INVENTORY_CODE,
+        VOL,
+        NMNL_WGT,
+        ORDER_QTY,
+        SHIPMENT_QTY,
+        TOTAL_CBM,
+        CEIL(TOTAL_CBM /(SELECT MAX(A.CD_NM2) FROM TB_GTM_CODEMAPPING_MST A WHERE A.LEGAL_ENTITY_NAME = AA.LEGAL_ENTITY_NAME AND A.USE_YN = 'Y' AND A.CD_TYPE = 'PALLET_TYPE' AND A.CD = 'STD_PALLET')) AS EXPECTED_PALLET_QTY,
+        TOTAL_WEIGHT,
+        UNIT_NET_PRICE,
+        TAX_PER_UNIT,
+        UNIT_SELLING_PRICE,
+        SHPM_ID,
+        LD_LEG_DETL_ID,
+        ZONE,
+        ZONE_NAME,
+        SHRT_DESC,
+        PICKING_REMARK,
+        SHIPPING_REMARK,
+        TO_CHAR(CREATE_DATE,'YYYY-MM-DD HH24:MI:SS') AS CREATE_DATE,
+        DELIVERY_TYPE_CODE,
+        BOOKING_NEED_FLAG,
+        CASE 
+          WHEN BOOKING_NEED_FLAG ='N' THEN 'Y'
+          WHEN BOOKING_NEED_FLAG ='Y' AND APPOINTMENT_REQ_DATE IS NOT NULL AND APPOINTMENT_STATUS = 'CMPT' THEN 'Y' 
+          ELSE 'N' 
+        END  AS BOOKING_COMPLETE_FLAG,
+        PUR_TYPE,
+        SUBINVENTORY_FLAG,
+        ORGANIZATION_CODE,
+        GERP_SHIPTO_CODE,
+        POSTALCODE,
+        DELIVERY_TYPE_NAME,
+        FREIGHT_ROUTE_CODE AS ROUTE_CODE,
+        PTO_MODEL_FLAG,
+        PTO_ID,
+        LEGAL_ENTITY_NAME,
+        CTRY_NAME,
+    CTY_NAME,
+    ST_NAME,
+    APPOINTMENT_STAT,
+    CUSTOMER_ORDER_TYPE,
+        SO3_ORDER_TYPE,
+        (SELECT CODEMST.CD_NM
+           FROM TB_GTM_CODE_MST CODEMST
+       WHERE CODEMST.CD_TYPE = 'CUSTOMER_TYPE'
+            AND CODEMST.CD = CUSTOMER_TYPE) AS CUSTOMER_TYPE,
+        CUSTOMER_TYPE AS CUSTOMER_TYPE_CD,
+        REFERENCE_NO,
+        REQUEST_NAME,
+        CUSTOMER_NAME AS GERP_SHIPTO_NAME,
+        APPOINTMENT_STATUS_NAME,
+    SERVICECODE,
+    COLLECTION,
+    SALESPERSON_NAME,
+    CONSIGNEE_PHONE1_NO
+     ,SHIPMENT_LEG -- Hub 관련 컬럼 추가 20150421 이동현
+       ,LGST_GRP_CD -- Hub 관련 컬럼 추가 20150429 이동현
+       ,DIV_CD -- Hub 관련 컬럼 추가 20150429 이동현
+       ,HUB_YN -- Hub 관련 컬럼 추가 20150518 이동현
+       ,APPOINTMENT_REMARK -- LGEDG 관련 컬럼 추가 20150527 이동현
+       ,SHIP_TO_SHORT_NAME -- LGEDG 관련 컬럼추가 20150617 이동현
+       ,SHIPPING_METHOD    -- LGEFS 관련 컬럼추가 20151130 BJSONG
+       ,XDOCK_FLAG -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+       ,ATTRIBUTE24 AS XDOCK_SHIP_NO -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+       ,ATTRIBUTE25 AS XDOCK_CON_NO  -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+       ,XDOCK_STATUS -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+       ,(SELECT MAX(CD) FROM TB_GTM_CODEMAPPING_MST CM WHERE CM.LEGAL_ENTITY_NAME = AA.LEGAL_ENTITY_NAME AND CM.USE_YN = 'Y' AND CM.CD_TYPE = 'XDOCKBLOCK') X_DOCK_BLOCK -- C20160622_97676 LGEUK XDOCK SONGYEON
+       ,TO_CHAR(XDOCK_ETA, 'YYYY-MM-DD HH24:MI:SS') AS XDOCK_ETA -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+       ,TO_CHAR(XDOCK_CHANGED_ETA, 'YYYY-MM-DD HH24:MI:SS') AS XDOCK_CHANGED_ETA -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+       ,TO_CHAR(XDOCK_ETW, 'YYYY-MM-DD HH24:MI:SS') AS XDOCK_ETW -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+     -- Hub 관련 컬럼 추가 20150421 이동현
+     ,MULTI_DROP_FLAG --  20170313 LGEAR 법인 관련 컬럼 추가  이성준 과장
+     ,CURRENCY_CODE  --C20200904_97370  CURRENCY CODE 추가
+     ,HUB_CODE --RITM1390231 
+/*
+     ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(SHPM_NUM, 'LC', null),'YYYY-MM-DD HH24:MI:SS')    AS LC_BY -- PJ2024A029 ADD 20250929
+       ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(SHPM_NUM, 'AR', null),'YYYY-MM-DD HH24:MI:SS')    AS AR_BY -- PJ2024A029
+       ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(SHPM_NUM, 'AC', null),'YYYY-MM-DD HH24:MI:SS')    AS AC_BY -- PJ2024A029
+       ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(SHPM_NUM, 'TA', null),'YYYY-MM-DD HH24:MI:SS')    AS TA_BY -- PJ2024A029
+       ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(SHPM_NUM, 'WR', null),'YYYY-MM-DD HH24:MI:SS')    AS WR_BY -- PJ2024A029
+       */
+       
+       /* Due Date RITM2628561*/
+       ,(SELECT TO_CHAR(DUE.LOAD_CREATE_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS LC_BY
+       ,(SELECT TO_CHAR(DUE.APPOINTMENT_REQUEST_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS AR_BY
+       ,(SELECT TO_CHAR(DUE.APPOINTMENT_CONFIRM_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS AC_BY
+       ,(SELECT TO_CHAR(DUE.TENDER_RESPONSE_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS TA_BY
+       ,(SELECT TO_CHAR(DUE.RELEASE_TO_WH_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS WR_BY
+       ,(SELECT TO_CHAR(DUE.SHIP_CONFIRM_DUE,'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.SHIPMENT_NUMBER = SHPM_NUM)     AS SC_BY
+       ,TO_CHAR(PK_GTM_DATE.GET_SHPM_DATE(SHPM_NUM, 'APPT_CMPT', null),  'YYYY-MM-DD HH24:MI:SS') AS APPOINTMENT_CONFIRM_DATE -- PJ2024A029
+     ,TO_CHAR(PK_GTM_DATE.GET_SHPM_DATE(SHPM_NUM, 'ETA', null),'YYYY-MM-DD HH24:MI:SS') AS ETA -- PJ2024A029
+     ,PK_LPA_COMMON.GET_GCE_TYPE(SHPM_NUM) AS GCE_TYPE -- PJ2024A029
+      FROM (
+        SELECT /*+ NO_MERGE LEADING(SHIP LEGD)  */ 
+          LEGD.FRM_SHPG_LOC_NAME,
+          LEGD.TO_SHPG_LOC_NAME,
+          LEGD.FRM_SHPG_LOC_CD,
+          LEGD.TO_SHPG_LOC_CD,
+          LEGD.SHPM_NUM, 
+          SHIP.SOURCE_HEADER_NO AS GERP_ORDER_NO,
+          SHIP.SHIPMENTDESCRIPTION AS GERP_PICK_NO,
+          SHIP.CUSTOMER_ORDER_NO,
+          SHIP.TMS_ORDER_TYPE AS ORDER_TYPE,
+          SHIP.ORI_DELY_TO AS GERP_REQUEST_ARRIVAL_DATE,
+          ( SELECT /*+INDEX_DESC(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_REQ_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS APPOINTMENT_REQ_DATE, -- HUB 관련 조건 추가 20150507 이동현
+          SHIP.SALES_ORDER_DATE AS ORDER_ENTRY_DATE,
+          SHIP.PICK_RELEASE_DATE,
+          FC_GTM_GET_PLAN_LEADTIME2(LEGD.SHPM_NUM) AS LEAD_TIME,
+          ( SELECT /*+INDEX_DESC(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_FROM_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS APPOINTMENT_FROM_DATE, -- C20191106_19648
+          ( SELECT /*+INDEX_DESC(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS APPOINTMENT_DATE, -- HUB 관련 조건 추가 20150507 이동현
+          ( SELECT /*+INDEX_DESC(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_STATUS FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS APPOINTMENT_STATUS, -- HUB 관련 조건 추가 20150507 이동현
+          ( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ CMST.CD_NM FROM TB_GTM_BOOKINGHISTORY B, TB_GTM_CODE_MST CMST WHERE B.APPOINTMENT_STATUS = CMST.CD(+) AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND CMST.CD_TYPE(+) = 'APPOINTMENT_STATUS' AND B.SHPM_NUM = LEGD.SHPM_NUM AND B.REG_DATE <= SYSDATE + 1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM = 1) AS APPOINTMENT_STATUS_NAME, -- HUB 관련 조건 추가 20150507 이동현
+          ( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_NO FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS REFERENCE_NO, -- HUB 관련 조건 추가 20150507 이동현
+          ( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_CONTACT_NAME FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS REQUEST_NAME, -- HUB 관련 조건 추가 20150507 이동현
+          MODL.PRODUCT_LEVEL1_CODE AS PL1,
+          MODL.PRODUCT_LEVEL4_CODE AS PL4,
+          CNTR.CONTAINERTYPECODE AS MODEL_SUFFIX,
+          MODL.MODEL_DESC AS MODEL_DESC,
+          CNTR.MODEL_GRADE AS SUB_INVENTORY_CODE, 
+          ROUND(CNTR.VOLUME, 4) AS VOL,
+          MODL.GROSS_WEIGHT AS NMNL_WGT,
+          CNTR.ORI_QUANTITY AS ORDER_QTY,
+          CNTR.RES_QUANTITY AS SHIPMENT_QTY,
+          ( CNTR.RES_QUANTITY * ROUND(CNTR.VOLUME, 4) ) AS TOTAL_CBM,
+          ( CNTR.RES_QUANTITY * MODL.GROSS_WEIGHT ) AS TOTAL_WEIGHT,
+          SHIP.TAX_EXCLUSIVE_PRICE AS UNIT_NET_PRICE,
+          ROUND(SHIP.TAX_INCLUSIVE_PRICE - SHIP.TAX_EXCLUSIVE_PRICE, 2) AS TAX_PER_UNIT,
+          ROUND(SHIP.TAX_INCLUSIVE_PRICE, 2) AS UNIT_SELLING_PRICE,
+          LEGD.SHPM_ID,
+          LEGD.LD_LEG_DETL_ID,
+          ZN.ZN_CD AS ZONE,
+          ZN.ZN_DESC AS ZONE_NAME,
+          ZN.SHRT_DESC,
+          REPLACE(SHIP.PRINTABLEMEMO, ':::', '') AS PICKING_REMARK,
+          SHIP.NONPRINTABLEMEMO AS SHIPPING_REMARK,
+          SHIP.DELIVERY_TYPE_CODE,
+          SHIP.BOOKING_NEED_FLAG,
+          FC_GTM_GET_DATE_SYSTOLOC(SHPM.FRM_SHPG_LOC_CD,SHPM.CRTD_DTT) AS CREATE_DATE,
+          Decode(MODL.ITEM_TYPE,'F','P','Q','M','*') AS PUR_TYPE,
+          DECODE(SHIP.SUBINVENTORY_CODE,null,'N','Y') AS SUBINVENTORY_FLAG,
+          SHIP.ORGANIZATION_CODE,
+          SHIP.GERP_SHIPTO_CODE,
+          SHIP.POSTALCODE,
+          SHIP.DELIVERY_TYPE_NAME,
+          SHIPTO.FREIGHT_ROUTE_CODE,
+          CNTR.PTO_MODEL_FLAG,
+          CNTR.PTO_ID,
+          SHIP.LEGAL_ENTITY_NAME,
+          
+          (SELECT B.CTRY_NAME 
+            FROM TMSPROD.ADDR_T A,
+                 TMSPROD.CTRY_T B,
+                 TMSPROD.STA_T  C
+           WHERE A.CTRY_CD = B.CTRY_CD
+             and A.CTRY_CD = C.CTRY_CD
+             AND A.STA_CD = C.STA_CD
+             AND A.ADDR_ID = LEGD.TO_ADDR_ID) AS CTRY_NAME,
+          
+          (SELECT  A.CTY_NAME 
+            FROM TMSPROD.ADDR_T A,
+                 TMSPROD.CTRY_T B,
+                 TMSPROD.STA_T  C
+           WHERE A.CTRY_CD = B.CTRY_CD
+             and A.CTRY_CD = C.CTRY_CD
+             AND A.STA_CD = C.STA_CD
+             AND A.ADDR_ID = LEGD.TO_ADDR_ID) AS CTY_NAME,
+          
+          (SELECT  A.ST_NAME 
+            FROM TMSPROD.ADDR_T A,
+                 TMSPROD.CTRY_T B,
+                 TMSPROD.STA_T  C
+           WHERE A.CTRY_CD = B.CTRY_CD
+             and A.CTRY_CD = C.CTRY_CD
+             AND A.STA_CD = C.STA_CD
+             AND A.ADDR_ID = LEGD.TO_ADDR_ID) AS ST_NAME,
+          APT.CUR_STAT_ID AS APPOINTMENT_STAT,
+          ( SELECT /*+INDEX_DESC(B TB_GTM_BOOKINGHISTORY_IX04)*/ CM.CD_NM FROM TB_GTM_BOOKINGHISTORY B,TB_GTM_CODE_MST CM WHERE B.ORDER_TYPE = CM.CD AND CM.CD_TYPE = 'ORDERTYPE_ES' AND CM.USE_YN = 'Y' AND B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS CUSTOMER_ORDER_TYPE, -- HUB 관련 조건 추가 20150507 이동현  
+            (SELECT CM.CD_NM FROM TB_GTM_CODE_MST CM WHERE CM.CD_TYPE = 'SO3_ORDER_TYPE' AND CM.CD = SHIP.SO3_ORDER_TYPE) AS SO3_ORDER_TYPE,                 
+           SHIPTO.CUSTOMER_TYPE,
+                    SHIPTO.CUSTOMER_NAME,
+           SHIP.SUGGESTED_PLAN_DATE,
+           SHIP.SERVICECODE,
+          DECODE(SHIPD.RECEIPT_REFUSAL_FLAG, 'N', 'Y', 'Y', 'N', '') AS COLLECTION,
+          CNTR.SALESPERSON_NAME,
+          ORD.CONSIGNEE_PHONE1_NO
+         ,LEGD.SEQ_NUM AS SHIPMENT_LEG -- Hub 관련 컬럼 추가 20150421 이동현
+         ,LEGD.LGST_GRP_CD -- Hub 관련 컬럼 추가 20150429 이동현
+         ,LEGD.DIV_CD -- Hub 관련 컬럼 추가 20150429 이동현
+         ,CASE WHEN (SELECT COUNT(1) 
+                       FROM TMSPROD.LD_LEG_DETL_T LLDT
+                      WHERE LLDT.SHPM_ID = LEGD.SHPM_ID) > 1
+               THEN 'Y'
+               ELSE 'N'
+          END HUB_YN -- Hub 관련 컬럼 추가 20150518 이동현
+         ,(SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/
+                   B.APPPOINTMENT_REMARK
+              FROM TB_GTM_BOOKINGHISTORY B
+             WHERE B.SHPM_NUM = LEGD.SHPM_NUM
+               AND B.REG_DATE <= SYSDATE + 1
+               AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM
+               AND ROWNUM = 1 ) AS APPOINTMENT_REMARK -- LGEDG 관련 컬럼 추가 20150527 이동현
+          ,SHIPD.SHIP_TO_SHORT_NAME -- LGEDG 관련 컬럼추가 20150617 이동현
+          ,ORD.SHIPPING_METHOD_CODE  as SHIPPING_METHOD -- LGEFS 관련 컬럼 추가 20151130 BJSONG
+          ,DECODE(ORD.SUBINVENTORY_CODE,'GS-XDOCK','Y','N') XDOCK_FLAG -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+          ,ORD.ATTRIBUTE24 -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+          ,ORD.ATTRIBUTE25 -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+          ,DECODE(ORD.SUBINVENTORY_CODE,'GS-XDOCK',DECODE(SHIP.XDOCK_STATUS,'OPEN','CONFIRMED',SHIP.XDOCK_STATUS),SHIP.XDOCK_STATUS) XDOCK_STATUS -- C20160325_20342 XDOCK 컬럼추가 SONGYEON
+          ,TO_DATE(SHIPD.ATTRIBUTE01, 'YYYYMMDDHH24MISS') AS XDOCK_ETA -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+          ,TO_DATE(SHIPD.ATTRIBUTE02, 'YYYYMMDDHH24MISS') AS XDOCK_CHANGED_ETA -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+          ,TO_DATE(SHIPD.ATTRIBUTE03, 'YYYYMMDDHH24MISS') AS XDOCK_ETW -- [C20161125_29190] LGEUK XDOCK 관련 컬럼 추가
+       -- Hub 관련 컬럼 추가 20150421 이동현
+      ,NVL(SHIPTO.MULTI_DROP_FLAG,'N') AS MULTI_DROP_FLAG --  20170502 LGEAR 법인 관련 컬럼 추가  원송연
+      ,ORD.CURRENCY_CODE  AS CURRENCY_CODE--C20200904_97370  CURRENCY CODE 추가
+      ,(SELECT
+                            MAX(CASE WHEN A.ZN_CD LIKE 'DG_H013%' THEN 'HUB-DG_MGL-DG'
+                      WHEN A.ZN_CD LIKE 'DG_H022%' THEN 'HUB-DG_MGL-HAM'
+                      WHEN A.ZN_CD LIKE 'DG_H030%' THEN 'HUB-DG_MGL-LAN'
+                      WHEN A.ZN_CD LIKE 'DG_H050%' THEN 'HUB-DG_MGL-DUIS'
+                      WHEN A.ZN_CD LIKE 'DG_H070%' THEN 'HUB-DG_MGL-REN'
+                      WHEN A.ZN_CD LIKE 'DG_H076%' THEN 'HUB-DG_MGL-KAR'
+                      WHEN A.ZN_CD LIKE 'DG_H086%' THEN 'HUB-DG_MGL-AFFIN'
+                      WHEN A.ZN_CD LIKE 'DG_H099%' THEN 'HUB-DG_MGL-ERFUR'
+                      ELSE A.ZN_CD
+                      END)
+          FROM TMSPROD.GEO_AREA_T A
+          WHERE 1=1
+          AND A.ZN_CD IN (SELECT Z.ZN_CD FROM TMSPROD.ZN_T Z WHERE Z.ZN_DESC LIKE '%Hub%')
+          AND (SHIP.POSTALCODE = A.USR_PSTL_CD_FROM OR SHIP.POSTALCODE BETWEEN A.USR_PSTL_CD_FROM AND A.USR_PSTL_CD_TO) ) AS HUB_CODE --RITM1390231 
+        FROM TMSPROD.LD_LEG_DETL_T LEGD,
+          TB_GTM_SHIPMENT_TMS_S_IF SHIP,
+          TMSPROD.SHPM_T SHPM,
+          TB_GTM_CONTAINER_TMS_S_IF CNTR,
+          TB_GTM_MODEL MODL,
+          TMSPROD.ZN_T              ZN,
+          TB_GTM_SHIPTO SHIPTO,
+          TMSPROD.APT_T APT,
+          TB_GTM_SHIPMENT_DETAIL SHIPD,
+          TB_GTM_ORDERS_GERP_R_IF ORD
+        WHERE LEGD.SHPM_NUM = SHIP.SHIPMENTNUMBER
+          AND SHIP.SHIPMENTNUMBER = CNTR.SHIPMENTNUMBER
+          AND SHIP.SHIPMENTNUMBER = SHPM.SHPM_NUM
+          AND CNTR.AFFILIATE_CODE = MODL.AFFILIATE_CODE(+)
+          AND CNTR.CONTAINERTYPECODE = MODL.MODEL_CODE(+)
+          AND LEGD.CUR_OPTLSTAT_ID = '410'                                   -- Unassigned Shipment Leg Operational Statuses  PROCESSED
+          AND SHIP.ZONE_CODE = ZN.ZN_CD(+)
+          AND SHIP.GERP_SHIPTO_CODE = SHIPTO.CUSTOMER_NO (+)
+          AND SHIP.LEGAL_ENTITY_NAME = SHIPTO.LEGAL_ENTITY_NAME (+)
+      AND LEGD.DROP_APT_ID = APT.APT_ID(+)
+      AND SHIP.SHIPMENTNUMBER = SHIPD.SHIPMENTNUMBER
+          AND SHIP.MOVE_ORDER_LINE_ID = ORD.MOVE_ORDER_LINE_ID(+)
+          AND ORD.TMS_PRCS_FLAG(+) = 'Y'
+          AND SHIP.SYSTEMPLANID = '400101'                                             -- Plan Id
+          AND SHIP.PICK_RELEASE_DATE BETWEEN TO_DATE('20260310' || '000000','YYYYMMDDHH24MISS') AND TO_DATE('20260409' || '235959','YYYYMMDDHH24MISS')   -- Pick Release Date 
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          AND LEGD.FRM_SHPG_LOC_CD IN ( 'N2U' ) 
+          
+          
+          
+          
+          
+          AND ( SHIPTO.CUSTOMER_TYPE IN ( 'BK' , 'BS'  , 'FX'  , 'FD'  , 'RT'  , 'SD'  , 'N/A'  ) -- Ship To (FILTER)
+                OR SHIPTO.CUSTOMER_TYPE IS NULL  ) 
+          AND LEGD.SEQ_NUM IN ( 100 ) 
+          
+          
+          
+      ) AA
+            WHERE 1=1
+                
+                
+                
+                AND ( APPOINTMENT_STATUS IN ( 'CANCEL' , 'CMPT'  , 'DELAY'  , 'HOLD'  , 'NR'  , 'REQD'  , 'SC'  , 'N/A'  ) -- Ship To (FILTER)
+                OR APPOINTMENT_STATUS IS NULL  ) 
+                AND XDOCK_FLAG IN ( 'N' , 'Y'  ) 
+                
+                
+                order by shpm_num desc, shipment_leg
+                
+ ) inner_temp where rownum <= ('0'+1) * '100'
+) where devonindex between  '1' and '1'+99 

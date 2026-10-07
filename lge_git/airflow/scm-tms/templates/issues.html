@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Issues</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    
+    <!-- Issue Modal Styles -->
+    {% include 'module/common_issue_modal_styles.html' %}
+    
+    <style>
+        .issue-tabs { display:flex; gap:4px; margin:1rem 0; }
+        .issue-tab { padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+                     color:var(--muted-foreground); background:var(--surface); border:1px solid var(--border);
+                     display:inline-flex; align-items:center; gap:8px; }
+        .issue-tab.active { background:var(--primary, #A50034); color:#fff; border-color:var(--primary, #A50034); }
+        .issue-tab .cnt { padding:1px 8px; border-radius:999px; background:rgba(0,0,0,0.08); font-size:11px; }
+        .issue-tab.active .cnt { background:rgba(255,255,255,0.25); }
+        .issue-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .issue-search { flex:1; max-width:320px; display:flex; align-items:center; gap:8px; padding:6px 12px;
+                        border:1px solid var(--border); border-radius:8px; background:var(--surface); }
+        .issue-search input { border:0; outline:0; background:transparent; flex:1; font-size:13px; }
+        .issue-list { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+        .il-head, .il-row { display:grid; grid-template-columns:60px 100px 1fr 150px 110px 110px 100px; gap:12px;
+                            align-items:center; padding:11px 16px; }
+        .il-head { background:var(--surface-muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+                   color:var(--muted-foreground); font-weight:700; border-bottom:1px solid var(--border); }
+        .il-row { border-bottom:1px solid var(--border); cursor:pointer; font-size:13px; }
+        .il-row:hover { background:var(--surface-muted); }
+        .il-row.overdue { border-left:3px solid #b02245; }
+        .il-id { font-family:monospace; font-weight:700; color:var(--muted-foreground); }
+        .il-title { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .il-title .cat { font-size:10px; color:var(--muted-foreground); font-weight:500; }
+        .il-amt { text-align:right; font-family:monospace; font-weight:700; color:#205b8f; }
+        .il-due { text-align:right; font-family:monospace; font-weight:600; }
+        .il-due.od { color:#b02245; }
+        .empty { padding:60px; text-align:center; color:var(--muted-foreground); }
+        .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px;
+               border:1px solid var(--border); background:var(--surface); font-size:13px; font-weight:600; cursor:pointer; }
+        .btn.primary { background:var(--primary,#A50034); color:#fff; border-color:var(--primary,#A50034); }
+        .btn.success { background:#1d6f42; color:#fff; border-color:#1d6f42; }
+        .btn.danger  { background:var(--surface); color:#b02245; border-color:#b02245; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'issues' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1rem;">
+            <h1 style="font-size:22px; font-weight:700; margin:0;">
+                <i class="fas fa-triangle-exclamation" style="color:var(--primary,#A50034);"></i> Issues
+            </h1>
+        </div>
+
+        <div class="issue-tabs" id="issueTabs">
+            <div class="issue-tab active" data-tab="all"><i class="fas fa-layer-group"></i> All <span class="cnt" id="cnt-all"></span></div>
+            <div class="issue-tab" data-tab="inbox"><i class="fas fa-inbox"></i> My Inbox <span class="cnt" id="cnt-inbox">0</span></div>
+            <div class="issue-tab" data-tab="outbox"><i class="fas fa-paper-plane"></i> My Outbox <span class="cnt" id="cnt-outbox">0</span></div>
+            <div class="issue-tab" data-tab="closed"><i class="fas fa-check-double"></i> Closed</div>
+        </div>
+
+        <div class="issue-toolbar">
+            <div class="issue-search">
+                <i class="fas fa-search" style="color:var(--muted-foreground);"></i>
+                <input type="text" id="issueSearch" placeholder="Search by title · order no · sender…">
+            </div>
+        </div>
+
+        <div class="issue-list">
+            <div class="il-head">
+                <div>ID</div><div>Status</div><div>Title / Category</div>
+                <div>Owner</div><div class="il-amt">Amount</div>
+                <div class="il-due">Due</div><div>Created</div>
+            </div>
+            <div id="issueRows"></div>
+        </div>
+    </main>
+
+    <!-- Issue Modal -->
+    {% include 'module/common_issue_modal.html' %}
+
+    <script>
+    let curTab = 'all';   // default: 법인 전체 목록
+    const ME = "{{ session_user.user_id or '' }}";
+
+    const STATUS_LABEL = {
+        OPEN:'OPEN', IN_PROGRESS:'IN PROGRESS', RESOLVED:'RESOLVED', CLOSED:'CLOSED', CANCELLED:'CANCELLED'
+    };
+    const CAT_LABEL = {
+        BO:'Back Order', AR_HOLD:'AR/Finance Hold', APPT:'Appointment', PICK:'Pick/Release',
+        CUST:'Customer', ETC:'Etc'
+    };
+    const fmtUsd = n => '$' + Number(n||0).toLocaleString(undefined,{maximumFractionDigits:0});
+    const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // IssueModal 초기화
+    IssueModal.init(ME, function() {
+        loadList();
+        refreshCounts();
+    });
+
+    // ── Tabs ──
+    document.querySelectorAll('.issue-tab').forEach(t => t.addEventListener('click', () => {
+        document.querySelectorAll('.issue-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        curTab = t.dataset.tab;
+        loadList();
+    }));
+    document.getElementById('issueSearch').addEventListener('input', debounce(loadList, 300));
+
+    function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a),ms); }; }
+
+    function getLegalEntity(){
+        // module/common_global_legal_entity.html 이 제공하는 전역 변수 우선 사용
+        return (typeof _currentLegalEntity !== 'undefined' && _currentLegalEntity)
+            ? _currentLegalEntity
+            : (document.getElementById('globalLegalEntity') || {}).value || '';
+    }
+
+    function loadList(){
+        const q  = document.getElementById('issueSearch').value.trim();
+        const le = getLegalEntity();
+        const url = `/api/issues?tab=${curTab}&q=${encodeURIComponent(q)}`
+                  + (le ? `&legal_entity=${encodeURIComponent(le)}` : '');
+        fetch(url)
+            .then(r => r.json())
+            .then(res => {
+                const wrap = document.getElementById('issueRows');
+                if (!res.success){ wrap.innerHTML = `<div class="empty">${esc(res.message||'Error')}</div>`; return; }
+                const rows = res.data || [];
+                // 탭 카운트 갱신 (All 탭은 현재 결과 수로 업데이트)
+                if (curTab === 'all') {
+                    const el = document.getElementById('cnt-all');
+                    if (el) el.textContent = rows.length || '';
+                }
+                if (!rows.length){ wrap.innerHTML = `<div class="empty"><i class="fas fa-inbox"></i><br>No issues found.</div>`; return; }
+                wrap.innerHTML = rows.map(renderRow).join('');
+            });
+    }
+
+    function renderRow(r){
+        const owner = r.receiver_user_name || (r.receiver_dept ? r.receiver_dept + ' (dept)' : '-');
+        return `<div class="il-row ${r.overdue?'overdue':''}" onclick="IssueModal.open(${r.issue_id})">
+            <div class="il-id">#${r.issue_id}</div>
+            <div><span class="pill st-${r.status}">${STATUS_LABEL[r.status]||r.status}</span></div>
+            <div class="il-title">${esc(r.title)}<br><span class="cat">${CAT_LABEL[r.category]||r.category}</span></div>
+            <div>${esc(owner)}</div>
+            <div class="il-amt">${fmtUsd(r.total_amount)}</div>
+            <div class="il-due ${r.overdue?'od':''}">${r.due_date||'-'}</div>
+            <div style="font-size:11px;color:var(--muted-foreground);">${(r.input_dt||'').slice(0,10)}</div>
+        </div>`;
+    }
+
+    function refreshCounts(){
+        const le = getLegalEntity();
+        const leParam = le ? `&legal_entity=${encodeURIComponent(le)}` : '';
+        ['inbox','outbox'].forEach(tab => {
+            fetch(`/api/issues?tab=${tab}${leParam}`).then(r=>r.json()).then(res=>{
+                if (res.success) document.getElementById('cnt-'+tab).textContent = (res.data||[]).length;
+            });
+        });
+    }
+
+    // init
+    loadList();
+    refreshCounts();
+
+    // 법인 변경 시 이슈 목록 갱신
+    function onLegalEntityChange() { loadList(); refreshCounts(); }
+    $(document).ready(function () {
+        initGlobalLegalEntity(onLegalEntityChange);
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

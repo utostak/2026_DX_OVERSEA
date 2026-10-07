@@ -1,0 +1,698 @@
+<!-- Sticky red header — LG Sales Program -->
+{% if app_env == 'dev' or app_env == 'development' %}
+<div style="width:100%; background:rgba(0,17,255,0.88); border-bottom:2px solid rgba(255,255,255,0.35); text-align:center; padding:5px 0; font-size:14px; font-weight:800; color:#fff; letter-spacing:0.05em; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.25); z-index:1000; position:relative;">
+    ⚠️ 개발 사이트 입니다.
+</div>
+{% endif %}
+<header class="app-header" {% if app_env == 'dev' or app_env == 'development' %} style="background:rgba(0,50,150,1);" {% endif %}>
+    <div class="app-header-inner">
+        <a href="{{ nav_menus[0].menu_url if nav_menus and nav_menus[0].menu_url else '/active-orders' }}" id="appBrandLink" class="app-brand" style="flex-direction:column; align-items:flex-start; gap:2px;">
+            <span style="display:flex; align-items:center; gap:0.5rem;">
+                <span class="app-brand-icon" style="margin:0;"><i class="fas fa-truck"></i></span>
+                <span class="app-brand-text">
+                    <span style="font-size:1.25em; font-weight:700; letter-spacing:0.05em;">LIW</span> <span style="font-size:0.65em; font-weight:400; opacity:0.75; letter-spacing:0.01em;">Logistics Innovation Web</span>
+                    <span style="display:block; font-size:0.65em; font-weight:400; letter-spacing:0.03em; color:#ffffff; white-space:nowrap; margin-top:2px; text-align:right;">Built by Oversea Sales BI Team</span>
+                </span>
+            </span>
+        </a>
+        <div class="app-nav-container">
+            <nav class="app-nav" id="appNav">
+                {% for menu in nav_menus %}
+                <a class="app-nav-link {% if request.path == menu.menu_url %}active{% endif %}"
+                   href="{{ menu.menu_url }}">
+                    <i class="fas {{ menu.icon_class }}"></i> {{ menu.menu_name }}
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <div class="app-header-right">
+            <!-- Glossary link — right side, distinct style -->
+            <a href="/glossary" class="app-nav-glossary {% if active_page == 'glossary' %}active{% endif %}">
+                <i class="fas fa-book-open"></i> Glossary
+            </a>
+            <!-- Legal Entity selector — pill button host -->
+            <div class="legal-entity-pill">                
+                <select id="globalLegalEntity" style="visibility:hidden;">
+                    {% if subsdr_list %}
+                        {% for group in subsdr_list %}
+                            {% for sub in group.subsidiaries %}
+                            <option value="{{ sub.code }}">{{ sub.display }}</option>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- ── 사용자 정보 + 햄버거 메뉴 ──────────────────────────── -->
+            <div class="nav-user-area" id="navUserArea">
+                <span class="nav-user-badge">
+                    <i class="fas fa-user-circle"></i>
+                    <span class="nav-user-name">{{ session_user.user_name or session_user.user_id or '' }}</span>
+                </span>
+                <button class="nav-hamburger" id="navHamburger" onclick="toggleNavMenu(event)" title="메뉴">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <!-- 플로팅 드롭다운 -->
+                <div class="nav-dropdown" id="navDropdown">
+                    <div class="nav-dropdown-header">
+                        <div class="nav-dd-name">{{ session_user.user_name or '' }}</div>
+                        <div class="nav-dd-meta">{{ session_user.user_id or '' }} · {{ session_user.subsdr_name or '' }}</div>
+                    </div>
+                    <hr class="nav-dd-divider">
+                    <button class="nav-dd-item" onclick="showMyInfo()">
+                        <i class="fas fa-id-card"></i> My Info
+                    </button>
+                    <hr class="nav-dd-divider">
+                    <button class="nav-dd-item nav-dd-logout" onclick="doNavLogout()">
+                        <i class="fas fa-right-from-bracket"></i> Log Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ── My Info 모달 ─────────────────────────────────────────────────────── -->
+<div id="myInfoModal" class="nav-modal-backdrop"
+     data-uid="{{ session_user.user_id or '' }}">
+    <div class="nav-modal-card" onclick="event.stopPropagation()">
+        <div class="nav-modal-header">
+            <span><i class="fas fa-id-card" style="margin-right:6px;"></i>My Info</span>
+            <button onclick="closeMyInfo()" class="nav-modal-close"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="nav-modal-body" id="myInfoBody">Loading…</div>
+    </div>
+</div>
+
+<style>
+/* ── 사용자 영역 ───────────────────────────────────────────────── */
+.nav-user-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.75rem;
+}
+.nav-user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-user-badge i { font-size: 1rem; opacity: .8; }
+.nav-user-name { overflow: hidden; text-overflow: ellipsis; }
+
+.nav-hamburger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background .15s;
+    flex-shrink: 0;
+}
+.nav-hamburger:hover { background: rgba(255,255,255,0.28); }
+
+/* ── 드롭다운 ─────────────────────────────────────────────────── */
+.nav-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 200px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    overflow: hidden;
+    animation: ddFadeIn .12s ease;
+}
+.nav-dropdown.open { display: block; }
+@keyframes ddFadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+
+.nav-dropdown-header { padding: 0.85rem 1rem 0.6rem; }
+.nav-dd-name   { font-size: 0.9rem; font-weight: 600; color: var(--foreground); }
+.nav-dd-meta   { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 2px; }
+.nav-dd-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+.nav-dd-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: none;
+    border: none;
+    color: var(--foreground);
+    font-size: 0.88rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .1s;
+    text-align: left;
+}
+.nav-dd-item:hover { background: var(--muted); }
+.nav-dd-item i { width: 16px; text-align: center; color: var(--muted-foreground); }
+.nav-dd-logout { color: oklch(0.55 0.2 20); }
+.nav-dd-logout i { color: oklch(0.55 0.2 20); }
+
+/* ── My Info 모달 ─────────────────────────────────────────────── */
+.nav-modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+}
+.nav-modal-backdrop.open { display: flex; }
+.nav-modal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 420px;
+    margin: 1rem;
+    overflow: hidden;
+    animation: ddFadeIn .15s ease;
+}
+.nav-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+.nav-modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted-foreground); font-size: 1rem; padding: 0;
+}
+.nav-modal-close:hover { color: var(--foreground); }
+.nav-modal-body { padding: 1.25rem; }
+.info-row {
+    display: flex; align-items: flex-start; gap: 0.5rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { min-width: 90px; color: var(--muted-foreground); font-weight: 500; }
+.info-value { color: var(--foreground); }
+.info-pwd-row { display:flex; gap:.5rem; align-items:center; margin-top:.75rem; }
+.info-pwd-input { flex:1; padding:.45rem .65rem; border:1px solid var(--border); border-radius:var(--radius); font-size:.85rem; background:var(--surface); color:var(--foreground); outline:none; }
+.info-pwd-input:focus { border-color:var(--primary); }
+.info-pwd-btn { padding:.45rem .9rem; background:var(--primary); color:#fff; border:none; border-radius:var(--radius); font-size:.85rem; cursor:pointer; white-space:nowrap; }
+.info-pwd-btn:hover { opacity:.88; }
+.info-msg { font-size:.8rem; margin-top:.4rem; }
+.info-msg.ok  { color:oklch(0.55 0.18 150); }
+.info-msg.err { color:oklch(0.55 0.2 20); }
+/* ── My Info: Biz Group 다중 선택 ── */
+.bizgrp-list { max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); padding:.4rem .6rem; display:flex; flex-direction:column; gap:.15rem; margin-bottom:.65rem; }
+.bizgrp-list label { display:flex; align-items:center; gap:.5rem; cursor:pointer; font-size:.85rem; color:var(--foreground); font-weight:400; padding:.15rem .1rem; margin:0; }
+.bizgrp-list label input { width:15px; height:15px; cursor:pointer; }
+.bizgrp-list .bizgrp-none, .bizgrp-list .bizgrp-all, .bizgrp-list .bizgrp-custom { font-weight:600; }
+.bizgrp-list .bizgrp-custom { border-bottom:1px solid var(--border); padding-bottom:.3rem; margin-bottom:.2rem; }
+.bizgrp-list .bizgrp-items { display:flex; flex-direction:column; gap:.15rem; padding-left:1.1rem; }
+.bizgrp-empty { font-size:.82rem; color:var(--muted-foreground); padding:.2rem; }
+</style>
+
+<script>
+/* ── 드롭다운 토글 ──────────────────────────────────────────── */
+function toggleNavMenu(e) {
+    e.stopPropagation();
+    document.getElementById('navDropdown').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    const area = document.getElementById('navUserArea');
+    if (area && !area.contains(e.target)) {
+        document.getElementById('navDropdown').classList.remove('open');
+    }
+});
+
+/* ── 로그아웃 ──────────────────────────────────────────────── */
+async function doNavLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    location.href = '/login';
+}
+
+/* ── My Info 모달 ──────────────────────────────────────────── */
+function showMyInfo() {
+    document.getElementById('navDropdown').classList.remove('open');
+    const modal = document.getElementById('myInfoModal');
+    const body  = document.getElementById('myInfoBody');
+    modal.classList.add('open');
+
+    // 세션 정보 표시
+    fetch('/api/auth/me').then(r => r.json()).then(res => {
+        if (!res.success) { body.innerHTML = '<p style="color:red">Unable to load session information.</p>'; return; }
+        const u = res.user;
+        body.innerHTML = `
+            <div class="info-row"><span class="info-label">User ID</span><span class="info-value num">${u.user_id}</span></div>
+            <div class="info-row"><span class="info-label">Name</span><span class="info-value">${u.user_name || '-'}</span></div>
+            <div class="info-row"><span class="info-label">Legal Entity</span><span class="info-value num">${u.subsdr_name || '-'}</span></div>
+            <div class="info-row"><span class="info-label">Role</span><span class="info-value">${u.user_type || '-'}</span></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:.75rem 0;">
+            <div style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;color:var(--muted-foreground);">Notification Settings</div>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);margin-bottom:.65rem;">
+                <input type="checkbox" id="myContainerMail" ${u.container_mail_yn === 'Y' ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">
+                Receive Container shipment emails
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);margin-bottom:.65rem;">
+                <input type="checkbox" id="myContainerYardMail" ${u.container_yard_mail_yn === 'Y' ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">
+                Receive Container Yard emails
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);margin-bottom:.65rem;">
+                <input type="checkbox" id="myHoldOrderMail" ${u.hold_order_mail_yn === 'Y' ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;" onchange="onMyHoldOrderMailChange()">
+                Receive Hold Order emails
+            </label>
+            <div style="font-size:.85rem;font-weight:600;margin:.75rem 0 .4rem;color:var(--muted-foreground);">Managed Biz Groups</div>
+            <div style="font-size:.78rem;color:var(--muted-foreground);margin-bottom:.4rem;">Default is <strong>None</strong>. Choose ALL or select individually.</div>
+            <div class="bizgrp-list" id="myBizGroupList"><div class="bizgrp-empty">Loading…</div></div>
+            <button class="info-pwd-btn" style="width:100%;margin-bottom:.25rem;" onclick="saveMyPreferences()">Save</button>
+            <div class="info-msg" id="myPrefMsg"></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:.75rem 0;">
+            <div style="font-size:.85rem;font-weight:600;margin-bottom:.5rem;color:var(--muted-foreground);">Change Password</div>
+            <div class="info-pwd-row">
+            <input type="password" class="info-pwd-input" id="myNewPwd" placeholder="New password">
+            <button class="info-pwd-btn" onclick="changeMyPwd()">Change</button>
+            </div>
+            <div class="info-msg" id="myPwdMsg"></div>`;
+        // Biz Group 다중 선택 로드
+        loadMyBizGroups().then(() => renderMyBizGroupChecks(u.biz_group_list || []));
+    });
+}
+
+/* ── My Info: Biz Group 다중 선택 ─────────────────────────── */
+let _myBizGroups = [];
+
+function _bizEsc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadMyBizGroups() {
+    try {
+        const res  = await fetch('/api/auth/biz-groups?_=' + Date.now(), { cache: 'no-store' });
+        const data = await res.json();
+        _myBizGroups = data.success ? (data.data || []) : [];
+    } catch (e) { _myBizGroups = []; }
+}
+
+function renderMyBizGroupChecks(selected) {
+    const box = document.getElementById('myBizGroupList');
+    if (!box) return;
+    const sel = Array.isArray(selected) ? selected.map(String) : [];
+    const isAll = sel.some(x => x.toUpperCase() === 'ALL');
+    const selSet = new Set(sel);
+    const isNone = !isAll && selSet.size === 0;
+
+    let html = `<label class="bizgrp-none">
+        <input type="radio" name="myBizgrpMode" id="myBizGrpNone" ${isNone ? 'checked' : ''} onchange="onMyBizGrpModeChange()">
+        None
+    </label>`;
+    html += `<label class="bizgrp-all">
+        <input type="radio" name="myBizgrpMode" id="myBizGrpAll" ${isAll ? 'checked' : ''} onchange="onMyBizGrpModeChange()">
+        ALL (All Biz Groups)
+    </label>`;
+    html += `<label class="bizgrp-custom">
+        <input type="radio" name="myBizgrpMode" id="myBizGrpCustom" ${(!isNone && !isAll) ? 'checked' : ''} onchange="onMyBizGrpModeChange()">
+        Select individually
+    </label>`;
+
+    if (!_myBizGroups.length) {
+        html += `<div class="bizgrp-empty">No Biz Groups found.</div>`;
+    } else {
+        html += `<div class="bizgrp-items">` + _myBizGroups.map(g => `
+            <label>
+                <input type="checkbox" class="my-bizgrp-item" value="${_bizEsc(g)}"
+                       ${(!isAll && !isNone && selSet.has(g)) ? 'checked' : ''}
+                       ${(isAll || isNone) ? 'disabled' : ''}
+                       onchange="onMyBizGrpItemToggle()">
+                ${_bizEsc(g)}
+            </label>`).join('') + `</div>`;
+    }
+    box.innerHTML = html;
+    applyMyHoldOrderBizGrpConstraint();
+}
+
+function onMyBizGrpModeChange() {
+    const isCustom = document.getElementById('myBizGrpCustom')?.checked;
+    document.querySelectorAll('#myBizGroupList .my-bizgrp-item').forEach(cb => {
+        cb.disabled = !isCustom;
+        if (!isCustom) cb.checked = false;
+    });
+}
+function onMyBizGrpItemToggle() {
+    const custom = document.getElementById('myBizGrpCustom');
+    if (custom && !custom.checked) custom.checked = true;
+}
+function getMySelectedBizGroups() {
+    if (document.getElementById('myBizGrpAll')?.checked) return ['ALL'];
+    if (document.getElementById('myBizGrpNone')?.checked) return [];
+    return [...document.querySelectorAll('#myBizGroupList .my-bizgrp-item')]
+             .filter(cb => cb.checked)
+             .map(cb => cb.value);
+}
+
+/* Hold Order 메일 수신 시 None 선택 불가 처리 */
+function applyMyHoldOrderBizGrpConstraint() {
+    const holdOn = document.getElementById('myHoldOrderMail')?.checked;
+    const noneRadio = document.getElementById('myBizGrpNone');
+    if (!noneRadio) return;
+    if (holdOn) {
+        // None 체크되어 있으면 ALL 로 전환
+        if (noneRadio.checked) {
+            const allRadio = document.getElementById('myBizGrpAll');
+            if (allRadio) { allRadio.checked = true; onMyBizGrpModeChange(); }
+        }
+        noneRadio.disabled = true;
+    } else {
+        noneRadio.disabled = false;
+    }
+}
+function onMyHoldOrderMailChange() {
+    applyMyHoldOrderBizGrpConstraint();
+}
+
+function closeMyInfo() {
+    document.getElementById('myInfoModal').classList.remove('open');
+}
+
+async function changeMyPwd() {
+    const pwd = document.getElementById('myNewPwd').value.trim();
+    const msg = document.getElementById('myPwdMsg');
+    if (!pwd) { msg.className='info-msg err'; msg.textContent='Please enter a password.'; return; }
+
+    const res  = await fetch('/api/auth/change-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ new_password: pwd }),
+    });
+    const data = await res.json();
+    if (data.success) {
+        msg.className = 'info-msg ok';
+        msg.textContent = '✅ Password changed successfully.';
+        document.getElementById('myNewPwd').value = '';
+    } else {
+        msg.className = 'info-msg err';
+        msg.textContent = data.message || 'Failed to change password.';
+    }
+}
+
+async function saveMyPreferences() {
+    const containerMail = document.getElementById('myContainerMail').checked ? 'Y' : 'N';
+    const containerYardMail = document.getElementById('myContainerYardMail').checked ? 'Y' : 'N';
+    const holdOrderMail = document.getElementById('myHoldOrderMail').checked ? 'Y' : 'N';
+    const bizGroupList = getMySelectedBizGroups();
+    const msg = document.getElementById('myPrefMsg');
+    if (holdOrderMail === 'Y' && bizGroupList.length === 0) {
+        msg.className = 'info-msg err';
+        msg.textContent = 'When "Receive Hold Order emails" is enabled, you must select a Biz Group (None is not allowed).';
+        return;
+    }
+    try {
+        const res  = await fetch('/api/auth/preferences', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ container_mail_yn: containerMail, container_yard_mail_yn: containerYardMail, hold_order_mail_yn: holdOrderMail, biz_group_list: bizGroupList }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            msg.className = 'info-msg ok';
+            msg.textContent = '✅ Settings saved.';
+        } else {
+            msg.className = 'info-msg err';
+            msg.textContent = data.message || 'Failed to save settings.';
+        }
+    } catch (e) {
+        msg.className = 'info-msg err';
+        msg.textContent = 'A server error occurred.';
+    }
+}
+</script>
+
+<!-- ── 공통 세션 만료 가드 ── -->
+<!-- 401 감지(fetch·XHR·sendBeacon) → 세션 만료 모달 표시. 모든 페이지에 자동 적용. -->
+<div id="sessionExpiredModal" style="display:none; position:fixed; inset:0; z-index:2147483000;
+     background:rgba(0,0,0,0.55); backdrop-filter:blur(4px);
+     align-items:center; justify-content:center;">
+    <div style="background:var(--card,#fff); border:1px solid var(--border,#e2e8f0);
+                border-radius:12px; padding:2rem 2.5rem; max-width:380px; width:90%;
+                box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:center;">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">🔒</div>
+        <h3 style="margin:0 0 0.5rem; font-size:1.1rem; font-weight:700; color:var(--foreground,#0f172a);">
+            Your session has expired
+        </h3>
+        <p style="margin:0 0 1.5rem; font-size:0.875rem; color:var(--muted-foreground,#64748b); line-height:1.6;">
+            Your login session has ended.<br>
+            Please log in again to continue.
+        </p>
+        <a href="/login" style="display:inline-flex; align-items:center; gap:0.4rem;
+           background:var(--primary,#2563eb); color:#fff; font-weight:600; font-size:0.9rem;
+           padding:0.6rem 1.5rem; border-radius:8px; text-decoration:none;">
+            <i class="fas fa-sign-in-alt"></i> Log In
+        </a>
+    </div>
+</div>
+<script>
+(function sessionExpiryGuard() {
+    if (window.__sessionGuardPatched) return;  // 중복 패치 방지
+    window.__sessionGuardPatched = true;
+
+    let _expired = false;
+
+    // 모달이 DOM 에 없으면(=navbar 미포함 페이지) 즉석에서 생성한다.
+    function ensureModal() {
+        let modal = document.getElementById('sessionExpiredModal');
+        if (modal) return modal;
+        modal = document.createElement('div');
+        modal.id = 'sessionExpiredModal';
+        modal.style.cssText = 'display:none; position:fixed; inset:0; z-index:2147483000;'
+            + 'background:rgba(0,0,0,0.55); backdrop-filter:blur(4px);'
+            + 'align-items:center; justify-content:center;';
+        modal.innerHTML =
+            '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px;'
+            + 'padding:2rem 2.5rem; max-width:380px; width:90%;'
+            + 'box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:center;">'
+            + '<div style="font-size:2.5rem; margin-bottom:0.75rem;">🔒</div>'
+            + '<h3 style="margin:0 0 0.5rem; font-size:1.1rem; font-weight:700; color:#0f172a;">Your session has expired</h3>'
+            + '<p style="margin:0 0 1.5rem; font-size:0.875rem; color:#64748b; line-height:1.6;">'
+            + 'Your login session has ended.<br>Please log in again to continue.</p>'
+            + '<a href="/login" style="display:inline-flex; align-items:center; gap:0.4rem;'
+            + 'background:#2563eb; color:#fff; font-weight:600; font-size:0.9rem;'
+            + 'padding:0.6rem 1.5rem; border-radius:8px; text-decoration:none;">Log In</a>'
+            + '</div>';
+        (document.body || document.documentElement).appendChild(modal);
+        return modal;
+    }
+
+    // 401 감지 시 1회만 모달 표시
+    function triggerExpired() {
+        if (_expired) return;
+        _expired = true;
+        try {
+            const modal = ensureModal();
+            if (modal) modal.style.display = 'flex';
+        } catch (e) { /* 최후의 보루: 강제 이동 */ location.href = '/login'; }
+    }
+    // 다른 스크립트에서도 필요 시 호출할 수 있도록 노출
+    window.__triggerSessionExpired = triggerExpired;
+
+    // ── ① fetch 패치 ─────────────────────────────────────────────
+    if (typeof window.fetch === 'function') {
+        const _origFetch = window.fetch;
+        window.fetch = function(...args) {
+            return _origFetch.apply(this, args).then(function(response) {
+                if (response && response.status === 401) triggerExpired();
+                return response;
+            });
+        };
+    }
+
+    // ── ② XMLHttpRequest 패치 (라이브러리/레거시 대비) ───────────
+    if (window.XMLHttpRequest && XMLHttpRequest.prototype) {
+        const _open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(...args) {
+            this.addEventListener('load', function() {
+                if (this.status === 401) triggerExpired();
+            });
+            return _open.apply(this, args);
+        };
+    }
+})();
+</script>
+
+<!-- ── 법인 선택 기준 상단 메뉴 재구성 ─────────────────────────────────── -->
+<script>
+(function navMenuByLegalEntity() {
+    if (window.__navMenuLEPatched) return;
+    window.__navMenuLEPatched = true;
+
+    // nav_menus JSON → <nav id="appNav"> DOM 재생성
+    function renderNavMenus(menus) {
+        const nav = document.getElementById('appNav');
+        if (!nav || !Array.isArray(menus)) return;
+        const curPath = window.location.pathname;
+        nav.innerHTML = menus.map(m => {
+            const url    = m.menu_url || ('/' + m.menu_id);
+            const icon   = m.icon_class || 'fa-circle';
+            const name   = m.menu_name || m.menu_id;
+            const active = (curPath === url) ? ' active' : '';
+            return `<a class="app-nav-link${active}" href="${url}">`
+                 + `<i class="fas ${icon}"></i> ${name}</a>`;
+        }).join('');
+
+        // 브랜드(로고) 링크를 해당 법인의 첫 번째 메뉴로 갱신
+        const brand = document.getElementById('appBrandLink');
+        if (brand && menus.length) {
+            const first = menus[0];
+            brand.href = first.menu_url || ('/' + first.menu_id);
+        }
+    }
+
+    // 현재 페이지가 주어진 메뉴 목록에 포함되는지 판정
+    //  - 정확히 일치하거나(/active-orders)
+    //  - 하위 경로(/master-data/xxx) 인 경우 포함으로 간주
+    //  - 접미사 변형(/active-orders-ph 등)은 별도 메뉴로 취급(미포함) → 첫 페이지로 이동 대상
+    function currentPageInMenus(menus) {
+        const curPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const urls = menus.map(m => (m.menu_url || ('/' + m.menu_id)).replace(/\/+$/, '') || '/');
+        const inMenu = urls.some(u => curPath === u || curPath.startsWith(u + '/'));
+        //console.log('[NAV] 🔍 현재 페이지 메뉴 점검 — 경로:', curPath, '| 메뉴URL:', urls, '| 포함여부:', inMenu);
+        return inMenu;
+    }
+
+    // 서버에서 선택 법인 기준 메뉴를 조회 (세션에도 반영됨)
+    function fetchNavMenus(legalEntity) {
+        //console.log('[NAV] 🔄 메뉴 조회 요청 — legal_entity:', legalEntity);
+        return fetch('/api/auth/nav-menus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ legal_entity: legalEntity })
+        }).then(r => r.json())
+          .then(res => {
+              const ids = (res && Array.isArray(res.nav_menus))
+                  ? res.nav_menus.map(m => m.menu_id) : [];
+              //console.log('[NAV] ✅ 메뉴 응답 — legal_entity:', legalEntity, '| menus:', ids);
+              return res;
+          });
+    }
+
+    // ── 최초 로드: 메뉴만 동기화 (필요 시 첫 페이지로 이동, 페이지 새로고침 X) ──
+    function syncOnLoad(legalEntity) {
+        if (!legalEntity) return;
+        //console.log('[NAV] 🚀 최초 로드 메뉴 동기화 — legal_entity:', legalEntity);
+        fetchNavMenus(legalEntity).then(res => {
+            if (!res || !res.success || !Array.isArray(res.nav_menus)) return;
+            renderNavMenus(res.nav_menus);
+            //console.log('[NAV] 🧩 메뉴 렌더링 완료 (최초 로드)');
+            // 이전에 선택한 법인이 자동 선택된 경우, 현재 페이지가 그 법인 메뉴에 없으면 첫 메뉴로 이동
+            if (res.nav_menus.length && !currentPageInMenus(res.nav_menus)) {
+                const first = res.nav_menus[0];
+                const target = first.menu_url || ('/' + first.menu_id);
+                //console.log('[NAV] ➡️ 현재 페이지가 메뉴에 없음 → 첫 페이지로 이동:', target);
+                window.location.href = target;
+            } else {
+                //console.log('[NAV] 👍 현재 페이지가 메뉴에 있음 — 이동 없음');
+            }
+        }).catch(err => console.warn('[NAV] ⚠️ 최초 로드 메뉴 동기화 실패:', err));
+    }
+
+    // ── 법인 변경: 메뉴 새로고침 → 현재 페이지 점검 → 이동 or 페이지 새로고침 ──
+    let _changing = false;
+    function onEntityChanged(legalEntity) {
+        if (!legalEntity || _changing) return;
+        _changing = true;
+        //console.log('[NAV] 🏢 법인 변경 감지 — legal_entity:', legalEntity, '| 현재 경로:', window.location.pathname);
+        fetchNavMenus(legalEntity).then(res => {
+            if (!res || !res.success || !Array.isArray(res.nav_menus) || !res.nav_menus.length) {
+                console.warn('[NAV] ⚠️ 메뉴 응답이 비어있음 — 처리 중단');
+                _changing = false;
+                return;
+            }
+            // 1) 메뉴 먼저 갱신
+            renderNavMenus(res.nav_menus);
+            //console.log('[NAV] 🧩 메뉴 렌더링 완료 (법인 변경)');
+            // 2) 현재 페이지가 새 법인 메뉴에 없으면 → 첫 페이지로 이동
+            if (!currentPageInMenus(res.nav_menus)) {
+                const first = res.nav_menus[0];
+                const target = first.menu_url || ('/' + first.menu_id);
+                console.log('[NAV] ➡️ 현재 페이지가 새 법인 메뉴에 없음 → 첫 페이지로 이동:', target);
+                window.location.href = target;
+            } else {
+                // 3) 메뉴에 있으면 → 전체 리로드하지 않음.
+                //    데이터 갱신은 각 페이지의 자체 콜백(onLegalEntityChange 등)이 담당하므로
+                //    여기서 location.reload() 를 호출하면 콜백의 AJAX 갱신과 경쟁/중복 발생.
+                //console.log('[NAV] 🔁 현재 페이지가 메뉴에 있음 → 메뉴만 갱신 (데이터는 페이지 콜백이 처리)');
+                _changing = false;
+            }
+        }).catch(err => { console.warn('[NAV] ⚠️ 법인 변경 처리 실패:', err); _changing = false; });
+    }
+
+    // #globalLegalEntity 변경 감지 (jQuery/Select2 change 이벤트) + 최초 로드 반영
+    function bind() {
+        const $ = window.jQuery;
+        const le = (typeof getGlobalLegalEntity === 'function')
+            ? getGlobalLegalEntity() : null;
+
+        // 최초 진입 시 메뉴 동기화 (페이지 새로고침 없음)
+        if (le) syncOnLoad(le);
+
+        // ① 기본 경로: common_global_legal_entity.html 가 디스패치하는 커스텀 이벤트 수신.
+        //    jQuery change 핸들러 체인/페이지 콜백 예외와 무관하게 항상 실행되어 안정적.
+        if (!window.__navMenuLEListener) {
+            window.__navMenuLEListener = true;
+            document.addEventListener('legalEntityChanged', function (e) {
+                const val = (e && e.detail && e.detail.legalEntity) || null;
+                onEntityChanged(val);
+            });
+        }
+
+        // ② 폴백: 커스텀 이벤트가 없는 환경(구버전 페이지) 대비 jQuery change 도 바인딩.
+        //    _changing 가드로 중복 처리는 방지됨.
+        // Select2 는 jQuery 이벤트로 change 를 발생시키므로 반드시 jQuery 로 바인딩해야 함
+        // (native addEventListener 는 Select2 의 jQuery trigger 를 받지 못함)
+        $('#globalLegalEntity').off('change.navmenu').on('change.navmenu', function () {
+            onEntityChanged($(this).val());
+        });
+    }
+
+    // jQuery(+Select2) 로드 완료까지 대기 후 바인딩
+    let _tries = 0;
+    (function waitReady() {
+        const ready = document.getElementById('globalLegalEntity')
+            && window.jQuery && window.jQuery.fn && window.jQuery.fn.select2;
+        if (ready) { bind(); return; }
+        if (_tries > 100) {
+            // 폴백: jQuery 없이 native 이벤트라도 바인딩 (Select2 미사용 환경 대비)
+            const sel = document.getElementById('globalLegalEntity');
+            if (sel) {
+                const le = (typeof getGlobalLegalEntity === 'function') ? getGlobalLegalEntity() : null;
+                if (le) syncOnLoad(le);
+                sel.addEventListener('change', () => onEntityChanged(sel.value));
+            }
+            return;
+        }
+        _tries++;
+        setTimeout(waitReady, 100);
+    })();
+})();
+</script>

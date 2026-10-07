@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] User Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <link href="{{ url_for('static', filename='css/ag-xls-grid.css') }}" rel="stylesheet">
+    <style>
+        /* ── 그리드 ── */
+        .master-grid { width:100%; height:calc(100vh - 260px); min-height:400px; }
+        /* ── 툴바 ── */
+        .master-toolbar {
+            display:flex; align-items:center; gap:.5rem;
+            padding:.6rem 0; flex-wrap:wrap;
+        }
+        .master-toolbar .search-wrap { position:relative; }
+        .master-toolbar .search-wrap i {
+            position:absolute; left:.6rem; top:50%; transform:translateY(-50%);
+            color:var(--muted-foreground); font-size:.8rem; pointer-events:none;
+        }
+        .master-toolbar .input-search { padding-left:1.9rem; }
+        /* ── 모달 ── */
+        .md-backdrop {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.35); z-index:500;
+            align-items:center; justify-content:center;
+        }
+        .md-backdrop.open { display:flex; }
+        .md-card {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius-xl); box-shadow:var(--shadow-lg);
+            width:100%; max-width:460px; margin:1rem; overflow:hidden;
+            animation:mdIn .15s ease;
+        }
+        @keyframes mdIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+        .md-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1rem 1.25rem; border-bottom:1px solid var(--border);
+            font-size:.95rem; font-weight:600; color:var(--foreground);
+        }
+        .md-close { background:none;border:none;cursor:pointer;color:var(--muted-foreground);font-size:1rem; }
+        .md-close:hover { color:var(--foreground); }
+        .md-body { padding:1.25rem; display:grid; gap:.75rem; }
+        .md-footer { display:flex; justify-content:flex-end; gap:.5rem; padding:.85rem 1.25rem; border-top:1px solid var(--border); }
+        .form-field label { display:block; font-size:.8rem; font-weight:500; color:var(--muted-foreground); margin-bottom:.3rem; }
+        .form-field .input { width:100%; box-sizing:border-box; }
+        .md-err { display:none; background:var(--rose-50); border:1px solid var(--rose-200);
+                  color:var(--rose-700); border-radius:var(--radius); padding:.5rem .8rem;
+                  font-size:.82rem; }
+        .md-err.show { display:block; }
+        .form-hint { font-size:.75rem; color:var(--muted-foreground); margin-top:.25rem; }
+        /* ── 토스트 ── */
+        .toast {
+            position:fixed; bottom:1.5rem; right:1.5rem;
+            background:var(--foreground); color:var(--background);
+            padding:.65rem 1.1rem; border-radius:var(--radius);
+            font-size:.88rem; font-weight:500;
+            box-shadow:var(--shadow-lg); z-index:600;
+            display:none; animation:mdIn .15s ease;
+        }
+        .toast.show { display:block; }
+        .toast.ok  { background:oklch(0.508 0.118 165.6); color:#fff; }
+        .toast.err { background:oklch(0.55 0.2 20); color:#fff; }
+        /* ── ag-grid 커스텀 셀 ── */
+        .badge {
+            display:inline-flex; align-items:center; gap:4px;
+            padding:2px 8px; border-radius:999px;
+            font-size:.75rem; font-weight:600;
+        }
+        .badge-admin { background:oklch(0.941 0.030 12.6); color:oklch(0.514 0.222 16.9); }
+        .badge-user  { background:var(--sky-50); color:var(--sky-700); }
+        .badge-lock  { background:oklch(0.924 0.120 95.7); color:oklch(0.666 0.179 58.3); }
+        .badge-ok    { background:var(--emerald-50); color:var(--emerald-700); }
+        .action-cell { display:flex; gap:.3rem; align-items:center; height:100%; }
+        /* ── biz group 다중 선택 리스트 ── */
+        .bizgrp-list {
+            max-height:180px; overflow-y:auto;
+            border:1px solid var(--border); border-radius:var(--radius);
+            padding:.4rem .6rem; display:flex; flex-direction:column; gap:.15rem;
+        }
+        .bizgrp-list label {
+            display:flex; align-items:center; gap:.5rem; cursor:pointer;
+            font-size:.85rem; color:var(--foreground); font-weight:400;
+            padding:.15rem .1rem; margin:0;
+        }
+        .bizgrp-list label input { width:15px; height:15px; cursor:pointer; }
+        .bizgrp-list .bizgrp-none,
+        .bizgrp-list .bizgrp-all,
+        .bizgrp-list .bizgrp-custom { font-weight:600; }
+        .bizgrp-list .bizgrp-custom { border-bottom:1px solid var(--border); padding-bottom:.3rem; margin-bottom:.2rem; }
+        .bizgrp-list .bizgrp-items { display:flex; flex-direction:column; gap:.15rem; padding-left:1.1rem; }
+        .bizgrp-empty { font-size:.82rem; color:var(--muted-foreground); padding:.2rem; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'users' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+        <section class="section">
+            <div class="section-header" style="margin-bottom:.75rem;">
+                <div>
+                    <h1 class="section-title"><i class="fas fa-users-gear" style="margin-right:8px;color:var(--primary);"></i>User Management</h1>
+                    <p class="section-subtitle">Entity: <strong id="metaSubsdr">{{ session_user.subsdr_name }}</strong></p>
+                </div>
+            </div>
+
+            <!-- 툴바 -->
+            <div class="master-toolbar">
+                <div class="search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="userSearch" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                           name="user-quick-search-nofill" autocomplete="off" autocorrect="off"
+                           autocapitalize="off" spellcheck="false" role="presentation"
+                           readonly onfocus="this.removeAttribute('readonly')"
+                           oninput="usersGridApi && usersGridApi.setGridOption('quickFilterText', this.value)">
+                </div>
+                <span id="rowCount" class="pill pill-slate">—</span>
+                <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadUsers()">
+                    <i class="fas fa-rotate-right"></i> Refresh
+                </button>
+                <button class="btn btn-sm btn-icon" style="background:oklch(0.60 0.15 260);color:#fff;position:relative;" onclick="openRequestsModal()">
+                    <i class="fas fa-user-clock"></i> Access Requests
+                    <span id="reqBadge" class="pill" style="display:none;background:oklch(0.55 0.2 20);color:#fff;margin-left:4px;">0</span>
+                </button>
+                <button class="btn btn-primary btn-sm btn-icon" onclick="openCreateModal()">
+                    <i class="fas fa-plus"></i> Add User
+                </button>
+            </div>
+
+            <!-- AG Grid -->
+            <div id="usersGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+        </section>
+    </main>
+
+    <!-- ── 생성 / 수정 모달 ── -->
+    <div class="md-backdrop" id="userModal">
+        <div class="md-card" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span id="modalTitle"><i class="fas fa-user-plus" style="margin-right:6px;"></i>Add User</span>
+                <button class="md-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body">
+                <input type="hidden" id="editUid">
+                <div class="form-field">
+                    <label>User ID <span style="color:var(--primary);">*</span></label>
+                    <input type="text" class="input" id="fUserId" placeholder="letters, numbers, _">
+                </div>
+                <div class="form-field">
+                    <label>Name <span style="color:var(--primary);">*</span></label>
+                    <input type="text" class="input" id="fUserName" placeholder="Display name">
+                </div>
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" class="input" id="fEmail" placeholder="user@lge.com">
+                </div>
+                <div class="form-field">
+                    <label>Role</label>
+                    <select class="input" id="fUserType">
+                        <option value="">Loading…</option>
+                    </select>
+                </div>
+                <div class="form-field" id="fPwdField">
+                    <label id="fPwdLabel">Password</label>
+                    <input type="password" class="input" id="fPassword" placeholder="Password (leave blank = no password)">
+                    <div class="form-hint" id="fPwdHint">Leave blank to keep current password.</div>
+                </div>
+                <div class="form-field">
+                    <label>Notification</label>
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);">
+                        <input type="checkbox" id="fContainerMail" style="width:16px;height:16px;cursor:pointer;">
+                        Receive Container shipment emails
+                    </label>
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);margin-top:.4rem;">
+                        <input type="checkbox" id="fContainerYardMail" style="width:16px;height:16px;cursor:pointer;">
+                        Receive Container Yard emails
+                    </label>
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--foreground);margin-top:.4rem;">
+                        <input type="checkbox" id="fHoldOrderMail" style="width:16px;height:16px;cursor:pointer;" onchange="onHoldOrderMailChange()">
+                        Receive Hold Order emails
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label>Managed Biz Groups</label>
+                    <div class="form-hint" style="margin-top:0;margin-bottom:.4rem;">
+                        Select the Biz Groups this user manages. Default is <strong>None</strong>. Check <strong>ALL</strong> for every Biz Group.
+                    </div>
+                    <div id="fBizGroupList" class="bizgrp-list">
+                        <div class="bizgrp-empty">Loading…</div>
+                    </div>
+                </div>
+                <div class="md-err" id="modalError"></div>
+            </div>
+            <div class="md-footer">
+                <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary btn-sm btn-icon" id="modalSaveBtn" onclick="saveUser()">
+                    <i class="fas fa-floppy-disk"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 계정 접근 요청 처리 모달 ── -->
+    <div class="md-backdrop" id="reqModal" onclick="closeRequestsModal()">
+        <div class="md-card" style="max-width:900px;" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span><i class="fas fa-user-clock" style="margin-right:6px;"></i>Account Access Requests</span>
+                <button class="md-close" onclick="closeRequestsModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" style="gap:.6rem;">
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                    <label style="font-size:.8rem;color:var(--muted-foreground);">Status</label>
+                    <select class="input" id="reqStatusFilter" style="width:160px;" onchange="loadRequests()">
+                        <option value="PENDING">Pending</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="ALL">All</option>
+                    </select>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadRequests()">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                    <span id="reqCount" class="pill pill-slate">—</span>
+                </div>
+                <div style="max-height:60vh;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);">
+                    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                        <thead style="position:sticky;top:0;background:var(--muted);z-index:1;">
+                            <tr style="text-align:left;">
+                                <th style="padding:.5rem .6rem;">User ID</th>
+                                <th style="padding:.5rem .6rem;">Entity</th>
+                                <th style="padding:.5rem .6rem;">Email</th>
+                                <th style="padding:.5rem .6rem;">Emp No</th>
+                                <th style="padding:.5rem .6rem;min-width:160px;">Reason</th>
+                                <th style="padding:.5rem .6rem;">Requested</th>
+                                <th style="padding:.5rem .6rem;">Status</th>
+                                <th style="padding:.5rem .6rem;text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reqTbody">
+                            <tr><td colspan="8" style="padding:1rem;text-align:center;color:var(--muted-foreground);">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ── AG Grid 라이선스 ─────────────────────────────────────────────────
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    let usersGridApi = null;
+    let _editMode    = false;
+    let _userTypes   = [];   // /api/users/types 로 로드된 유저타입 목록
+    const _currentUserType = "{{ current_user_type or '' }}";  // 현재 로그인 계정 유형
+    const _isOwner   = _currentUserType === 'owner';           // owner 만 계정 전환 가능
+
+    // ── 유저타입 목록 로드 ────────────────────────────────────────────────
+    async function loadUserTypes() {
+        try {
+            const res  = await fetch('/api/users/types');
+            const data = await res.json();
+            _userTypes = data.success ? (data.data || []) : [];
+        } catch (e) { _userTypes = []; }
+    }
+
+    // 모달의 Role <select> 를 _userTypes 로 채우기
+    function populateUserTypeSelect(currentVal) {
+        const sel = document.getElementById('fUserType');
+        sel.innerHTML = '';
+        _userTypes.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value       = t.user_type;
+            opt.textContent = `${t.user_type} — ${t.type_name || t.user_type}`;
+            sel.appendChild(opt);
+        });
+        if (currentVal && _userTypes.some(t => t.user_type === currentVal)) {
+            sel.value = currentVal;
+        } else if (_userTypes.length) {
+            sel.value = _userTypes[0].user_type;
+        }
+    }
+
+    // ── Biz Group 목록 (법인별) ───────────────────────────────────────────
+    let _bizGroups = [];   // 현재 법인의 Biz Group 목록
+    let _bizGroupsLoadedLE = null;
+
+    async function loadBizGroups(force) {
+        const le = getGlobalLegalEntity();
+        if (!force && _bizGroupsLoadedLE === le) return;
+        try {
+            const res  = await fetch('/api/users/biz-groups?legal_entity=' + encodeURIComponent(le) + '&_=' + Date.now(), { cache: 'no-store' });
+            const data = await res.json();
+            _bizGroups = data.success ? (data.data || []) : [];
+            _bizGroupsLoadedLE = le;
+        } catch (e) { _bizGroups = []; }
+    }
+
+    // 체크박스 목록 렌더링. selected = 배열(['ALL'] 또는 biz group명들) 또는 null/[]
+    function renderBizGroupChecks(selected) {
+        const box = document.getElementById('fBizGroupList');
+        const sel = Array.isArray(selected) ? selected.map(String) : [];
+        const isAll = sel.some(x => x.toUpperCase() === 'ALL');
+        const selSet = new Set(sel);
+        const isNone = !isAll && selSet.size === 0;
+
+        let html = `<label class="bizgrp-none">
+            <input type="radio" name="bizgrpMode" id="fBizGrpNone" ${isNone ? 'checked' : ''} onchange="onBizGrpModeChange()">
+            None
+        </label>`;        html += `<label class="bizgrp-all">
+            <input type="radio" name="bizgrpMode" id="fBizGrpAll" ${isAll ? 'checked' : ''} onchange="onBizGrpModeChange()">
+            ALL (All Biz Groups)
+        </label>`;
+
+        html += `<label class="bizgrp-custom">
+            <input type="radio" name="bizgrpMode" id="fBizGrpCustom" ${(!isNone && !isAll) ? 'checked' : ''} onchange="onBizGrpModeChange()">
+            Select individually
+        </label>`;
+
+        if (!_bizGroups.length) {
+            html += `<div class="bizgrp-empty">No Biz Groups found for this entity.</div>`;
+        } else {
+            html += `<div id="fBizGrpItems" class="bizgrp-items">` + _bizGroups.map(g => `
+                <label>
+                    <input type="checkbox" class="bizgrp-item" value="${_esc(g)}"
+                           ${(!isAll && !isNone && selSet.has(g)) ? 'checked' : ''}
+                           ${(isAll || isNone) ? 'disabled' : ''}
+                           onchange="onBizGrpItemToggle()">
+                    ${_esc(g)}
+                </label>`).join('') + `</div>`;
+        }
+        box.innerHTML = html;
+        applyHoldOrderBizGrpConstraint();
+    }
+
+    // None / ALL / 개별 선택 모드 전환
+    function onBizGrpModeChange() {
+        const custom = document.getElementById('fBizGrpCustom');
+        const isCustom = custom && custom.checked;
+        document.querySelectorAll('#fBizGroupList .bizgrp-item').forEach(cb => {
+            cb.disabled = !isCustom;
+            if (!isCustom) cb.checked = false;
+        });
+    }
+    // 개별 항목 선택 시 개별 선택 모드로 전환
+    function onBizGrpItemToggle() {
+        const custom = document.getElementById('fBizGrpCustom');
+        if (custom && !custom.checked) custom.checked = true;
+    }
+
+    // Hold Order 메일 수신 시 None 선택 불가 처리
+    function applyHoldOrderBizGrpConstraint() {
+        const holdOn = document.getElementById('fHoldOrderMail')?.checked;
+        const noneRadio = document.getElementById('fBizGrpNone');
+        if (!noneRadio) return;
+        if (holdOn) {
+            // None 체크되어 있으면 ALL 로 전환
+            if (noneRadio.checked) {
+                const allRadio = document.getElementById('fBizGrpAll');
+                if (allRadio) { allRadio.checked = true; onBizGrpModeChange(); }
+            }
+            noneRadio.disabled = true;
+        } else {
+            noneRadio.disabled = false;
+        }
+    }
+
+    // Hold Order 메일 체크박스 변경 시
+    function onHoldOrderMailChange() {
+        applyHoldOrderBizGrpConstraint();
+    }
+
+    // 현재 선택된 Biz Group 값 반환 (['ALL'] / [...] / [] = None)
+    function getSelectedBizGroups() {
+        if (document.getElementById('fBizGrpAll')?.checked) return ['ALL'];
+        if (document.getElementById('fBizGrpNone')?.checked) return [];
+        return [...document.querySelectorAll('#fBizGroupList .bizgrp-item')]
+                 .filter(cb => cb.checked)
+                 .map(cb => cb.value);
+    }
+
+    // ── 컬럼 정의 ────────────────────────────────────────────────────────
+    function buildColDefs(tz) {
+        const tzLabel = tz || 'UTC';
+        return [
+        {
+            headerName: 'Actions', width: 200, sortable: false, filter: false, resizable: false,
+            pinned: 'left',
+            cellRenderer: params => {
+                const u = params.data;
+                const unlockBtn = u.lock_yn === 'Y'
+                    ? `<button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);padding:.25rem .5rem;" title="Unlock" onclick="unlockUser('${u.user_id}')"><i class="fas fa-lock-open"></i></button>`
+                    : '';
+                // owner 계정만 노출: 해당 계정으로 전환(로그인)
+                const switchBtn = (_isOwner && u.user_id !== '{{ current_user_id or "" }}')
+                    ? `<button class="btn btn-sm" style="background:oklch(0.508 0.118 165.6);color:#fff;padding:.25rem .5rem;" title="Switch to this account"
+                        onclick="impersonateUser('${u.user_id}','${(u.user_name||'').replace(/'/g,"\\'")}')">
+                        <i class="fas fa-right-to-bracket"></i>
+                    </button>`
+                    : '';
+                return `<div class="action-cell">
+                    ${switchBtn}
+                    ${unlockBtn}
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);padding:.25rem .5rem;" title="Edit"
+                        onclick='openEditModal(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(u))}")))'>
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn btn-sm" style="background:oklch(0.60 0.15 260);color:#fff;padding:.25rem .5rem;" title="Reset Password"
+                        onclick="resetPassword('${u.user_id}','${(u.user_name||'').replace(/'/g,"\\'")}')">
+                        <i class="fas fa-key"></i>
+                    </button>
+                    <button class="btn btn-sm" style="background:oklch(0.55 0.2 20);color:#fff;padding:.25rem .5rem;" title="Delete"
+                        onclick="deleteUser('${u.user_id}','${(u.user_name||'').replace(/'/g,"\\'")}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>`;
+            }
+        },
+        {
+            field: 'user_id', headerName: 'User ID', width: 140, pinned: 'left',
+            cellStyle: { fontFamily: '"JetBrains Mono", monospace', fontSize: '.82rem' }
+        },
+        { field: 'user_name', headerName: 'Name', width: 140 },
+        { field: 'email', headerName: 'Email', flex: 1, minWidth: 180 },
+        {
+            field: 'user_type', headerName: 'Role', width: 140,
+            cellRenderer: params => {
+                const t = params.value, name = params.data?.type_name || t;
+                return t === 'admin'
+                    ? `<span class="badge badge-admin"><i class="fas fa-shield-halved"></i> ${name}</span>`
+                    : `<span class="badge badge-user"><i class="fas fa-user"></i> ${name}</span>`;
+            }
+        },
+        {
+            field: 'lock_yn', headerName: 'Status', width: 170,
+            cellRenderer: params => {
+                const locked   = params.value === 'Y';
+                const failCnt  = params.data?.login_fail_cnt || 0;
+                const badge    = locked
+                    ? `<span class="badge badge-lock"><i class="fas fa-lock"></i> Locked</span>`
+                    : `<span class="badge badge-ok"><i class="fas fa-circle-check"></i> Active</span>`;
+                const fail = failCnt > 0
+                    ? `<span style="font-size:.75rem;color:var(--muted-foreground);margin-left:4px;">${failCnt} fail(s)</span>`
+                    : '';
+                return badge + fail;
+            }
+        },
+        {
+            field: 'last_login_dt', headerName: `Last Login (${tzLabel})`, width: 185,
+            cellStyle: { fontFamily: '"JetBrains Mono", monospace', fontSize: '.8rem' },
+            valueFormatter: p => p.value || '-'
+        },
+        {
+            field: 'input_dt', headerName: `Created (${tzLabel})`, width: 165,
+            cellStyle: { fontFamily: '"JetBrains Mono", monospace', fontSize: '.8rem' },
+            valueFormatter: p => p.value || '-'
+        },
+        {
+            field: 'container_mail_yn', headerName: 'Container Mail', width: 140,
+            cellRenderer: params => {
+                const v = params.value === 'Y';
+                return v
+                    ? `<span class="badge badge-ok"><i class="fas fa-envelope"></i> On</span>`
+                    : `<span class="badge" style="background:var(--muted);color:var(--muted-foreground);"><i class="fas fa-envelope-slash"></i> Off</span>`;
+            }
+        },
+        {
+            field: 'container_yard_mail_yn', headerName: 'Container Yard Mail', width: 160,
+            cellRenderer: params => {
+                const v = params.value === 'Y';
+                return v
+                    ? `<span class="badge badge-ok"><i class="fas fa-envelope"></i> On</span>`
+                    : `<span class="badge" style="background:var(--muted);color:var(--muted-foreground);"><i class="fas fa-envelope-slash"></i> Off</span>`;
+            }
+        },
+        {
+            field: 'hold_order_mail_yn', headerName: 'Hold Order Mail', width: 150,
+            cellRenderer: params => {
+                const v = params.value === 'Y';
+                return v
+                    ? `<span class="badge badge-ok"><i class="fas fa-envelope"></i> On</span>`
+                    : `<span class="badge" style="background:var(--muted);color:var(--muted-foreground);"><i class="fas fa-envelope-slash"></i> Off</span>`;
+            }
+        },
+        {
+            field: 'biz_group_list', headerName: 'Managed Biz Groups', width: 220, flex: 1, minWidth: 180,
+            valueGetter: p => {
+                const v = p.data?.biz_group_list;
+                if (v == null || (Array.isArray(v) && v.length === 0)) return 'None';
+                const arr = Array.isArray(v) ? v : [v];
+                if (arr.some(x => String(x).toUpperCase() === 'ALL')) return 'ALL';
+                return arr.join(', ');
+            },
+            cellRenderer: params => {
+                const txt = params.value;
+                if (txt === 'None')
+                    return `<span class="badge" style="background:var(--muted);color:var(--muted-foreground);">None</span>`;
+                if (txt === 'ALL')
+                    return `<span class="badge badge-admin"><i class="fas fa-layer-group"></i> ALL</span>`;
+                return `<span title="${_esc(txt)}">${_esc(txt)}</span>`;
+            }
+        }
+        ];
+    }
+
+    // ── 그리드 초기화 ─────────────────────────────────────────────────────
+    const gridOptions = {
+        columnDefs: buildColDefs('UTC'),
+        rowData: [],
+        defaultColDef: { resizable: true, sortable: true, filter: true, menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'] },
+        rowHeight: 40,
+        headerHeight: 36,
+        enableRangeSelection: true,
+        suppressRowClickSelection: true,
+        animateRows: true,
+        sideBar: { toolPanels: ['filters', 'columns'] },
+        onGridReady: params => { usersGridApi = params.api; },
+    };
+    agGrid.createGrid(document.getElementById('usersGrid'), gridOptions);
+
+    // ── 목록 로드 ─────────────────────────────────────────────────────────
+    async function loadUsers() {
+        const le = getGlobalLegalEntity();
+        document.getElementById('metaSubsdr').textContent = le;
+        if (usersGridApi) usersGridApi.showLoadingOverlay();
+        try {
+            const res  = await fetch('/api/users?legal_entity=' + encodeURIComponent(le) + '&_=' + Date.now(),
+                                     { cache: 'no-store' });
+            const data = await res.json();
+            if (!data.success) { showToast(data.message || 'Failed to load', 'err'); usersGridApi?.hideOverlay(); return; }
+            const rows = data.data || [];
+            usersGridApi.setGridOption('rowData', rows);
+            document.getElementById('rowCount').textContent = `${rows.length} user(s)`;
+            // 타임존 레이블을 컬럼 헤더에만 반영 (setColumnDefs 대신 직접 수정)
+            const tz = data.timezone || 'UTC';
+            const defLogin   = usersGridApi.getColumnDef('last_login_dt');
+            const defCreated = usersGridApi.getColumnDef('input_dt');
+            if (defLogin)   defLogin.headerName   = `Last Login (${tz})`;
+            if (defCreated) defCreated.headerName = `Created (${tz})`;
+            usersGridApi.refreshHeader();
+        } catch (e) {
+            showToast('Failed to load user list.', 'err');
+            usersGridApi?.hideOverlay();
+        }
+        loadPendingCount();   // 법인 변경 시 대기 건수 배지 갱신
+    }
+
+    // ── 모달 열기 ─────────────────────────────────────────────────────────
+    function openCreateModal() {
+        _editMode = false;
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus" style="margin-right:6px;"></i>Add User';
+        document.getElementById('editUid').value    = '';
+        document.getElementById('fUserId').value    = '';
+        document.getElementById('fUserId').disabled = false;
+        document.getElementById('fUserName').value  = '';
+        document.getElementById('fEmail').value     = '';
+        populateUserTypeSelect('user');
+        // 추가 모달에서는 패스워드 필드 숨기기 (최초 로그인 시 설정)
+        document.getElementById('fPwdField').style.display = 'none';
+        document.getElementById('fPassword').value  = '';
+        document.getElementById('fContainerMail').checked = false;
+        document.getElementById('fContainerYardMail').checked = false;
+        document.getElementById('fHoldOrderMail').checked = false;
+        document.getElementById('fBizGroupList').innerHTML = '<div class="bizgrp-empty">Loading…</div>';
+        loadBizGroups().then(() => renderBizGroupChecks([]));   // 기본값 None
+        hideModalError();
+        document.getElementById('userModal').classList.add('open');
+        setTimeout(() => document.getElementById('fUserId').focus(), 80);
+    }
+
+    function openEditModal(u) {
+        _editMode = true;
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-pen" style="margin-right:6px;"></i>Edit User';
+        document.getElementById('editUid').value    = u.user_id;
+        document.getElementById('fUserId').value    = u.user_id;
+        document.getElementById('fUserId').disabled = true;
+        document.getElementById('fUserName').value  = u.user_name || '';
+        document.getElementById('fEmail').value     = u.email || '';
+        populateUserTypeSelect(u.user_type || 'user');
+        // 수정 모달에서는 패스워드 초기화 필드 표시
+        document.getElementById('fPwdField').style.display = '';
+        document.getElementById('fPassword').value  = '';
+        document.getElementById('fPwdLabel').textContent  = 'New Password (leave blank to keep current)';
+        document.getElementById('fPwdHint').textContent   = 'Leave blank to keep current password.';
+        document.getElementById('fContainerMail').checked = (u.container_mail_yn === 'Y');
+        document.getElementById('fContainerYardMail').checked = (u.container_yard_mail_yn === 'Y');
+        document.getElementById('fHoldOrderMail').checked = (u.hold_order_mail_yn === 'Y');
+        document.getElementById('fBizGroupList').innerHTML = '<div class="bizgrp-empty">Loading…</div>';
+        loadBizGroups().then(() => renderBizGroupChecks(u.biz_group_list || []));
+        hideModalError();
+        document.getElementById('userModal').classList.add('open');
+        setTimeout(() => document.getElementById('fUserName').focus(), 80);
+    }
+
+    function closeModal() {
+        document.getElementById('userModal').classList.remove('open');
+    }
+    function showModalError(msg) {
+        const el = document.getElementById('modalError');
+        el.textContent = msg; el.classList.add('show');
+    }
+    function hideModalError() {
+        document.getElementById('modalError').classList.remove('show');
+    }
+
+    // ── 저장 ──────────────────────────────────────────────────────────────
+    async function saveUser() {
+        hideModalError();
+        const uid      = document.getElementById('editUid').value;
+        const userId   = document.getElementById('fUserId').value.trim();
+        const userName = document.getElementById('fUserName').value.trim();
+        const email    = document.getElementById('fEmail').value.trim();
+        const userType = document.getElementById('fUserType').value;
+        const password = document.getElementById('fPassword').value;
+        const containerMail = document.getElementById('fContainerMail').checked ? 'Y' : 'N';
+        const containerYardMail = document.getElementById('fContainerYardMail').checked ? 'Y' : 'N';
+        const holdOrderMail = document.getElementById('fHoldOrderMail').checked ? 'Y' : 'N';
+        const bizGroupList = getSelectedBizGroups();
+
+        if (!userId)   { showModalError('Please enter a User ID.'); return; }
+        if (!userName) { showModalError('Please enter a name.'); return; }
+        if (holdOrderMail === 'Y' && bizGroupList.length === 0) {
+            showModalError('When "Receive Hold Order emails" is enabled, you must select a Biz Group (None is not allowed).');
+            return;
+        }
+
+        const btn = document.getElementById('modalSaveBtn');
+        btn.disabled = true;
+        const legalEntity = getGlobalLegalEntity();
+        try {
+            let res, data;
+            if (_editMode) {
+                const body = { legal_entity: legalEntity, user_name: userName, email, user_type: userType, container_mail_yn: containerMail, container_yard_mail_yn: containerYardMail, hold_order_mail_yn: holdOrderMail, biz_group_list: bizGroupList };
+                if (password) body.user_password = password;
+                res = await fetch(`/api/users/${encodeURIComponent(uid)}`, {
+                    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+                });
+            } else {
+                // 사용자 추가 시 패스워드 없이 생성 (최초 로그인 시 패스워드 설정)
+                res = await fetch('/api/users', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ legal_entity: legalEntity, user_id: userId, user_name: userName, email, user_type: userType, container_mail_yn: containerMail, container_yard_mail_yn: containerYardMail, hold_order_mail_yn: holdOrderMail, biz_group_list: bizGroupList })
+                });
+            }
+            data = await res.json();
+            if (data.success) {
+                document.getElementById('userModal').classList.remove('open');
+                showToast(_editMode ? 'User updated.' : 'User added.', 'ok');
+                await loadUsers();
+            } else {
+                showModalError(data.message || 'Failed to save.');
+            }
+        } catch (e) {
+            showModalError('A server error occurred.');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // ── 삭제 ──────────────────────────────────────────────────────────────
+    async function deleteUser(uid, name) {
+        if (!await confirm(`Delete user [${name}]?`)) return;
+        try {
+            const le   = getGlobalLegalEntity();
+            const res  = await fetch(`/api/users/${encodeURIComponent(uid)}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ legal_entity: le })
+            });
+            const data = await res.json();
+            if (data.success) { showToast('User deleted.', 'ok'); await loadUsers(); }
+            else showToast(data.message || 'Failed to delete.', 'err');
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    // ── 패스워드 초기화 ───────────────────────────────────────────────────────
+    async function resetPassword(uid, name) {
+        if (!await confirm(`Reset password for [${name}]?\n\nThe user will be prompted to set a new password on next login.`)) return;
+        try {
+            const le   = getGlobalLegalEntity();
+            const res  = await fetch(`/api/users/${encodeURIComponent(uid)}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ legal_entity: le })
+            });
+            const data = await res.json();
+            if (data.success) { showToast('Password has been reset.', 'ok'); await loadUsers(); }
+            else showToast(data.message || 'Failed to reset password.', 'err');
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    // ── 잠금 해제 ─────────────────────────────────────────────────────────
+    async function unlockUser(uid) {
+        try {
+            const le   = getGlobalLegalEntity();
+            const res  = await fetch(`/api/users/${encodeURIComponent(uid)}/unlock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ legal_entity: le })
+            });
+            const data = await res.json();
+            if (data.success) { showToast('Account unlocked.', 'ok'); await loadUsers(); }
+            else showToast(data.message || 'Failed to unlock.', 'err');
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    // ── 계정 전환 (owner 전용) ───────────────────────────────────────────
+    async function impersonateUser(uid, name) {
+        if (!confirm(`Switch to account "${name} (${uid})"?\nYou will be logged in as this user.`)) return;
+        try {
+            const res  = await fetch('/api/auth/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Switched to ${uid}.`, 'ok');
+                setTimeout(() => { window.location.href = data.redirect_url || '/'; }, 500);
+            } else {
+                showToast(data.message || 'Failed to switch account.', 'err');
+            }
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    // ── 계정 접근 요청 처리 ─────────────────────────────────────────────────
+    function openRequestsModal() {
+        document.getElementById('reqModal').classList.add('open');
+        loadRequests();
+    }
+    function closeRequestsModal() {
+        document.getElementById('reqModal').classList.remove('open');
+    }
+
+    function _statusBadge(s) {
+        if (s === 'PENDING')  return '<span class="badge" style="background:var(--amber-50,#fef3c7);color:#b45309;"><i class="fas fa-hourglass-half"></i> Pending</span>';
+        if (s === 'APPROVED') return '<span class="badge badge-ok"><i class="fas fa-circle-check"></i> Approved</span>';
+        if (s === 'REJECTED') return '<span class="badge" style="background:#fbeaea;color:#c0392b;"><i class="fas fa-circle-xmark"></i> Rejected</span>';
+        return s || '-';
+    }
+
+    function _esc(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function loadRequests() {
+        const status = document.getElementById('reqStatusFilter').value;
+        const le     = getGlobalLegalEntity();
+        const tbody  = document.getElementById('reqTbody');
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:1rem;text-align:center;color:var(--muted-foreground);">Loading…</td></tr>';
+        try {
+            const res  = await fetch('/api/access-requests?status=' + encodeURIComponent(status) + '&legal_entity=' + encodeURIComponent(le) + '&_=' + Date.now(), { cache: 'no-store' });
+            const data = await res.json();
+            if (!data.success) { tbody.innerHTML = `<tr><td colspan="8" style="padding:1rem;text-align:center;color:var(--muted-foreground);">${_esc(data.message||'Failed to load')}</td></tr>`; return; }
+            const rows = data.data || [];
+            document.getElementById('reqCount').textContent = `${rows.length} request(s)`;
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:1rem;text-align:center;color:var(--muted-foreground);">No requests.</td></tr>';
+            } else {
+                tbody.innerHTML = rows.map(r => {
+                    const pending = r.request_status === 'PENDING';
+                    const actions = pending
+                        ? `<button class="btn btn-sm" style="background:oklch(0.508 0.118 165.6);color:#fff;padding:.25rem .5rem;" title="Approve" onclick="approveRequest(${r.request_id})"><i class="fas fa-check"></i></button>
+                           <button class="btn btn-sm" style="background:oklch(0.55 0.2 20);color:#fff;padding:.25rem .5rem;margin-left:4px;" title="Reject" onclick="rejectRequest(${r.request_id})"><i class="fas fa-xmark"></i></button>`
+                        : `<span style="font-size:.75rem;color:var(--muted-foreground);">${_esc(r.process_user_id||'')}<br>${_esc(r.process_dt||'')}</span>`;
+                    return `<tr style="border-top:1px solid var(--border);">
+                        <td style="padding:.5rem .6rem;font-family:monospace;">${_esc(r.user_id)}</td>
+                        <td style="padding:.5rem .6rem;">${_esc(r.subsdr_nm)}</td>
+                        <td style="padding:.5rem .6rem;">${_esc(r.email_id||'-')}</td>
+                        <td style="padding:.5rem .6rem;">${_esc(r.user_emp_no||'-')}</td>
+                        <td style="padding:.5rem .6rem;">${_esc(r.request_reason_desc||'-')}</td>
+                        <td style="padding:.5rem .6rem;white-space:nowrap;">${_esc(r.input_dt||'-')}</td>
+                        <td style="padding:.5rem .6rem;">${_statusBadge(r.request_status)}</td>
+                        <td style="padding:.5rem .6rem;text-align:right;white-space:nowrap;">${actions}</td>
+                    </tr>`;
+                }).join('');
+            }
+            loadPendingCount();
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:1rem;text-align:center;color:var(--muted-foreground);">A server error occurred.</td></tr>';
+        }
+    }
+
+    async function approveRequest(rid) {
+        if (!await confirm('Approve this access request?\n\nThe account will be created and an approval email will be sent.')) return;
+        try {
+            const res  = await fetch(`/api/access-requests/${rid}/approve`, {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.mail_sent ? 'Approved. Email sent.' : 'Approved. (Email not sent)', 'ok');
+                await loadRequests();
+                await loadUsers();
+            } else showToast(data.message || 'Failed to approve.', 'err');
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    async function rejectRequest(rid) {
+        const reason = await prompt('Please enter the rejection reason:');
+        if (reason === null) return;
+        if (!reason.trim()) { showToast('Rejection reason is required.', 'err'); return; }
+        try {
+            const res  = await fetch(`/api/access-requests/${rid}/reject`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ process_reason_desc: reason.trim() })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.mail_sent ? 'Rejected. Email sent.' : 'Rejected. (Email not sent)', 'ok');
+                await loadRequests();
+            } else showToast(data.message || 'Failed to reject.', 'err');
+        } catch (e) { showToast('A server error occurred.', 'err'); }
+    }
+
+    async function loadPendingCount() {
+        try {
+            const le   = getGlobalLegalEntity();
+            const res  = await fetch('/api/access-requests/pending-count?legal_entity=' + encodeURIComponent(le) + '&_=' + Date.now(), { cache: 'no-store' });
+            const data = await res.json();
+            const badge = document.getElementById('reqBadge');
+            if (data.success && data.count > 0) {
+                badge.textContent = data.count;
+                badge.style.display = '';
+            } else {
+                badge.style.display = 'none';
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // ── 토스트 ────────────────────────────────────────────────────────────
+    let _toastTimer;
+    function showToast(msg, type = 'ok') {
+        const el = document.getElementById('toast');
+        el.textContent = (type === 'ok' ? '✅ ' : '❌ ') + msg;
+        el.className = `toast show ${type}`;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // ── 초기 로드 ─────────────────────────────────────────────────────────
+    // 브라우저 자동완성으로 검색창에 값이 채워지는 것 방지
+    window.addEventListener('load', () => {
+        const s = document.getElementById('userSearch');
+        if (s) { s.value = ''; }
+        // 브라우저가 뒤늦게 채우는 경우 대비
+        setTimeout(() => { if (s && s.value) s.value = ''; }, 150);
+    });
+    initGlobalLegalEntity(loadUsers);
+    loadUserTypes();   // 유저타입 목록은 법인 무관하게 1회 로드
+    loadPendingCount(); // 대기중인 계정 접근 요청 건수 배지
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

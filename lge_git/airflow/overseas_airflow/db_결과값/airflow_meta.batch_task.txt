@@ -1,0 +1,101 @@
+spw.batch.0230	m_gdmi_fr_europe_ana	spw.job_m_gdmi_fr_europe_ana	{}
+spw.batch.1400	m_uk_ha_promo_calendar_ana	spw.job_m_uk_ha_promo_calendar_ana	{}
+spw.batch.1430	m_gdmi_channel_psi_result	spw.job_m_gdmi_channel_psi_result	{}
+spw.batch.1500	sp_snps_finished_proc	spw.job_sp_snps_finished_proc	{}
+spw.batch.1530	v_snps_effects_ana_refresh	spw.job_v_snps_effects_ana	{}
+spw.batch.0930	d_subsdr_mst	spw.job_d_subsdr_mst	{}
+spw.batch_L1	CNT_V_L1SCM__TRSCM__SO_LINE_DW_S	spw.job_tbl_cnt	{"TBL_NM": "`pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__SO_LINE_DW_S", "LOAD_COL_NM": "ETL_LOAD_TS"}
+spw.batch_L1	LOG_V_L0GDMI_IFS_FD_CHANNEL_PSI_RESULT	spw.edl_log_check	{"TBL_NM": "V_L0GDMI_IFS_FD_CHANNEL_PSI_RESULT"}
+spw.batch_L1	spw.job_sp_gs_product	spw.job_sp_gs_product	{}
+spw.batch_L1	LOG_V_L0GSMS_MA_MODEL_SOM	spw.edl_log_check	{"TBL_NM": "V_L0GSMS_MA_MODEL_SOM"}
+spw.batch_L1	spw.job_sp_npt_mdl_new_mst	spw.job_sp_npt_mdl_new_mst	{}
+spw.batch_L1	spw.job_sp_gs_shop_info	spw.job_sp_gs_shop_info	{}
+liw.batch.0800	CURRENCY_RATE	liw.job_D_USD_CONVERSION_RATE_MST	{}
+spw.batch.1030	m_lumpsum_update_ana	spw.job_m_lumpsum_update_ana	{}
+spw.batch_L1	CNT_V_L0NPT__NV_DWD_MDL_PERIOD_H_X2051177_54553	spw.job_tbl_cnt	{"TBL_NM": "`pjt-lge-edl-ob`.OB_00030.V_L0NPT__NV_DWD_MDL_PERIOD_H_X2051177_54553", "LOAD_COL_NM": "ETL_LOAD_TS"}
+spw.batch_L1	CNT_V_L1SALE_TRSALE_DEDUCT_RSLT_BY_MDL_CUST_L	spw.job_tbl_cnt	{"TBL_NM": "`pjt-lge-edl-ob`.OB_00030.V_L1SALE_TRSALE_DEDUCT_RSLT_BY_MDL_CUST_L", "LOAD_COL_NM": "ETL_LOAD_TS"}
+liw.batch.0800	CURINV_SNAPSHOT	liw.job_M_CURINV_SNAPSHOT_S	{}
+spw.batch_L1	LOG_V_L0GSMS_SH_SHOP_INFO	spw.edl_log_check	{"TBL_NM": "V_L0GSMS_SH_SHOP_INFO"}
+spw.batch.0030	m_lumpsum_update_ana	spw.job_m_lumpsum_update_ana	{}
+spw.batch.1300	m_lumpsum_update_ana	spw.job_m_lumpsum_update_ana	{}
+spw.batch.1100	d_rrp_lgeus_mst	spw.job_d_rrp_lgeus_mst	{}
+spw.batch.1100	d_model_lgeus_mst	spw.job_d_model_lgeus_mst	{}
+spw.batch_L1	CNT_V_L1SCM__TRSCM__GDMI_PLAN_RSLT_S	spw.job_tbl_cnt	{"TBL_NM": "`pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__GDMI_PLAN_RSLT_S", "LOAD_COL_NM": "ETL_LOAD_TS"}
+spw.batch.1100	sp_promo_rrp_lgeus_proc	spw.job.sp_promo_rrp_lgeus_proc	{}
+liw.batch.0830	liw.M_EUTMS_ORDER_HIST_GERP	liw.M_EUTMS_ORDER_HIST_GERP	{}
+liw.batch.0830	liw.check_EUTMS	liw.check_EUTMS	{}
+spw.batch_L1	spw.job_sp_spms_deduct_ana	spw.job_sp_spms_deduct_ana	{}
+spw.batch_L1	spw.job_sp_gdmi_channel_psi_result	spw.job_sp_gdmi_channel_psi_result	{}
+spw.batch_lumpsum	spw.job_sp_promo_spms_result_ana	spw.job_sp_promo_spms_result_ana	{}
+spw.batch_L1	spw.job_sp_m_gdmi_channel_psi_ana	spw.job_sp_m_gdmi_channel_psi_ana	{}
+spw.batch_L1	spw.job_sp_m_spms_selling_price_ana	spw.job_sp_m_spms_selling_price_ana	{}
+spw.batch_L1	spw.job_sp_lumpsum_prdt_type_mst	spw.job_sp_lumpsum_prdt_type_mst	{}
+liw.batch.SO	liw.M_SO_LINE_T01	liw.M_SO_LINE_T01	{}
+liw.batch.SO	liw.M_SO_LINE_T02	liw.M_SO_LINE_T02	{}
+liw.batch.SO	liw.M_SO_LINE_T11	liw.M_SO_LINE_T11	{}
+liw.batch.SO	liw.M_SO_LINE_T12	liw.M_SO_LINE_T12	{}
+liw.batch.SO	liw.TB_GTM_ORDER_OLAP_S_IF_OS	liw.TB_GTM_ORDER_OLAP_S_IF_OS	{}
+liw.batch.SO	liw.M_SO_LINE-1	liw.M_SO_LINE-1	{}
+liw.batch.SO	liw.job_M_SO_LINE_INVOICE_NERP	liw.job_M_SO_LINE_INVOICE_NERP	{}
+liw.batch.SO	liw.M_SO_LINE_BACK_PO_MAP	liw.M_SO_LINE_BACK_PO_MAP	{}
+spw.batch_L1	spw.job_sp_scm_order_ana	spw.job_sp_scm_order_ana	{}
+liw.batch.SO	liw.check_SO	liw.check_SO	{}
+liw.batch.0800	liw.job_m_po_tracking	liw.job_m_po_tracking	{}
+liw.batch.0800	liw.job_D_SO_REM_DAYS	liw.job_D_SO_REM_DAYS	{}
+spw.batch_L1	spw.job_sp_gdmi_fcst_rslt_total_ana	spw.job_sp_gdmi_fcst_rslt_total_ana	{}
+spw.batch.1110	spw.job_d_edl_mdms3_ship_to_party_rcv_inf	spw.job_d_edl_mdms3_ship_to_party_rcv_inf	{}
+spw.batch.0930	spw.job_d_product_level_mst	spw.job_d_product_level_mst	{}
+liw.batch.0800	liw.job_M_SEA_SHIPMENT_INFO	liw.job_M_SEA_SHIPMENT_INFO	{}
+spw.batch_lumpsum	spw.job_sp_lumpsum_update_ana	spw.job_sp_lumpsum_update_ana	{}
+spw.batch_lumpsum	spw.job_sp_promo_nerp_result_ana	spw.job_sp_promo_nerp_result_ana	{}
+spw.batch_lumpsum	spw.job_sp_lumpsum_update_pool	spw.job_sp_lumpsum_update_pool	{}
+spw.batch_L2	spw.job_sp_promotion_aar_ana	spw.job_sp_promotion_aar_ana	{}
+spw.batch_lumpsum	spw.job_sp_lumpsum_update_middle	spw.job_sp_lumpsum_update_middle	{}
+spw.batch_L2	spw.job_sp_spms_npt_total_ana	spw.job_sp_spms_npt_total_ana	{}
+spw.batch_log_test	spw.job_sp_gs_product	spw.job_sp_gs_product	{}
+spw.batch_log_test	LOG_V_L0GSMS_MA_MODEL_SOM	spw.edl_log_check	{"TBL_NM": "V_L0GSMS_MA_MODEL_SOM"}
+spw.rrp_sync	spw.job_d_rrp_master	spw.job_d_rrp_master	{}
+spw.rrp_sync	spw.job.sp_d_rrp_master	spw.job.sp_d_rrp_master	{}
+spw.rrp_sync	spw.job.sp_spms_rrp_mst_sync	spw.job.sp_spms_rrp_mst_sync	{}
+spw.batch_L2	spw.dashbord_check_log	spw.dashbord_check_log	{}
+liw.batch.0800	liw.job_hold_mail	liw.job_hold_mail	{}
+liw.batch.0800	liw.container_yard_delay_email	liw.container_yard_delay_email	{}
+spw.batch_L2	LOG_L1_PROCEDURE	spw.job_spw_proc_log	{"PROC_NM": "SP_PROMO_SPMS_RESULT_ANA','SP_PROMO_NERP_RESULT_ANA','SP_GDMI_FCST_RSLT_TOTAL_ANA"}
+lgett.batch.price	lgett.biggo_price	lgett.biggo_price	{}
+spw.batch_lumpsum	spw.job_m_promo_spms_result_ana	spw.job_m_promo_spms_result_ana	{}
+spw.model_sync	spw.job_d_edl_mdms3_model_master	spw.job_d_edl_mdms3_model_master	{}
+liw.batch.1h	liw.check_OBS_SO_LINE	liw.check_OBS_SO_LINE	{}
+spw.model_sync	spw.job.sp_d_edl_mdms3_model_master	spw.job.sp_d_edl_mdms3_model_master	{}
+spw.model_sync	spw.job.sp_model_master_sync	spw.job.sp_model_master_sync	{}
+spw.batch_lumpsum	LOG_V_L0GERP_XXPPS_PROMO_LINE_ALL	spw.edl_log_check	{"TBL_NM": "V_L0GERP_XXPPS_PROMO_LINE_ALL','ZSSDA1632"}
+spw.batch_L1	spw.job_m_spms_selling_price_ana	spw.job_m_spms_selling_price_ana	{}
+spw.batch_L1	spw.job_m_gdmi_channel_psi_result	spw.job_m_gdmi_channel_psi_result	{}
+spw.batch_close_data_chk	spw.job_close_data_chk	spw.job_close_data_chk	{}
+spw.batch.1110	spw.job_m_lumpsum_update_ana	spw.job_m_lumpsum_update_ana	{}
+spw.rrp_sync	LOG_V_L0GERP_XXTMS_REC_RETAIL_PRICE	spw.edl_log_check	{"TBL_NM": "V_L0GERP_XXTMS_REC_RETAIL_PRICE','ZSPRI1005"}
+liw.batch.0800	liw.eta_digest_email	liw.eta_digest_email	{}
+spw.model_sync	LOG_V_L0MDM3_V_EDL_MDMS3_MODEL_MASTER	spw.edl_log_check	{"TBL_NM": "V_L0MDM3_V_EDL_MDMS3_MODEL_MASTER"}
+liw_dev.batch.1h	liw_dev.TB_GTM_ORDER_OLAP_S_IF_OS	liw_dev.TB_GTM_ORDER_OLAP_S_IF_OS	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE_TMS_INFO	liw_dev.M_SO_LINE_TMS_INFO	{}
+liw.batch.1h	liw.M_RPA_GET_SO_LINE_T11	liw.M_RPA_GET_SO_LINE_T11	{}
+liw.batch.1h	nerp_rpa	nerp_rpa	{}
+liw.batch.1h	liw.M_RPA_GET_SO_LINE_INVOICE	liw.M_RPA_GET_SO_LINE_INVOICE	{}
+liw.batch.1h	liw.M_OBS_SO_LINE	liw.M_OBS_SO_LINE	{}
+liw.batch.1h	liw.M_RPA_GET_CUR_INVENTORY	liw.M_RPA_GET_CUR_INVENTORY	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE_T01	liw_dev.M_SO_LINE_T01	{}
+liw_dev.batch.1h	liw_dev.M_RPA_GET_SO_LINE_T11	liw_dev.M_RPA_GET_SO_LINE_T11	{}
+liw_dev.batch.1h	liw_dev.M_RPA_GET_SO_LINE_INVOICE	liw_dev.M_RPA_GET_SO_LINE_INVOICE	{}
+liw_dev.batch.1h	liw_dev.M_RPA_GET_CUR_INVENTORY	liw_dev.M_RPA_GET_CUR_INVENTORY	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE_T11	liw_dev.M_SO_LINE_T11	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE	liw_dev.M_SO_LINE	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE_BACK_PO_MAP	liw_dev.M_SO_LINE_BACK_PO_MAP	{}
+liw_dev.batch.1h	liw_dev.M_SO_LINE_INVOICE	liw_dev.M_SO_LINE_INVOICE	{}
+liw.batch.1h	liw.TB_GTM_ORDER_OLAP_S_IF_OS	liw.TB_GTM_ORDER_OLAP_S_IF_OS	{}
+liw.batch.1h	liw.M_SO_LINE_TMS_INFO	liw.M_SO_LINE_TMS_INFO	{}
+liw.batch.1h	liw.M_SO_LINE_T01	liw.M_SO_LINE_T01	{}
+liw.batch.1h	liw.M_SO_LINE_T11	liw.M_SO_LINE_T11	{}
+liw.batch.1h	liw.M_SO_LINE	liw.M_SO_LINE	{}
+liw.batch.1h	liw.M_SO_LINE_BACK_PO_MAP	liw.M_SO_LINE_BACK_PO_MAP	{}
+liw.batch.1h	liw.M_SO_LINE_INVOICE	liw.M_SO_LINE_INVOICE	{}
+liw_dev.batch.1h	liw.check_OBS_SO_LINE	liw.check_OBS_SO_LINE	{}
+liw_dev.batch.1h	liw_dev.M_OBS_SO_LINE	liw_dev.M_OBS_SO_LINE	{}

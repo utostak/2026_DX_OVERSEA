@@ -1,0 +1,14 @@
+<!-- jQuery and Select2 for Legal Entity Search -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // Initialize Select2 for Legal Entity dropdown with search
+    $(document).ready(function() {
+        $('#legalEntity').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Search Legal Entity...',
+            allowClear: true,
+            width: '100%'
+        });
+    });
+</script>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Glossary</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <style>
+        /* TOC 탭바 */
+        .glossary-toc {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .toc-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.85rem;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            color: var(--muted-foreground);
+            background: var(--muted);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s;
+            white-space: nowrap;
+        }
+        .toc-btn:hover, .toc-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        /* 용어 테이블 */
+        .term-table { width: 100%; border-collapse: collapse; }
+        .term-table th {
+            background: var(--surface-muted);
+            padding: 0.5rem 1.1rem;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted-foreground);
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            font-weight: 600;
+        }
+        .term-table td {
+            padding: 0.65rem 1.1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .term-table tr:last-child td { border-bottom: none; }
+        .term-table tr:hover td { background: var(--surface-muted); }
+        .term-name { font-weight: 600; color: var(--foreground); font-size: 13px; }
+        .term-abbr {
+            display: inline-block;
+            background: var(--muted);
+            color: var(--muted-foreground);
+            font-size: 11px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .term-en { color: var(--muted-foreground); font-size: 12px; margin-top: 3px; display: block; }
+        .term-group-row td {
+            background: var(--muted);
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--muted-foreground);
+            padding: 0.35rem 1.1rem;
+            letter-spacing: 0.3px;
+        }
+        .term-group-row:hover td { background: var(--muted) !important; }
+        .badge-sys { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff; }
+        .badge-GERP { background: var(--accent); }
+        .badge-TMS  { background: oklch(0.541 0.281 293.0); }
+        .badge-WMS  { background: var(--success); }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+        .dot-ok   { background: var(--success); }
+        .dot-warn { background: var(--warning); }
+        .dot-bad  { background: var(--danger); }
+        /* ── Sticky 검색/TOC 바 ── */
+        .glossary-sticky-bar {
+            position: sticky;
+            top: 56px;          /* app-header 높이(56px) 바로 아래 */
+            z-index: 20;
+            background: var(--background);
+            padding: 0.5rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+        /* sticky 바 안의 카드 테두리 제거 (배경과 동화) */
+        .glossary-sticky-bar .section {
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+            background: transparent;
+        }
+        /* 스크롤 콘텐츠 영역 */
+        .glossary-scroll-body {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .glossary-section { scroll-margin-top: 120px; }  /* sticky bar 높이 감안 */
+        /* section 내부 table 상단 여백 */
+        .section .term-table { margin-top: 0.75rem; }
+        .no-results { text-align: center; padding: 3rem 1rem; color: var(--muted-foreground); font-size: 13px; }
+        .no-results i { font-size: 2rem; display: block; margin-bottom: 0.75rem; opacity: .4; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'glossary' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <!-- ── Sticky 검색/TOC 바 ── -->
+    <div class="glossary-sticky-bar">
+        <div class="filter-inline" style="flex-wrap:wrap; gap:0.5rem 1rem;">
+            <!-- 검색 -->
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+                <i class="fas fa-search" style="color:var(--muted-foreground); font-size:13px;"></i>
+                <input type="text" id="searchInput"
+                       class="input" style="width:260px;"
+                       placeholder="용어 검색... (예: RAD, Hold, 출하)"
+                       oninput="filterTerms()">
+                <span id="searchCount" style="font-size:12px; color:var(--muted-foreground); white-space:nowrap;"></span>
+            </div>
+            <!-- TOC 탭 -->
+            <div class="glossary-toc">
+                <a class="toc-btn" href="#sec-nav"    onclick="setToc(this)"><i class="fas fa-compass"></i> 페이지 구성</a>
+                <a class="toc-btn" href="#sec-system" onclick="setToc(this)"><i class="fas fa-server"></i> 시스템 약어</a>
+                <a class="toc-btn" href="#sec-flow"   onclick="setToc(this)"><i class="fas fa-stream"></i> 주문 흐름 단계</a>
+                <a class="toc-btn" href="#sec-status" onclick="setToc(this)"><i class="fas fa-traffic-light"></i> 진행 상태</a>
+                <a class="toc-btn" href="#sec-hold"   onclick="setToc(this)"><i class="fas fa-lock"></i> Hold 유형</a>
+                <a class="toc-btn" href="#sec-metric" onclick="setToc(this)"><i class="fas fa-chart-line"></i> 핵심 지표</a>
+                <a class="toc-btn" href="#sec-grid"   onclick="setToc(this)"><i class="fas fa-table"></i> 그리드 컬럼</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 스크롤 콘텐츠 영역 ── -->
+    <main class="app-main" style="padding:0; gap:0;">
+      <div class="glossary-scroll-body">
+
+        <!--  검색 결과 없음  -->
+        <div id="noResults" class="no-results" style="display:none;">
+            <i class="fas fa-search-minus"></i>검색 결과가 없습니다.
+        </div>
+
+        <!--  1. 페이지 구성  -->
+        <section class="section glossary-section" id="sec-nav">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-compass" style="color:oklch(0.50 0.09 50);margin-right:6px;"></i>페이지 구성
+                    </h1>
+                    <p class="section-subtitle">대시보드를 구성하는 화면/메뉴 설명</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">용어</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr><td class="term-name">Order Analysis</td><td>주문 분석 페이지. 과거 주문 데이터를 다양한 관점(법인, 기간, 카테고리 등)에서 분석하는 화면입니다.</td></tr>
+                    <tr><td class="term-name">Active Orders</td><td>활성 주문 대시보드. 현재 처리 중인(Open) 주문의 진행 상황과 위험도를 실시간으로 모니터링하는 화면입니다.</td></tr>
+                    <tr><td class="term-name">Legal Entity</td><td>법인. LG전자의 해외 현지법인 코드입니다. (예: LGEAP = 호주/뉴질랜드, LGEDG = 독일/스위스)<span class="term-en">대시보드 우측 상단에서 법인을 선택하면 해당 법인의 데이터만 필터링됩니다.</span></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  2. 시스템 약어  -->
+        <section class="section glossary-section" id="sec-system">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-server" style="color:var(--accent);margin-right:6px;"></i>시스템 약어
+                    </h1>
+                    <p class="section-subtitle">각 처리 단계를 관할하는 시스템</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">용어</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr><td class="term-name"><span class="badge-sys badge-GERP">GERP</span></td><td><strong>Global ERP</strong>  LG전자 글로벌 전사자원관리 시스템. 주문 입력(Entered)부터 피킹 출고(Pick Release)까지의 <strong>주문 단계(Order Stage)</strong>를 관리합니다.</td></tr>
+                    <tr><td class="term-name"><span class="badge-sys badge-TMS">TMS</span></td><td><strong>Transportation Management System</strong>  운송 관리 시스템. 적재 생성(Load Creation)과 창고 출고(WH Release) 등 <strong>물류 배차</strong>를 관리합니다.</td></tr>
+                    <tr><td class="term-name"><span class="badge-sys badge-WMS">WMS</span></td><td><strong>Warehouse Management System</strong>  창고 관리 시스템. 출하 확인(Ship Confirm)부터 실제 출하(Shipped)까지 <strong>창고 내 물류 처리</strong>를 관리합니다.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  3. 주문 흐름 단계  -->
+        <section class="section glossary-section" id="sec-flow">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-stream" style="color:var(--success);margin-right:6px;"></i>주문 흐름 단계 <span class="muted">(Flow Stage)</span>
+                    </h1>
+                    <p class="section-subtitle">Order Stage (GERP)  Shipping Stage (TMS / WMS)</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">단계</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr class="term-group-row"><td colspan="2"><i class="fas fa-box" style="margin-right:6px;"></i>Order Stage  GERP 관할</td></tr>
+                    <tr><td class="term-name">Entered / Booked</td><td><strong>주문 입력 / 확정</strong>  고객 주문이 시스템에 입력(Entered)되고 재고 확인 후 확정(Booked)된 상태입니다.</td></tr>
+                    <tr><td class="term-name">Hold</td><td><strong>보류</strong>  특정 사유(재고 부족, 신용 문제, 미래 출하 등)로 인해 주문 처리가 일시적으로 중단된 상태입니다.</td></tr>
+                    <tr><td class="term-name">Pick Ready</td><td><strong>피킹 준비 완료</strong>  보류 해제 후 창고에서 상품을 꺼낼(피킹) 준비가 된 상태입니다.</td></tr>
+                    <tr><td class="term-name">Pick Release</td><td><strong>피킹 출고 지시</strong>  창고에 상품 피킹(집품)을 지시한 상태입니다. 이후 물류 시스템(TMS)으로 넘어갑니다.</td></tr>
+                    <tr class="term-group-row"><td colspan="2"><i class="fas fa-shipping-fast" style="margin-right:6px;"></i>Shipping Stage  TMS / WMS 관할</td></tr>
+                    <tr><td class="term-name">Load Creation</td><td><strong>적재 생성</strong>  TMS에서 배송 차량에 대한 적재 계획을 생성한 상태입니다.</td></tr>
+                    <tr><td class="term-name">Release To WH <span class="term-abbr">WH Release</span></td><td><strong>창고 출고 지시</strong>  TMS가 창고(Warehouse)에 출고를 지시한 상태입니다.</td></tr>
+                    <tr><td class="term-name">Ship Confirm</td><td><strong>출하 확인</strong>  WMS에서 상품이 실제로 창고를 떠났음을 확인한 상태입니다.</td></tr>
+                    <tr><td class="term-name">Shipped</td><td><strong>출하 완료</strong>  상품이 고객에게 배송 중인 최종 단계입니다.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  4. 진행 상태  -->
+        <section class="section glossary-section" id="sec-status">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-traffic-light" style="color:var(--warning);margin-right:6px;"></i>진행 상태 <span class="muted">(Progress Status)</span>
+                    </h1>
+                    <p class="section-subtitle">RAD 기준 납기 위험도 분류</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">상태</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr><td class="term-name"><span class="status-dot dot-ok"></span>On-track</td><td><strong>정상 진행</strong>  고객 요청 도착일(RAD)까지 충분한 여유가 있어 정상적으로 배송 완료가 예상되는 주문입니다.</td></tr>
+                    <tr><td class="term-name"><span class="status-dot dot-warn"></span>At-risk</td><td><strong>위험 예상</strong>  현재 진행 속도로는 고객 요청일(RAD)을 맞추기 어려울 수 있는 주문입니다. 선제적 조치가 필요합니다.</td></tr>
+                    <tr><td class="term-name"><span class="status-dot dot-bad"></span>Breached</td><td><strong>기한 초과</strong>  이미 고객 요청일(RAD)을 넘긴 주문이거나, 납기를 맞출 수 없는 것이 확실한 주문입니다.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  5. Hold 유형  -->
+        <section class="section glossary-section" id="sec-hold">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-lock" style="color:var(--danger);margin-right:6px;"></i>Hold 유형 <span class="muted">(Hold Breakdown)</span>
+                    </h1>
+                    <p class="section-subtitle">보류 원인 분류  Back Order / Finance Hold / Future / Etc</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">유형</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr><td class="term-name"><i class="fas fa-box-open" style="color:oklch(0.66 0.18 60);margin-right:5px;"></i>Back Order</td><td><strong>백오더 (재고 부족 보류)</strong>  주문 수량에 비해 현재 재고가 부족하여 출고가 보류된 상태입니다. 재고가 확보되면 자동으로 해제됩니다.</td></tr>
+                    <tr><td class="term-name"><i class="fas fa-credit-card" style="color:oklch(0.55 0.2 20);margin-right:5px;"></i>Finance Hold <span class="term-abbr">Credit + Overdue</span></td><td><strong>재무 보류</strong>  고객의 신용 한도 초과(Credit Hold) 또는 연체(Overdue Hold)로 인해 출고가 보류된 상태입니다. 재무팀 승인이 필요합니다.</td></tr>
+                    <tr><td class="term-name"><i class="fas fa-clock" style="color:oklch(0.62 0.16 240);margin-right:5px;"></i>Future</td><td><strong>미래 출하 보류</strong>  고객이 요청한 출하일이 아직 도래하지 않아 보류된 상태입니다. 요청일이 되면 자동 해제됩니다.</td></tr>
+                    <tr><td class="term-name"><i class="fas fa-ellipsis-h" style="color:var(--muted-foreground);margin-right:5px;"></i>Etc</td><td><strong>기타 보류</strong>  위 유형에 해당하지 않는 기타 사유(수출 규제, 특별 승인 대기 등)로 보류된 주문입니다.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  6. 핵심 지표  -->
+        <section class="section glossary-section" id="sec-metric">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-chart-line" style="color:oklch(0.508 0.118 165.6);margin-right:6px;"></i>핵심 지표 <span class="muted">(Key Metrics)</span>
+                    </h1>
+                    <p class="section-subtitle">납기 관리에 활용되는 주요 측정 지표</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:28%">지표</th><th>설명</th></tr></thead>
+                <tbody>
+                    <tr><td class="term-name">RAD <span class="term-abbr">Request Arrival Date</span></td><td><strong>고객 요청 도착일</strong>  고객이 요청한 상품 도착 희망일입니다. On-track / At-risk / Breached 상태의 기준이 됩니다.<span class="term-en">그리드에서는 "Customer RAD" 컬럼으로 표시됩니다.</span></td></tr>
+                    <tr><td class="term-name">IOD <span class="term-abbr">Ideal Order Delivery</span></td><td><strong>이상적 배송 완료 예상일</strong>  현재 단계에서 남은 처리 시간을 추정하여 계산한 예상 배송 완료일입니다.<span class="term-en">"Est. 29.2d to IOD" = 배송 완료까지 약 29.2일 소요 예상</span></td></tr>
+                    <tr><td class="term-name">Est. miss RAD</td><td><strong>RAD 미준수 예상 건수</strong>  해당 단계의 주문 중 고객 요청일(RAD)을 넘길 것으로 예상되는 주문 건수와 비율입니다.<span class="term-en">"Est. miss RAD: 1,239 (69%)" = 전체 중 1,239건(69%)이 RAD 초과 예상</span></td></tr>
+                    <tr><td class="term-name">Est. Arrival</td><td><strong>예상 도착일</strong>  현재 진행 속도를 기반으로 추정한 고객 도착 예상일입니다.</td></tr>
+                    <tr><td class="term-name">Margin (d)</td><td><strong>여유 일수</strong>  고객 요청일(RAD)과 예상 도착일 사이의 차이(일)입니다.<span class="term-en">양수(+) = 여유 있음 &nbsp;|&nbsp; 음수() = 지연 예상</span></td></tr>
+                    <tr><td class="term-name">Avg d in stage</td><td><strong>단계 평균 체류 일수</strong>  해당 단계에 머무르고 있는 주문들의 평균 체류 기간(일)입니다. 숫자가 클수록 병목이 발생하고 있음을 의미합니다.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!--  7. 그리드 컬럼  -->
+        <section class="section glossary-section" id="sec-grid">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-table" style="color:oklch(0.541 0.281 293.0);margin-right:6px;"></i>그리드 컬럼 <span class="muted">(Active Orders Grid)</span>
+                    </h1>
+                    <p class="section-subtitle">Active Orders 데이터 그리드 컬럼 설명</p>
+                </div>
+            </div>
+            <table class="term-table">
+                <thead><tr><th style="width:25%">컬럼명</th><th style="width:30%">한국어 뜻</th><th>비고</th></tr></thead>
+                <tbody>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-info-circle" style="margin-right:6px;"></i>기본 정보</td></tr>
+                    <tr><td class="term-name">Flow Stage</td>    <td>처리 단계</td>           <td class="term-en">현재 주문이 위치한 흐름 단계 (Entered ~ Shipped)</td></tr>
+                    <tr><td class="term-name">Risk Alert</td>    <td>위험 알림</td>           <td class="term-en">On-track / At-risk / Breached 상태 표시</td></tr>
+                    <tr><td class="term-name">Order No.</td>     <td>주문 번호</td>           <td class="term-en">ERP 시스템의 주문 고유 번호</td></tr>
+                    <tr><td class="term-name">Line No.</td>      <td>주문 라인 번호</td>      <td class="term-en">하나의 주문 안에서 개별 상품 라인 번호</td></tr>
+                    <tr><td class="term-name">Order Status</td>  <td>주문 상태</td>           <td class="term-en">주문 전체의 현재 상태</td></tr>
+                    <tr><td class="term-name">Line Status</td>   <td>라인 상태</td>           <td class="term-en">개별 라인의 현재 상태</td></tr>
+                    <tr><td class="term-name">Open</td>          <td>오픈 여부</td>           <td class="term-en">주문이 아직 처리 완료되지 않고 열려 있는지 여부</td></tr>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-user" style="margin-right:6px;"></i>고객 / 상품 정보</td></tr>
+                    <tr><td class="term-name">Customer</td>      <td>고객 코드</td>           <td class="term-en">고객 식별 코드</td></tr>
+                    <tr><td class="term-name">Customer Name</td> <td>고객명</td>              <td class="term-en">고객사 이름</td></tr>
+                    <tr><td class="term-name">Model</td>         <td>모델명</td>              <td class="term-en">제품 모델 코드</td></tr>
+                    <tr><td class="term-name">Category</td>      <td>제품 카테고리</td>       <td class="term-en">제품 분류 (TV, 냉장고 등)</td></tr>
+                    <tr><td class="term-name">Order Qty</td>     <td>주문 수량</td>           <td class="term-en">해당 라인의 주문 수량</td></tr>
+                    <tr><td class="term-name">Currency</td>      <td>통화</td>               <td class="term-en">주문 거래 통화 (USD, EUR 등)</td></tr>
+                    <tr><td class="term-name">Order Amt (USD)</td><td>주문 금액 (달러)</td>   <td class="term-en">미국 달러 기준으로 환산한 주문 금액</td></tr>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-calendar-alt" style="margin-right:6px;"></i>날짜 정보</td></tr>
+                    <tr><td class="term-name">Customer RAD</td>  <td>고객 요청 도착일</td>    <td class="term-en">고객이 요청한 도착 희망일</td></tr>
+                    <tr><td class="term-name">Est. Arrival</td>  <td>예상 도착일</td>         <td class="term-en">시스템이 추정한 도착 예상일</td></tr>
+                    <tr><td class="term-name">Ordered Date</td>  <td>주문일</td>              <td class="term-en">주문이 최초 입력된 날짜</td></tr>
+                    <tr><td class="term-name">Booked Date</td>   <td>확정일</td>              <td class="term-en">주문이 확정(Booked)된 날짜</td></tr>
+                    <tr><td class="term-name">Hold Date</td>     <td>보류일</td>              <td class="term-en">주문이 보류(Hold) 상태로 전환된 날짜</td></tr>
+                    <tr><td class="term-name">Hold Release</td>  <td>보류 해제일</td>         <td class="term-en">보류가 해제된 날짜</td></tr>
+                    <tr><td class="term-name">Pick Release</td>  <td>피킹 출고일</td>         <td class="term-en">창고에 피킹 출고 지시가 내려진 날짜</td></tr>
+                    <tr><td class="term-name">Load Creation</td> <td>적재 생성일</td>         <td class="term-en">TMS에서 적재 계획이 생성된 날짜</td></tr>
+                    <tr><td class="term-name">WH Release</td>    <td>창고 출고일</td>         <td class="term-en">창고에 출고 지시가 내려진 날짜</td></tr>
+                    <tr><td class="term-name">Ship Confirm</td>  <td>출하 확인일</td>         <td class="term-en">출하가 확인된 날짜</td></tr>
+                    <tr><td class="term-name">Shipped</td>       <td>출하일</td>              <td class="term-en">실제 출하가 완료된 날짜</td></tr>
+                    <tr><td class="term-name">Sales Date</td>    <td>판매일</td>              <td class="term-en">매출이 인식된 날짜</td></tr>
+                    <tr><td class="term-name">Req Ship Date</td> <td>요청 출하일</td>         <td class="term-en">출하 요청 날짜 (Request Ship Date)</td></tr>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-stopwatch" style="margin-right:6px;"></i>경과 일수 (체류 시간)</td></tr>
+                    <tr><td class="term-name">Entered (d)</td>   <td>입력 후 경과일</td>      <td class="term-en">주문 입력 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Booked (d)</td>    <td>확정 후 경과일</td>      <td class="term-en">주문 확정 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Pick Rel (d)</td>  <td>피킹 출고 후 경과일</td> <td class="term-en">피킹 출고 지시 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Load (d)</td>      <td>적재 후 경과일</td>      <td class="term-en">적재 생성 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">WH Rel (d)</td>    <td>창고 출고 후 경과일</td> <td class="term-en">창고 출고 지시 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Ship Conf (d)</td> <td>출하 확인 후 경과일</td> <td class="term-en">출하 확인 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Shipped (d)</td>   <td>출하 후 경과일</td>      <td class="term-en">출하 완료 이후 경과한 일수</td></tr>
+                    <tr><td class="term-name">Hold (d)</td>      <td>보류 경과일</td>         <td class="term-en">보류 상태로 전환된 이후 경과한 일수</td></tr>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-lock" style="margin-right:6px;"></i>Hold 관련</td></tr>
+                    <tr><td class="term-name">Hold Type</td>     <td>보류 유형</td>           <td class="term-en">Back Order / Finance Hold / Future / Etc</td></tr>
+                    <tr><td class="term-name">Hold</td>          <td>보류 여부</td>           <td class="term-en">현재 보류 상태인지 여부 (Y/N)</td></tr>
+                    <tr><td class="term-name">Back Order</td>    <td>백오더 여부</td>         <td class="term-en">재고 부족으로 인한 보류 여부</td></tr>
+                    <tr><td class="term-name">Credit Hold</td>   <td>신용 보류 여부</td>      <td class="term-en">신용 한도 초과로 인한 보류 여부</td></tr>
+                    <tr><td class="term-name">Overdue Hold</td>  <td>연체 보류 여부</td>      <td class="term-en">미수금 연체로 인한 보류 여부</td></tr>
+                    <tr><td class="term-name">Future Hold</td>   <td>미래 출하 보류</td>      <td class="term-en">출하 요청일 미도래로 인한 보류 여부</td></tr>
+                    <tr><td class="term-name">Hold Reason</td>   <td>보류 사유</td>           <td class="term-en">보류된 구체적인 사유 텍스트</td></tr>
+                    <tr class="term-group-row"><td colspan="3"><i class="fas fa-warehouse" style="margin-right:6px;"></i>물류 정보</td></tr>
+                    <tr><td class="term-name">Warehouse</td>     <td>창고</td>               <td class="term-en">상품이 보관/출고되는 창고 코드</td></tr>
+                    <tr><td class="term-name">Ship Method</td>   <td>배송 방법</td>           <td class="term-en">배송 수단/방법 (육상, 해상, 항공 등)</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+      </div><!-- /.glossary-scroll-body -->
+    </main>
+
+    <script>
+    //  초기화 (법인 선택자) 
+    initGlobalLegalEntity();
+
+    //  검색 필터 
+    function filterTerms() {
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        const rows  = document.querySelectorAll('.term-table tbody tr:not(.term-group-row)');
+        let visible = 0;
+        rows.forEach(row => {
+            const show = !query || row.textContent.toLowerCase().includes(query);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        // 그룹 행: 하위에 보이는 행이 있을 때만 표시
+        document.querySelectorAll('.term-group-row').forEach(gr => {
+            if (!query) { gr.style.display = ''; return; }
+            let next = gr.nextElementSibling, has = false;
+            while (next && !next.classList.contains('term-group-row')) {
+                if (next.style.display !== 'none') { has = true; break; }
+                next = next.nextElementSibling;
+            }
+            gr.style.display = has ? '' : 'none';
+        });
+        // 섹션: 결과 없으면 숨김
+        document.querySelectorAll('.glossary-section').forEach(sec => {
+            const any = [...sec.querySelectorAll('.term-table tbody tr:not(.term-group-row)')].some(r => r.style.display !== 'none');
+            sec.style.display = (!query || any) ? '' : 'none';
+        });
+        const c = document.getElementById('searchCount');
+        c.textContent = query ? visible + '건 검색됨' : '';
+        document.getElementById('noResults').style.display = (query && visible === 0) ? '' : 'none';
+    }
+
+    //  TOC 활성화 
+    function setToc(el) {
+        document.querySelectorAll('.toc-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
+    const sections = document.querySelectorAll('.glossary-section');
+    const tocBtns  = document.querySelectorAll('.toc-btn');
+    window.addEventListener('scroll', () => {
+        let cur = '';
+        sections.forEach(s => { if (window.scrollY >= s.offsetTop - 130) cur = s.id; });
+        tocBtns.forEach(b => b.classList.toggle('active', b.getAttribute('href').slice(1) === cur));
+    }, { passive: true });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

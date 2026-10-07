@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] System Config</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <link href="{{ url_for('static', filename='css/ag-xls-grid.css') }}" rel="stylesheet">
+    <style>
+        .master-tabs { display:flex; gap:.25rem; border-bottom:2px solid var(--border); margin-bottom:0; }
+        .master-tab {
+            padding:.55rem 1.1rem; background:none; border:none; cursor:pointer;
+            font-size:.92rem; font-weight:600; color:var(--muted-foreground);
+            border-bottom:2px solid transparent; margin-bottom:-2px;
+            transition:color .12s, border-color .12s;
+        }
+        .master-tab:hover { color:var(--foreground); }
+        .master-tab.active { color:var(--foreground); border-bottom-color:var(--primary); }
+        .master-tab i { margin-right:.4rem; font-size:.85em; }
+        .master-panel { display:none; }
+        .master-panel.active { display:block; }
+        .master-grid { width:100%; height:calc(100vh - 280px); min-height:400px; }
+        .master-toolbar {
+            display:flex; align-items:center; gap:.5rem;
+            padding:.6rem 0; flex-wrap:wrap;
+        }
+        .master-toolbar .search-wrap { position:relative; }
+        .master-toolbar .search-wrap i {
+            position:absolute; left:.6rem; top:50%; transform:translateY(-50%);
+            color:var(--muted-foreground); font-size:.8rem; pointer-events:none;
+        }
+        .master-toolbar .input-search { padding-left:1.9rem; }
+        .md-backdrop {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.35); z-index:500;
+            align-items:center; justify-content:center;
+        }
+        .md-backdrop.open { display:flex; }
+        .md-card {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius-xl); box-shadow:var(--shadow-lg);
+            width:100%; max-width:560px; margin:1rem; overflow:hidden;
+            animation:mdIn .15s ease;
+        }
+        @keyframes mdIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+        .md-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1rem 1.25rem; border-bottom:1px solid var(--border);
+            font-size:.95rem; font-weight:600; color:var(--foreground);
+        }
+        .md-close { background:none;border:none;cursor:pointer;color:var(--muted-foreground);font-size:1rem; }
+        .md-close:hover { color:var(--foreground); }
+        .md-body { padding:1.25rem; display:grid; gap:.75rem; max-height:70vh; overflow-y:auto; }
+        .md-footer { display:flex; justify-content:flex-end; gap:.5rem; padding:.85rem 1.25rem; border-top:1px solid var(--border); }
+        .form-field label { display:block; font-size:.8rem; font-weight:500; color:var(--muted-foreground); margin-bottom:.3rem; }
+        .form-field .input  { width:100%; box-sizing:border-box; }
+        .form-field textarea.input { resize:vertical; font-family:monospace; font-size:.82rem; }
+        .form-field .input[readonly] { background:var(--muted); color:var(--muted-foreground); cursor:default; }
+        .md-err { display:none; background:var(--rose-50); border:1px solid var(--rose-200);
+                  color:var(--rose-700); border-radius:var(--radius); padding:.5rem .8rem; font-size:.82rem; }
+        .md-err.show { display:block; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+        .toast {
+            position:fixed; bottom:1.5rem; right:1.5rem;
+            background:var(--foreground); color:var(--background);
+            padding:.65rem 1.1rem; border-radius:var(--radius);
+            font-size:.88rem; font-weight:500;
+            box-shadow:var(--shadow-lg); z-index:600;
+            display:none; animation:mdIn .15s ease;
+        }
+        .toast.show { display:block; }
+        .toast.ok  { background:oklch(0.508 0.118 165.6); color:#fff; }
+        .toast.err { background:oklch(0.55 0.2 20); color:#fff; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'system-config' %}
+    {% include 'module/common_navbar.html' %}
+
+    <main class="app-main">
+        <section class="section">
+            <div class="section-header" style="margin-bottom:.75rem;">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-gear" style="margin-right:8px;color:var(--primary);"></i>System Config
+                    </h1>
+                    <p class="section-subtitle">LIW System Environment Settings</p>
+                </div>
+            </div>
+
+            <div class="master-tabs">
+                <button class="master-tab active" data-tab="menu" onclick="switchTab('menu',this)">
+                    <i class="fas fa-sitemap"></i> Menu
+                    <span id="menuCount" class="pill pill-slate" style="margin-left:.3rem;">-</span>
+                </button>
+                <button class="master-tab" data-tab="usertype" onclick="switchTab('usertype',this)">
+                    <i class="fas fa-id-badge"></i> User Type
+                    <span id="usertypeCount" class="pill pill-slate" style="margin-left:.3rem;">-</span>
+                </button>
+                <button class="master-tab" data-tab="subsdr" onclick="switchTab('subsdr',this)">
+                    <i class="fas fa-building-flag"></i> Subsidiary
+                    <span id="subsdrCount" class="pill pill-slate" style="margin-left:.3rem;">-</span>
+                </button>
+            </div>
+
+            <!-- Menu tab -->
+            <div id="panelMenu" class="master-panel active">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search..."
+                               oninput="menuGridApi && menuGridApi.setGridOption('quickFilterText',this.value)">
+                    </div>
+                    <button id="saveBtn_menu" class="btn btn-primary btn-sm" onclick="scSave('menu')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);border:1px solid var(--border);" onclick="openAdd('menu')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadMenu()">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_menu" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_menu"></span></div>
+                <div id="menuGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+
+            <!-- User Type tab -->
+            <div id="panelUsertype" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search..."
+                               oninput="usertypeGridApi && usertypeGridApi.setGridOption('quickFilterText',this.value)">
+                    </div>
+                    <button id="saveBtn_usertype" class="btn btn-primary btn-sm" onclick="scSave('usertype')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);border:1px solid var(--border);" onclick="openAdd('usertype')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadUsertype()">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_usertype" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_usertype"></span></div>
+                <div id="usertypeGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+
+            <!-- Subsidiary tab -->
+            <div id="panelSubsdr" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search..."
+                               oninput="subsdrGridApi && subsdrGridApi.setGridOption('quickFilterText',this.value)">
+                    </div>
+                    <button id="saveBtn_subsdr" class="btn btn-primary btn-sm" onclick="scSave('subsdr')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);border:1px solid var(--border);" onclick="openAdd('subsdr')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadSubsdr()">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_subsdr" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_subsdr"></span></div>
+                <div id="subsdrGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Edit modal -->
+    <div id="scModalBackdrop" class="md-backdrop">
+        <div class="md-card" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span id="scModalTitle"></span>
+                <button class="md-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" id="scModalBody"></div>
+            <div class="md-footer">
+                <button class="btn btn-sm" onclick="closeModal()" style="background:var(--muted);color:var(--foreground);">Cancel</button>
+                <button class="btn btn-primary btn-sm" id="scModalSaveBtn" onclick="saveModal()">
+                    <i class="fas fa-floppy-disk"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete confirm modal -->
+    <div id="scDelBackdrop" class="md-backdrop">
+        <div class="md-card" style="max-width:380px;" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span><i class="fas fa-triangle-exclamation" style="color:oklch(0.55 0.2 20);margin-right:.4rem;"></i>Delete Confirm</span>
+                <button class="md-close" onclick="closeDelModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" id="scDelMsg" style="gap:0;font-size:.9rem;"></div>
+            <div class="md-footer">
+                <button class="btn btn-sm" onclick="closeDelModal()" style="background:var(--muted);color:var(--foreground);">Cancel</button>
+                <button class="btn btn-sm" id="scDelConfirmBtn" style="background:oklch(0.55 0.2 20);color:#fff;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON editor modal -->
+    <div id="jsonEditorBackdrop" class="md-backdrop" style="z-index:510;" onclick="closeJsonEditor()">
+        <div class="md-card" style="max-width:700px;" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span id="jsonEditorTitle"></span>
+                <button class="md-close" onclick="closeJsonEditor()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" style="padding:.75rem;gap:.5rem;">
+                <textarea id="jsonEditorArea"
+                    style="width:100%;min-height:340px;font-family:monospace;font-size:.85rem;
+                           background:var(--background);color:var(--foreground);
+                           border:1px solid var(--border);border-radius:.375rem;
+                           padding:.6rem;resize:vertical;outline:none;tab-size:2;"
+                    spellcheck="false"></textarea>
+                <div id="jsonEditorErr" style="color:oklch(0.55 0.2 20);font-size:.8rem;display:none;"></div>
+            </div>
+            <div class="md-footer">
+                <button class="btn btn-sm" onclick="formatJsonEditor()" style="background:var(--muted);color:var(--foreground);margin-right:auto;">
+                    <i class="fas fa-indent"></i> Format
+                </button>
+                <button class="btn btn-sm" onclick="closeJsonEditor()" style="background:var(--muted);color:var(--foreground);">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="applyJsonEditor()">
+                    <i class="fas fa-check"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="scToast"></div>
+
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    // ── JSON Editor ────────────────────────────────────────────
+    let _jsonEditorCtx = null;
+
+    function openJsonEditor(node, field, api, title) {
+        _jsonEditorCtx = { node, field, api };
+        const raw = node.data[field];
+        let formatted = '';
+        try { formatted = (raw != null && raw !== '') ? JSON.stringify(JSON.parse(raw), null, 2) : ''; }
+        catch { formatted = raw || ''; }
+        document.getElementById('jsonEditorTitle').textContent = title;
+        document.getElementById('jsonEditorArea').value = formatted;
+        const errEl = document.getElementById('jsonEditorErr');
+        errEl.style.display = 'none'; errEl.textContent = '';
+        document.getElementById('jsonEditorBackdrop').classList.add('open');
+        setTimeout(() => document.getElementById('jsonEditorArea').focus(), 80);
+    }
+
+    function closeJsonEditor() {
+        document.getElementById('jsonEditorBackdrop').classList.remove('open');
+        _jsonEditorCtx = null;
+    }
+
+    function formatJsonEditor() {
+        const area = document.getElementById('jsonEditorArea');
+        const errEl = document.getElementById('jsonEditorErr');
+        const raw = area.value.trim();
+        if (!raw) return;
+        try {
+            area.value = JSON.stringify(JSON.parse(raw), null, 2);
+            errEl.style.display = 'none';
+        } catch(e) {
+            errEl.textContent = 'Invalid JSON: ' + e.message;
+            errEl.style.display = 'block';
+        }
+    }
+
+    function applyJsonEditor() {
+        const raw = document.getElementById('jsonEditorArea').value.trim();
+        const errEl = document.getElementById('jsonEditorErr');
+        if (raw) {
+            try { JSON.parse(raw); }
+            catch(e) {
+                errEl.textContent = 'Invalid JSON: ' + e.message;
+                errEl.style.display = 'block';
+                return;
+            }
+        }
+        const { node, field, api } = _jsonEditorCtx;
+        node.setDataValue(field, raw || null);
+        closeJsonEditor();
+    }
+    // ────────────────────────────────────────────────────────────
+
+    // Tab switching
+    const _loaded = new Set();
+    function switchTab(tab, btn) {
+        document.querySelectorAll('.master-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.master-panel').forEach(p => p.classList.remove('active'));
+        (btn || document.querySelector(`.master-tab[data-tab="${tab}"]`)).classList.add('active');
+        const panelId = 'panel' + tab.charAt(0).toUpperCase() + tab.slice(1);
+        document.getElementById(panelId).classList.add('active');
+        history.replaceState(null, '', '#' + tab);
+        if (!_loaded.has(tab)) {
+            _loaded.add(tab);
+            if (tab === 'menu'     && !menuGridApi)     agGrid.createGrid(document.getElementById('menuGrid'),     menuGridOptions);
+            if (tab === 'usertype' && !usertypeGridApi) agGrid.createGrid(document.getElementById('usertypeGrid'), usertypeGridOptions);
+            if (tab === 'subsdr'   && !subsdrGridApi)   agGrid.createGrid(document.getElementById('subsdrGrid'),   subsdrGridOptions);
+            if (tab === 'menu')     loadMenu();
+            if (tab === 'usertype') loadUsertype();
+            if (tab === 'subsdr')   loadSubsdr();
+        }
+    }
+
+    // Toast
+    let _toastTimer;
+    function showToast(msg, type = 'ok') {
+        const el = document.getElementById('scToast');
+        el.textContent = (type === 'ok' ? '\u2705 ' : '\u274c ') + msg;
+        el.className = `toast show ${type}`;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // XLS inline editing infrastructure
+    const _SC_EDIT_COLS = {
+        menu:     ['menu_id','page_id','sort_order','use_yn','menu_name','page_name','menu_url','icon_class','delete_flag','menu_desc'],
+        usertype: ['subsdr_name','user_type','type_name','delete_flag','allowed_menus','child_user_types'],
+        subsdr:   ['subsdr_name','region_name','display_name','timezone','sort_order','nerp_yn','virtual_yn','use_yn','open_yn','currency_list','child_subsdr_list','config_info'],
+    };
+    const _SC_PK_FIELDS = {
+        menu:     ['menu_id', 'page_id'],
+        usertype: ['subsdr_name', 'user_type'],
+        subsdr:   ['subsdr_name'],
+    };
+
+    function _scMakeEmpty(tab) {
+        const row = { _status:'', _orig:false };
+        (_SC_EDIT_COLS[tab] || []).forEach(f => { row[f] = null; });
+        return row;
+    }
+    function _scIsEmpty(data) {
+        if (!data) return true;
+        if (data._status) return false;
+        return Object.entries(data).filter(([k]) => !k.startsWith('_')).every(([, v]) => v == null || v === '');
+    }
+    function _scGetApi(tab) {
+        if (tab === 'menu')     return menuGridApi;
+        if (tab === 'usertype') return usertypeGridApi;
+        if (tab === 'subsdr')   return subsdrGridApi;
+        return null;
+    }
+    function _scEnsureTrailing(api, tab, min = 5) {
+        const all = []; api.forEachNode(n => all.push(n.data));
+        let t = 0;
+        for (let i = all.length - 1; i >= 0; i--) { if (_scIsEmpty(all[i])) t++; else break; }
+        if (t < min) api.applyTransaction({ add: Array.from({ length: min - t }, () => _scMakeEmpty(tab)) });
+    }
+
+    const _scChangedCells = { menu: new Set(), usertype: new Set(), subsdr: new Set() };
+
+    function _scCellChanged(params, tab) {
+        const { data, colDef, node, api } = params;
+        if (!colDef.field || colDef.field.startsWith('_')) return;
+        const pks = _SC_PK_FIELDS[tab] || [];
+        if (data._orig && pks.includes(colDef.field)) {
+            node.setDataValue(colDef.field, params.oldValue);
+            return;
+        }
+        if (data._orig) {
+            _scChangedCells[tab].add(`${node.id}__${colDef.field}`);
+            api.refreshCells({ rowNodes: [node], columns: [colDef.field], force: true });
+            if (data._status !== 'MOD') {
+                data._status = 'MOD';
+                api.refreshCells({ rowNodes: [node], columns: ['_status'], force: true });
+            }
+        } else {
+            if (pks.some(pk => data[pk]) && !data._status) {
+                data._status = 'NEW';
+                api.refreshCells({ rowNodes: [node], columns: ['_status'], force: true });
+            }
+        }
+        _scEnsureTrailing(api, tab);
+        _scMarkDirty(tab, api);
+    }
+
+    function _scPasteProcess(params, tab, api) {
+        let data = params.data || [];
+        while (data.length && data[data.length - 1].every(c => c === '' || c == null)) data = data.slice(0, -1);
+        if (!data.length) return data;
+        const fc = api.getFocusedCell();
+        if (!fc) return data;
+        const needed = fc.rowIndex + data.length + 5;
+        const have   = api.getDisplayedRowCount();
+        if (needed > have) api.applyTransaction({ add: Array.from({ length: needed - have }, () => _scMakeEmpty(tab)) });
+        return data;
+    }
+
+    function _scPasteEnd(tab, api) {
+        const pks = _SC_PK_FIELDS[tab] || [];
+        const toRefresh = [];
+        api.forEachNode(node => {
+            const d = node.data;
+            if (d._orig || d._status) return;
+            if (pks.some(pk => d[pk])) { d._status = 'NEW'; toRefresh.push(node); }
+        });
+        if (toRefresh.length) api.refreshCells({ rowNodes: toRefresh, columns: ['_status'], force: true });
+        _scEnsureTrailing(api, tab);
+        _scMarkDirty(tab, api);
+    }
+
+    function _scMarkDirty(tab, api) {
+        const btn = document.getElementById('saveBtn_' + tab);
+        if (!btn) return;
+        let dirty = false;
+        api.forEachNode(n => { if (n.data._status === 'NEW' || n.data._status === 'MOD') dirty = true; });
+        btn.classList.toggle('btn-save-dirty', dirty);
+    }
+
+    const _scRowNumCol = {
+        headerName: '#', width: 48, minWidth: 48, maxWidth: 48, pinned: 'left',
+        editable: false, sortable: false, filter: false, suppressMovable: true, resizable: false,
+        valueGetter: p => {
+            if (!p.node) return '';
+            const d = p.node.data;
+            if (!d || _scIsEmpty(d)) return '';
+            return p.node.rowIndex + 1;
+        },
+        cellStyle: { textAlign:'right', color:'#9e9e9e', fontSize:'0.72rem',
+                     paddingRight:'6px', paddingLeft:'2px', userSelect:'none',
+                     background:'#f5f5f5', borderRight:'1px solid #d0d7de' },
+    };
+    const _scStatusCol = {
+        headerName: '', field: '_status', width: 48, minWidth: 48, maxWidth: 48, pinned: 'left',
+        editable: false, sortable: false, filter: false, suppressMovable: true, resizable: false,
+        cellStyle: p => {
+            if (p.value === 'NEW') return { textAlign:'center', color:'#1565C0', fontWeight:700, fontSize:'0.7rem', background:'#E3F2FD', padding:'0' };
+            if (p.value === 'MOD') return { textAlign:'center', color:'#BF360C', fontWeight:700, fontSize:'0.7rem', background:'#FBE9E7', padding:'0' };
+            return { padding: '0' };
+        },
+        cellRenderer: p => p.value || '',
+    };
+    const _scDefaultColDef = {
+        resizable: true, sortable: true, filter: true,
+        wrapHeaderText: true, autoHeaderHeight: true, headerClass: 'ag-header-center',
+        menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        cellClassRules: {
+            'cell-readonly': p => {
+                const f = p.colDef.field;
+                if (!f || f.startsWith('_')) return false;
+                if (!p.node || _scIsEmpty(p.node.data)) return false;
+                const editable = p.colDef.editable;
+                if (typeof editable === 'function') return !editable(p);
+                return editable === false;
+            },
+            // cell-mod 은 탭별 Set 참조가 필요하므로 _scGridOptions 내부에서 주입
+        },
+        suppressKeyboardEvent: params => {
+            if (params.event.ctrlKey && params.event.key === 'Enter') {
+                if (params.editing) setTimeout(() => params.api.stopEditing(false), 0);
+                return true;
+            }
+            return false;
+        },
+    };
+
+    function _scGridOptions(tab, getApi) {
+        return {
+            defaultColDef: {
+                ..._scDefaultColDef,
+                cellClassRules: {
+                    ..._scDefaultColDef.cellClassRules,
+                    // cell-mod: 탭별 변경 Set 을 클로저로 참조
+                    'cell-mod': p => {
+                        if (!p.node || !p.colDef.field || p.colDef.field.startsWith('_')) return false;
+                        if (!p.node.data?._orig) return false;
+                        return _scChangedCells[tab].has(`${p.node.id}__${p.colDef.field}`);
+                    },
+                },
+            },
+            tooltipShowDelay: 300,
+            rowData: [],
+            rowHeight: 40, headerHeight: 36,
+            singleClickEdit: false,
+            stopEditingWhenCellsLoseFocus: true,
+            rowSelection: 'multiple',
+            suppressRowClickSelection: true,
+            enableRangeSelection: true,
+            enterNavigatesVertically: true,
+            enterNavigatesVerticallyAfterEdit: true,
+            processDataFromClipboard: params => _scPasteProcess(params, tab, getApi()),
+            onCellValueChanged:        params => _scCellChanged(params, tab),
+            onPasteEnd:                ()     => _scPasteEnd(tab, getApi()),
+            postSortRows: params => {
+                const rowNodes = params.nodes;
+            if (!rowNodes) return;
+                const emptyRows = [];
+                const filledRows = [];
+                for (const node of rowNodes) {
+                    if (_scIsEmpty(node.data)) emptyRows.push(node);
+                    else filledRows.push(node);
+                }
+                let idx = 0;
+                for (const node of filledRows) { rowNodes[idx++] = node; }
+                for (const node of emptyRows) { rowNodes[idx++] = node; }
+            },
+            onCellKeyDown: params => {
+                const e = params.event;
+                if (!e.ctrlKey || e.key !== 'Enter') return;
+                e.preventDefault();
+                const api = getApi(); if (!api) return;
+                const ranges = api.getCellRanges(); if (!ranges?.length) return;
+                for (const range of ranges) {
+                    const r0 = Math.min(range.startRow.rowIndex, range.endRow.rowIndex);
+                    const r1 = Math.max(range.startRow.rowIndex, range.endRow.rowIndex);
+                    if (r0 === r1) continue;
+                    for (const col of range.columns) {
+                        if (!col.getColDef().editable) continue;
+                        const colId = col.getColId();
+                        const src   = api.getDisplayedRowAtIndex(r0); if (!src) continue;
+                        const val   = src.data[colId];
+                        for (let r = r0 + 1; r <= r1; r++) {
+                            const nd = api.getDisplayedRowAtIndex(r);
+                            if (nd) nd.setDataValue(colId, val);
+                        }
+                    }
+                }
+            },
+            onFilterChanged: () => {
+                const api = getApi(); if (!api) return;
+                const el = document.getElementById(tab + 'Count'); if (!el) return;
+                let n = 0; api.forEachNodeAfterFilter(nd => { if (!_scIsEmpty(nd.data)) n++; });
+                el.textContent = n;
+            },
+            postSortRows: params => {
+                // 빈 행을 정렬에서 제외하고 맨 아래로 이동
+                const nodes = params.nodes;
+                const emptyNodes = [];
+                const dataNodes = [];
+                
+                for (const node of nodes) {
+                    if (_scIsEmpty(node.data)) {
+                        emptyNodes.push(node);
+                    } else {
+                        dataNodes.push(node);
+                    }
+                }
+                
+                // 데이터 행을 먼저 배치하고 빈 행을 아래에 배치
+                params.nodes.length = 0;
+                params.nodes.push(...dataNodes, ...emptyNodes);
+            },
+            statusBar: { statusPanels: [
+                { statusPanel: 'agSelectedRowCountComponent', align: 'left' },
+                { statusPanel: 'agAggregationComponent',      align: 'right' },
+            ]},
+            sideBar: { toolPanels: ['filters', 'columns'], defaultToolPanel: 'filters' },
+        };
+    }
+
+    // Batch save
+    async function scSave(tab) {
+        const api = _scGetApi(tab);
+        if (!api) return;
+        const toSave = [];
+        api.forEachNode(n => { if (n.data._status === 'NEW' || n.data._status === 'MOD') toSave.push(n.data); });
+        if (!toSave.length) { showToast('No changes.'); return; }
+        if (!await confirm(`Save ${toSave.length} row(s)?`)) return;
+
+        const btn = document.getElementById('saveBtn_' + tab);
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+
+        let ok = 0; const failMsgs = [];
+        for (const row of toSave) {
+            const isNew   = row._status === 'NEW';
+            const payload = Object.fromEntries(Object.entries(row).filter(([k]) => !k.startsWith('_')));
+            try {
+                const url = isNew
+                    ? `/api/sysconfig/${tab}`
+                    : tab === 'menu'
+                    ? `/api/sysconfig/menu/${encodeURIComponent(row.menu_id)}/${encodeURIComponent(row.page_id)}`
+                    : tab === 'usertype'
+                    ? `/api/sysconfig/usertype/${encodeURIComponent(row.subsdr_name || '[ALL]')}/${encodeURIComponent(row.user_type)}`
+                    : `/api/sysconfig/subsdr/${encodeURIComponent(row.subsdr_name)}`;
+                const res  = await fetch(url, { method: isNew ? 'POST' : 'PUT',
+                    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const json = await res.json();
+                if (json.success) { row._status = '__ok__'; row._orig = true; ok++; }
+                else failMsgs.push(json.message || 'Error');
+            } catch(e) { failMsgs.push(String(e)); }
+        }
+
+        api.forEachNode(n => { if (n.data._status === '__ok__') n.data._status = ''; });
+        api.refreshCells({ columns: ['_status'], force: true });
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save'; btn.classList.remove('btn-save-dirty'); }
+        document.getElementById('valBanner_' + tab)?.classList.remove('show');
+
+        showToast(ok
+            ? `Saved ${ok} row(s)` + (failMsgs.length ? `, ${failMsgs.length} failed` : '')
+            : failMsgs[0] || 'Failed', ok ? 'ok' : 'err');
+
+        if (ok) {
+            if (tab === 'menu')          loadMenu();
+            else if (tab === 'usertype') loadUsertype();
+            else if (tab === 'subsdr')   loadSubsdr();
+        }
+    }
+
+    // d_menu_mst
+    let menuGridApi = null;
+    const menuColDefs = [
+        _scRowNumCol, _scStatusCol,
+        { headerName: '', width: 52, minWidth: 52, maxWidth: 52, pinned: 'left',
+          cellStyle: { padding: '2px 3px' }, sortable: false, filter: false,
+          suppressMovable: true, resizable: false, editable: false,
+          cellRenderer: p => {
+            if (!p.data || _scIsEmpty(p.data)) return '';
+            return `<button class="btn btn-sm" style="padding:.2rem .5rem;background:oklch(0.55 0.2 20);color:#fff;"
+                onclick="openDel('menu',${JSON.stringify(p.data)})"><i class="fas fa-trash"></i></button>`;
+          }
+        },
+        { field: 'menu_id',    headerName: 'Menu ID',    width: 160, pinned: 'left', filter: 'agTextColumnFilter', editable: p => !p.data._orig },
+        { field: 'page_id',    headerName: 'Page ID',    width: 120, filter: 'agTextColumnFilter', editable: p => !p.data._orig },
+        { field: 'sort_order', headerName: 'Sort',       width: 70,  type: 'numericColumn', editable: true },
+        { field: 'use_yn',     headerName: 'Use',        width: 70,  editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Y','N'] } },
+        { field: 'menu_name',  headerName: 'Menu Name',  width: 160, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'page_name',  headerName: 'Page Name',  width: 160, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'menu_url',   headerName: 'URL',        width: 200, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'icon_class', headerName: 'Icon Class', width: 150, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'menu_desc',  headerName: 'Description', flex: 1, minWidth: 200, editable: true, filter: 'agTextColumnFilter' },
+    ];
+    const menuGridOptions = { ..._scGridOptions('menu', () => menuGridApi), columnDefs: menuColDefs, onGridReady: p => { menuGridApi = p.api; menuGridApi.setGridOption('sideBar', { toolPanels: ['filters', 'columns'], defaultToolPanel: 'filters' }); } };
+    async function loadMenu() {
+        const res = await fetch('/api/sysconfig/menu').then(r => r.json());
+        if (!res.success) { showToast(res.message || 'Load error', 'err'); return; }
+        if (!menuGridApi) return;
+        _scChangedCells.menu.clear();
+        const rows = res.data.map(r => ({ ...r, _status:'', _orig:true }));
+        rows.push(...Array.from({ length: 20 }, () => _scMakeEmpty('menu')));
+        menuGridApi.setGridOption('rowData', rows);
+        document.getElementById('menuCount').textContent = res.data.length;
+    }
+
+    // d_user_type_mst
+    let usertypeGridApi = null;
+    let _usertypeSubsdrOpts = ['[ALL]'];
+    const usertypeColDefs = [
+        _scRowNumCol, _scStatusCol,
+        { headerName: '', width: 52, minWidth: 52, maxWidth: 52, pinned: 'left',
+          cellStyle: { padding: '2px 3px' }, sortable: false, filter: false,
+          suppressMovable: true, resizable: false, editable: false,
+          cellRenderer: p => {
+            if (!p.data || _scIsEmpty(p.data)) return '';
+            return `<button class="btn btn-sm" style="padding:.2rem .5rem;background:oklch(0.55 0.2 20);color:#fff;"
+                onclick="openDel('usertype',${JSON.stringify(p.data)})"><i class="fas fa-trash"></i></button>`;
+          }
+        },
+        { field: 'subsdr_name', headerName: 'Subsidiary', width: 140, pinned: 'left', filter: 'agTextColumnFilter',
+          editable: p => !p.data._orig,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: () => ({ values: _usertypeSubsdrOpts }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value || '[ALL]') },
+        { field: 'user_type',  headerName: 'User Type', width: 140, pinned: 'left', filter: 'agTextColumnFilter', editable: p => !p.data._orig },
+        { field: 'type_name',  headerName: 'Type Name', width: 160, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'delete_flag',headerName: 'Del',       width: 65,  editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['N','Y'] } },
+        { field: 'allowed_menus',    headerName: 'Allowed Menus (JSON)',    flex: 1, minWidth: 220, editable: false,
+          filter: 'agTextColumnFilter',
+          cellStyle: p => ({ fontFamily:'monospace', fontSize:'.78rem', color:'var(--muted-foreground)', cursor: _scIsEmpty(p.data) ? 'default' : 'pointer' }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value != null && p.value !== '') ? p.value : 'null (All menus)',
+          onCellClicked: p => { if (!_scIsEmpty(p.data)) openJsonEditor(p.node, 'allowed_menus', p.api, 'Allowed Menus (JSON)'); } },
+        { field: 'child_user_types', headerName: 'Child User Types (JSON)', width: 230, editable: false,
+          filter: 'agTextColumnFilter',
+          cellStyle: p => ({ fontFamily:'monospace', fontSize:'.78rem', color:'var(--muted-foreground)', cursor: _scIsEmpty(p.data) ? 'default' : 'pointer' }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value != null && p.value !== '') ? p.value : 'null (All types)',
+          onCellClicked: p => { if (!_scIsEmpty(p.data)) openJsonEditor(p.node, 'child_user_types', p.api, 'Child User Types (JSON)'); } },
+    ];
+    const usertypeGridOptions = { ..._scGridOptions('usertype', () => usertypeGridApi), columnDefs: usertypeColDefs, onGridReady: p => { usertypeGridApi = p.api; usertypeGridApi.setGridOption('sideBar', { toolPanels: ['filters', 'columns'], defaultToolPanel: 'filters' }); } };
+    async function loadUsertype() {
+        // 법인 목록 옵션 로드 ('[ALL]' + 전체 법인)
+        try {
+            const sres = await fetch('/api/sysconfig/subsdr').then(r => r.json());
+            if (sres.success) {
+                _usertypeSubsdrOpts = ['[ALL]', ...sres.data.map(r => r.subsdr_name).filter(Boolean)];
+            }
+        } catch(e) { /* ignore */ }
+        const res = await fetch('/api/sysconfig/usertype').then(r => r.json());
+        if (!res.success) { showToast(res.message || 'Load error', 'err'); return; }
+        if (!usertypeGridApi) return;
+        _scChangedCells.usertype.clear();
+        const rows = res.data.map(r => ({ ...r, _status:'', _orig:true }));
+        rows.push(...Array.from({ length: 20 }, () => _scMakeEmpty('usertype')));
+        usertypeGridApi.setGridOption('rowData', rows);
+        document.getElementById('usertypeCount').textContent = res.data.length;
+    }
+
+    // d_subsdr_mst
+    let subsdrGridApi = null;
+    const subsdrColDefs = [
+        _scRowNumCol, _scStatusCol,
+        { headerName: '', width: 52, minWidth: 52, maxWidth: 52, pinned: 'left',
+          cellStyle: { padding: '2px 3px' }, sortable: false, filter: false,
+          suppressMovable: true, resizable: false, editable: false,
+          cellRenderer: p => {
+            if (!p.data || _scIsEmpty(p.data)) return '';
+            return `<button class="btn btn-sm" style="padding:.2rem .5rem;background:oklch(0.55 0.2 20);color:#fff;"
+                onclick="openDel('subsdr',${JSON.stringify(p.data)})"><i class="fas fa-trash"></i></button>`;
+          }
+        },
+        { field: 'subsdr_name',       headerName: 'Subsidiary',   width: 130, pinned: 'left', filter: 'agTextColumnFilter', editable: p => !p.data._orig },
+        { field: 'region_name',       headerName: 'Region',       width: 100, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'display_name',      headerName: 'Display Name', width: 220, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'timezone',          headerName: 'Timezone',     width: 170, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'sort_order',        headerName: 'Sort',         width: 65,  type: 'numericColumn', editable: true },
+        { field: 'nerp_yn',    headerName: 'NERP',    width: 85, editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Y','N'] } },
+        { field: 'virtual_yn', headerName: 'Virtual', width: 85, editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Y','N'] } },
+        { field: 'use_yn',     headerName: 'Use',     width: 85, editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Y','N'] } },
+        { field: 'open_yn',   headerName: 'Open',    width: 85, editable: true, filter: 'agTextColumnFilter',
+          cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['N','Y'] } },
+        { field: 'nerp_open_ymd', headerName: 'NERP Open Date', width: 135, editable: true, filter: 'agTextColumnFilter' },
+        { field: 'currency_list',     headerName: 'Currencies', width: 130, editable: false,
+          filter: 'agTextColumnFilter',
+          cellStyle: p => ({ fontFamily:'monospace', fontSize:'.8rem', cursor: _scIsEmpty(p.data) ? 'default' : 'pointer' }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value != null && p.value !== '') ? p.value : '',
+          onCellClicked: p => { if (!_scIsEmpty(p.data)) openJsonEditor(p.node, 'currency_list', p.api, 'Currencies (JSON)'); } },
+        { field: 'child_subsdr_list', headerName: 'Child Subsidiaries (JSON)', flex: 1, minWidth: 200, editable: false,
+          filter: 'agTextColumnFilter',
+          cellStyle: p => ({ fontFamily:'monospace', fontSize:'.78rem', color:'var(--muted-foreground)', cursor: _scIsEmpty(p.data) ? 'default' : 'pointer' }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value != null && p.value !== '') ? p.value : '',
+          onCellClicked: p => { if (!_scIsEmpty(p.data)) openJsonEditor(p.node, 'child_subsdr_list', p.api, 'Child Subsidiaries (JSON)'); } },
+        { field: 'config_info', headerName: 'Config Info (JSON)', flex: 1, minWidth: 200, editable: false,
+          filter: 'agTextColumnFilter',
+          cellStyle: p => ({ fontFamily:'monospace', fontSize:'.78rem', color:'var(--muted-foreground)', cursor: _scIsEmpty(p.data) ? 'default' : 'pointer' }),
+          valueFormatter: p => _scIsEmpty(p.data) ? '' : (p.value != null && p.value !== '') ? p.value : '',
+          onCellClicked: p => { if (!_scIsEmpty(p.data)) openJsonEditor(p.node, 'config_info', p.api, 'Config Info (JSON)'); } },
+    ];
+    const subsdrGridOptions = { ..._scGridOptions('subsdr', () => subsdrGridApi), columnDefs: subsdrColDefs, onGridReady: p => { subsdrGridApi = p.api; subsdrGridApi.setGridOption('sideBar', { toolPanels: ['filters', 'columns'], defaultToolPanel: 'filters' }); } };
+    async function loadSubsdr() {
+        const res = await fetch('/api/sysconfig/subsdr').then(r => r.json());
+        if (!res.success) { showToast(res.message || 'Load error', 'err'); return; }
+        if (!subsdrGridApi) return;
+        _scChangedCells.subsdr.clear();
+        const rows = res.data.map(r => ({ ...r, _status:'', _orig:true }));
+        rows.push(...Array.from({ length: 20 }, () => _scMakeEmpty('subsdr')));
+        subsdrGridApi.setGridOption('rowData', rows);
+        document.getElementById('subsdrCount').textContent = res.data.length;
+    }
+
+    // Add modal
+    const SCHEMAS = {
+        menu: [
+            { field:'menu_id',    label:'Menu ID *',   type:'text',   placeholder:'' },
+            { field:'page_id',    label:'Page ID *',   type:'text',   placeholder:'_ (top-level) or tab name' },
+            { field:'menu_name',  label:'Menu Name',   type:'text'    },
+            { field:'page_name',  label:'Page Name',   type:'text'    },
+            { field:'menu_url',   label:'URL',         type:'text',   placeholder:'/my-page' },
+            { field:'icon_class', label:'Icon Class',  type:'text',   placeholder:'fa-circle' },
+            { field:'sort_order', label:'Sort Order',  type:'number', placeholder:'0' },
+            { field:'use_yn',     label:'Use Y/N',     type:'select', options:['Y','N'] },
+            { field:'menu_desc',  label:'Description', type:'text'    },
+        ],
+        usertype: [
+            { field:'subsdr_name',      label:'Subsidiary',              type:'text',    placeholder:'[ALL] = 전체 법인 공통' },
+            { field:'user_type',        label:'User Type *',             type:'text'     },
+            { field:'type_name',        label:'Type Name',               type:'text'     },
+            { field:'allowed_menus',    label:'Allowed Menus (JSON)',    type:'textarea',
+              placeholder:'null = all menus\n[\n  {"id":"active-orders","edit":true}\n]' },
+            { field:'child_user_types', label:'Child User Types (JSON)', type:'textarea',
+              placeholder:'null = all types\n["user"]' },
+        ],
+        subsdr: [
+            { field:'subsdr_name',       label:'Subsidiary Code *',        type:'text'      },
+            { field:'region_name',       label:'Region',                   type:'text'      },
+            { field:'display_name',      label:'Display Name',             type:'text'      },
+            { field:'timezone',          label:'Timezone',                 type:'text',     placeholder:'Asia/Seoul' },
+            { field:'sort_order',        label:'Sort Order',               type:'number',   placeholder:'0' },
+            { field:'nerp_yn',           label:'NERP Y/N',                 type:'select',   options:['N','Y'] },
+            { field:'virtual_yn',        label:'Virtual Y/N',              type:'select',   options:['N','Y'] },
+            { field:'use_yn',            label:'Use Y/N',                  type:'select',   options:['Y','N'] },
+            { field:'open_yn',           label:'Open Y/N',                 type:'select',   options:['N','Y'] },
+            { field:'nerp_open_ymd',     label:'NERP Open Date',           type:'text',     placeholder:'YYYYMMDD' },
+            { field:'currency_list',     label:'Currency List (JSON)',      type:'textarea', placeholder:'["USD","KRW"]' },
+            { field:'child_subsdr_list', label:'Child Subsidiaries (JSON)', type:'textarea', placeholder:'["LGEAP","LGEHK"]' },
+            { field:'config_info',       label:'Config Info (JSON)',        type:'textarea', placeholder:'{"container_yard_wait_days":7, "order_back_hold_days":3}' },
+        ],
+    };
+
+    let _modalCtx = null;
+    function _buildForm(tab) {
+        return SCHEMAS[tab].map(f => {
+            if (f.type === 'textarea') {
+                return `<div class="form-field"><label>${f.label}</label>
+                    <textarea id="sc_${f.field}" class="input" rows="4" placeholder="${f.placeholder||''}"></textarea></div>`;
+            }
+            if (f.type === 'select') {
+                const opts = (f.options||[]).map(o => `<option value="${o}">${o}</option>`).join('');
+                return `<div class="form-field"><label>${f.label}</label>
+                    <select id="sc_${f.field}" class="input">${opts}</select></div>`;
+            }
+            return `<div class="form-field"><label>${f.label}</label>
+                <input id="sc_${f.field}" type="${f.type||'text'}" class="input" placeholder="${f.placeholder||''}"></div>`;
+        }).join('');
+    }
+
+    function openAdd(tab) {
+        _modalCtx = { tab };
+        const labels = { menu:'Menu', usertype:'User Type', subsdr:'Subsidiary' };
+        document.getElementById('scModalTitle').innerHTML =
+            `<i class="fas fa-plus" style="margin-right:6px;color:var(--primary);"></i>Add ${labels[tab]}`;
+        document.getElementById('scModalBody').innerHTML =
+            _buildForm(tab) + '<div id="scModalErr" class="md-err"></div>';
+        document.getElementById('scModalBackdrop').classList.add('open');
+    }
+    function closeModal() {
+        document.getElementById('scModalBackdrop').classList.remove('open');
+        _modalCtx = null;
+    }
+    async function saveModal() {
+        if (!_modalCtx) return;
+        const { tab } = _modalCtx;
+        const payload = {};
+        for (const f of SCHEMAS[tab]) {
+            const el = document.getElementById('sc_' + f.field);
+            if (!el) continue;
+            payload[f.field] = el.value.trim() || null;
+        }
+        const errEl = document.getElementById('scModalErr');
+        const btn   = document.getElementById('scModalSaveBtn');
+        errEl.classList.remove('show'); btn.disabled = true;
+        try {
+            const res  = await fetch(`/api/sysconfig/${tab}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+            if (json.success) {
+                closeModal(); showToast('Added successfully.');
+                if (tab === 'menu') loadMenu();
+                else if (tab === 'usertype') loadUsertype();
+                else loadSubsdr();
+            } else { errEl.textContent = json.message || 'Save failed.'; errEl.classList.add('show'); }
+        } catch(e) { errEl.textContent = 'Server error: ' + e; errEl.classList.add('show'); }
+        finally { btn.disabled = false; }
+    }
+
+    // Delete modal
+    let _delCtx = null;
+    function openDel(tab, data) {
+        _delCtx = { tab, data };
+        const pk = tab === 'menu'     ? `${data.menu_id} / ${data.page_id}`
+                 : tab === 'usertype' ? data.user_type : data.subsdr_name;
+        document.getElementById('scDelMsg').innerHTML =
+            `Delete <strong>${pk}</strong>?<br>
+             <span style="font-size:.82rem;color:var(--muted-foreground);">This action cannot be undone.</span>`;
+        document.getElementById('scDelConfirmBtn').onclick = confirmDel;
+        document.getElementById('scDelBackdrop').classList.add('open');
+    }
+    function closeDelModal() {
+        document.getElementById('scDelBackdrop').classList.remove('open');
+        _delCtx = null;
+    }
+    async function confirmDel() {
+        if (!_delCtx) return;
+        const { tab, data } = _delCtx;
+        const btn = document.getElementById('scDelConfirmBtn');
+        btn.disabled = true;
+        try {
+            const url = tab === 'menu'
+                ? `/api/sysconfig/menu/${encodeURIComponent(data.menu_id)}/${encodeURIComponent(data.page_id)}`
+                : tab === 'usertype'
+                ? `/api/sysconfig/usertype/${encodeURIComponent(data.subsdr_name || '[ALL]')}/${encodeURIComponent(data.user_type)}`
+                : `/api/sysconfig/subsdr/${encodeURIComponent(data.subsdr_name)}`;
+            const res  = await fetch(url, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.success) {
+                closeDelModal(); showToast('Deleted.');
+                if (tab === 'menu') loadMenu();
+                else if (tab === 'usertype') loadUsertype();
+                else loadSubsdr();
+            } else { showToast(json.message || 'Delete failed.', 'err'); }
+        } catch(e) { showToast('Server error: ' + e, 'err'); }
+        finally { btn.disabled = false; }
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        const hash   = (location.hash || '').replace('#', '').toLowerCase();
+        const tabMap = { menu:'menu', usertype:'usertype', subsdr:'subsdr' };
+        switchTab(tabMap[hash] || 'menu');
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

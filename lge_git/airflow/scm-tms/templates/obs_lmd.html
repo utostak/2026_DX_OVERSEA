@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] OBS LMD</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- AG Grid (Raw Data 테이블 — Active Orders/Active PO 화면과 동일 버전/설정) -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+
+    <style>
+        /* ── OBS LMD 지표 카드 (타이틀 + 차트) ── */
+        .obs-metric-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.25rem 1.5rem;
+        }
+        .obs-metric-chart-wrap {
+            flex: 1;
+            min-width: 0;
+        }
+        .obs-metric-chart-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.25rem;
+        }
+        .obs-metric-chart-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--muted-foreground);
+        }
+        .obs-metric-legend-swatch {
+            display: inline-block;
+            width: 14px;
+            height: 3px;
+            border-radius: 1.5px;
+            background: #888;
+            flex-shrink: 0;
+            align-self: center;
+        }
+        .obs-metric-legend-swatch--bar {
+            width: 10px;
+            height: 10px;
+            border-radius: 1px;
+        }
+        .obs-metric-chart-sub {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: oklch(0.55 0.18 150);
+        }
+        .obs-metric-canvas-box {
+            position: relative;
+            height: 190px;
+        }
+        .obs-loading {
+            font-size: 12px;
+            color: var(--muted-foreground);
+            padding: 1rem 0;
+        }
+        /* ── Raw Data 그리드 — Active PO 화면(#poGrid)과 동일 크기/폰트 ──
+           공유 .ag-theme-alpine 규칙이 안 먹는 경우를 대비해 ID 선택자로 확실하게 재지정 */
+        #rawGrid {
+            width: 100%;
+            height: calc(100vh - 260px);
+            min-height: 480px;
+            --ag-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+            --ag-font-size: 12.5px;
+            --ag-grid-size: 4px;
+            --ag-row-height: 34px;
+            --ag-header-height: 36px;
+            --ag-cell-horizontal-padding: 12px;
+        }
+        #rawGrid .ag-header-cell-text {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 11px;
+        }
+        /* 링크 스타일 — Active Orders(#activeGrid .order-no-link)와 동일 */
+        #rawGrid .order-no-link {
+            color: oklch(0.55 0.20 240) !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.15s !important;
+            border-bottom: none !important;
+        }
+        #rawGrid .order-no-link:hover {
+            color: oklch(0.45 0.25 240) !important;
+            text-decoration: underline !important;
+        }
+    </style>
+</head>
+<body>
+    {% set active_page = 'obs_lmd' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+
+        <!-- ── Filter Bar ── -->
+        <div class="section" style="padding:0.6rem 1.25rem; margin-bottom:0; border-bottom:1px solid var(--border);">
+            <div class="filter-inline" style="justify-content:space-between; align-items:center;">
+                <div class="filter-inline" style="gap:0.75rem; flex-wrap:wrap;">
+                    <div class="filter-group">
+                        <label>Division</label>
+                        <select id="globalDivision" class="input" style="width:160px;">
+                            {% for div in divisions_list %}
+                            <option value="{{ div.div_nm }}">{{ div.div_nm }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>3PL</label>
+                        <select id="lmspFilter" class="input" style="width:180px;">
+                            <option value="[ALL]">All 3PL</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Base Month</label>
+                        <select id="baseYmFilter" class="input" style="width:120px;"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="section" style="position:relative;">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Initial Delivery Date Compliance Rate</h1>
+                    <p class="section-subtitle">Last Mile Delivery Tracking · Appointment Compliance</p>
+                </div>
+            </div>
+
+            <!-- Initial Delivery Date Compliance Rate -->
+            <div class="obs-metric-card" style="margin-top:1rem;">
+                <div class="obs-metric-chart-wrap">
+                    <div class="obs-metric-chart-header">
+                        <span class="obs-metric-chart-label"><span class="obs-metric-legend-swatch"></span>IRAD%</span>
+                        <span class="obs-metric-chart-sub">(On-time+Early)</span>
+                    </div>
+                    <div class="obs-metric-canvas-box" id="iradChartBox">
+                        <div id="iradLoadingOverlay" class="loading-overlay" style="display:none;"><div class="spinner"></div></div>
+                        <div id="iradEmptyMsg" class="obs-loading" style="display:none;"></div>
+                        <canvas id="iradChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="section" style="position:relative; margin-top:1.25rem;">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Delivery Lead Time</h1>
+                    <p class="section-subtitle">Pick Release → Actual Arrival · Order → Pick Release</p>
+                </div>
+            </div>
+
+            <!-- 배송 리드타임 -->
+            <div class="obs-metric-card" style="margin-top:1rem;">
+                <div class="obs-metric-chart-wrap">
+                    <div class="obs-metric-chart-header">
+                        <span class="obs-metric-chart-label"><span class="obs-metric-legend-swatch obs-metric-legend-swatch--bar" style="background:#888;"></span>Delivery LT</span>
+                        <span class="obs-metric-chart-label" style="margin-left:0.75rem;"><span class="obs-metric-legend-swatch" style="background:#4c8bf5;"></span>Order transmission LT</span>
+                        <span class="obs-metric-chart-sub" style="color:var(--muted-foreground); font-weight:500;">(Order~Pick Release)</span>
+                        <span class="obs-metric-chart-sub" style="margin-left:0.5rem;">(Day)</span>
+                    </div>
+                    <div id="ltChartBox" style="position:relative;">
+                        <div id="ltLoadingOverlay" class="loading-overlay" style="display:none;"><div class="spinner"></div></div>
+                        <div id="ltEmptyMsg" class="obs-loading" style="display:none;"></div>
+                        <div class="obs-metric-canvas-box" style="height:120px;">
+                            <canvas id="ltLineChart"></canvas>
+                        </div>
+                        <div class="obs-metric-canvas-box" style="height:120px; margin-top:4px;">
+                            <canvas id="ltBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="section section-flush" style="margin-top:1.25rem;">
+            <div class="section-header">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <h2 class="section-title"><i class="fas fa-route" style="margin-right:0.4rem;"></i>OBS LMD</h2>
+                    <span id="rawRowCount" class="pill pill-emerald">— rows</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="search-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="rawGridSearch" class="input input-search" placeholder="Quick filter…">
+                    </div>
+                    <button class="btn btn-accent btn-sm" onclick="exportRawGrid()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+
+            <div style="position:relative;">
+                <div id="rawLoadingOverlay" class="loading-overlay" style="display:none;"><div class="spinner"></div></div>
+                <div class="grid-scroll-wrap">
+                    <div id="rawGrid" class="ag-theme-alpine"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    // ── AG Grid License (다른 화면과 동일 키) ──
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    // ── IRAD% 라인차트 ──────────────────────────────────────────────
+    let _iradChart = null;
+
+    // 점 위에 값 그려주는 커스텀 플러그인 (Chart.js 기본엔 datalabel 없음)
+    // 데이터셋이 여러 개면 위/아래로 겹치지 않게 살짝 엇갈려서 그림
+    function makeValueLabelPlugin(id) {
+        return {
+            id,
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                ctx.save();
+                ctx.font = '600 12px Inter, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                chart.data.datasets.forEach((ds, dsIndex) => {
+                    if (chart.getDatasetMeta(dsIndex).hidden) return;
+                    const meta = chart.getDatasetMeta(dsIndex);
+                    const data = ds.data;
+                    ctx.fillStyle = ds.borderColor || ds.backgroundColor || '#333';
+                    meta.data.forEach((point, i) => {
+                        const v = data[i];
+                        if (v === null || v === undefined) return;
+                        ctx.fillText(`${v}`, point.x, point.y - 8);
+                    });
+                });
+                ctx.restore();
+            }
+        };
+    }
+    const iradValueLabelPlugin = makeValueLabelPlugin('iradValueLabel');
+    const ltValueLabelPlugin = makeValueLabelPlugin('ltValueLabel');
+
+    function getLmspName() {
+        return document.getElementById('lmspFilter').value || '[ALL]';
+    }
+    function getBaseYm() {
+        return document.getElementById('baseYmFilter').value || '';
+    }
+
+    function renderIradChart(rows) {
+        document.getElementById('iradLoadingOverlay').style.display = 'none';
+        const emptyEl = document.getElementById('iradEmptyMsg');
+        if (!rows || rows.length === 0) {
+            if (_iradChart) { _iradChart.destroy(); _iradChart = null; }
+            emptyEl.textContent = 'No OBS data for the selected filters.';
+            emptyEl.style.display = 'block';
+            return;
+        }
+        emptyEl.style.display = 'none';
+
+        const labels = rows.map(r => r.period);
+        const values = rows.map(r => r.irad_pct);
+
+        const ctx = document.getElementById('iradChart');
+        if (_iradChart) { _iradChart.destroy(); }
+        _iradChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    borderColor: '#aaa',
+                    backgroundColor: '#aaa',
+                    pointBackgroundColor: '#888',
+                    pointBorderColor: '#888',
+                    pointRadius: 4,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, left: 4, right: 4 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `IRAD% ${ctx.raw}%`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        offset: true,
+                        grid: { display: false },
+                        ticks: { font: { size: 11 }, color: '#666' }
+                    },
+                    y: {
+                        display: false,
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                    }
+                }
+            },
+            plugins: [iradValueLabelPlugin]
+        });
+    }
+
+    function loadIrad() {
+        document.getElementById('iradLoadingOverlay').style.display = 'flex';
+        document.getElementById('iradEmptyMsg').style.display = 'none';
+        const params = new URLSearchParams({
+            base_ym:      getBaseYm(),
+            legal_entity: getGlobalLegalEntity(),
+            division:     getGlobalDivision(),
+            lmsp_name:    getLmspName(),
+        });
+        fetch('/api/obs/irad?' + params.toString())
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    if (_iradChart) { _iradChart.destroy(); _iradChart = null; }
+                    document.getElementById('iradLoadingOverlay').style.display = 'none';
+                    const emptyEl = document.getElementById('iradEmptyMsg');
+                    emptyEl.textContent = 'Failed to load.';
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                renderIradChart(res.data || []);
+            })
+            .catch(() => {
+                if (_iradChart) { _iradChart.destroy(); _iradChart = null; }
+                document.getElementById('iradLoadingOverlay').style.display = 'none';
+                const emptyEl = document.getElementById('iradEmptyMsg');
+                emptyEl.textContent = 'Failed to load.';
+                emptyEl.style.display = 'block';
+            });
+    }
+
+    // ── 배송 리드타임: 위(꺾은선)/아래(막대) 별도 그리드 2개로 분리 ──────────
+    let _ltLineChart = null;
+    let _ltBarChart = null;
+
+    function renderLtChart(rows) {
+        document.getElementById('ltLoadingOverlay').style.display = 'none';
+        const emptyEl = document.getElementById('ltEmptyMsg');
+        if (!rows || rows.length === 0) {
+            if (_ltLineChart) { _ltLineChart.destroy(); _ltLineChart = null; }
+            if (_ltBarChart)  { _ltBarChart.destroy();  _ltBarChart  = null; }
+            emptyEl.textContent = 'No OBS data for the selected filters.';
+            emptyEl.style.display = 'block';
+            return;
+        }
+        emptyEl.style.display = 'none';
+
+        const labels        = rows.map(r => r.period);
+        const deliveryLt     = rows.map(r => r.delivery_lt_day);
+        const orderPickLt    = rows.map(r => r.order_pickrelease_lt_day);
+
+        // 위: Order transmission LT — 꺾은선, 자체 그리드/축 (x축 라벨 숨김)
+        const lineCtx = document.getElementById('ltLineChart');
+        if (_ltLineChart) { _ltLineChart.destroy(); }
+        _ltLineChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Order transmission LT',
+                    data: orderPickLt,
+                    borderColor: '#4c8bf5',
+                    backgroundColor: '#4c8bf5',
+                    pointBackgroundColor: '#4c8bf5',
+                    pointBorderColor: '#4c8bf5',
+                    pointRadius: 4,
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 38, bottom: 4, left: 4, right: 4 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label} ${ctx.raw}d` } }
+                },
+                scales: {
+                    x: { offset: true, grid: { display: false }, border: { display: false }, ticks: { font: { size: 11 }, color: 'transparent' } },
+                    y: { display: false, suggestedMin: 0, grid: { display: false }, border: { display: false } }
+                }
+            },
+            plugins: [ltValueLabelPlugin]
+        });
+
+        // 아래: Delivery LT — 막대, 자체 그리드/축 (x축 라벨은 여기만 표시)
+        const barCtx = document.getElementById('ltBarChart');
+        if (_ltBarChart) { _ltBarChart.destroy(); }
+        _ltBarChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Delivery LT',
+                    data: deliveryLt,
+                    backgroundColor: '#aaa',
+                    borderRadius: 2,
+                    barPercentage: 0.35,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, bottom: 4, left: 4, right: 4 } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label} ${ctx.raw}d` } }
+                },
+                scales: {
+                    x: {
+                        offset: true, grid: { display: false }, border: { display: true, color: '#ddd' },
+                        ticks: { font: { size: 11 }, color: '#666' }
+                    },
+                    y: { display: false, suggestedMin: 0, grid: { display: false }, border: { display: false } }
+                }
+            },
+            plugins: [ltValueLabelPlugin]
+        });
+
+        // 두 캔버스가 거의 동시에 생성되면서 레이아웃이 완전히 안정되기 전에
+        // 폭을 먼저 재버려 서로 다른 chartArea 폭을 갖는 경우가 있어, 다음 프레임에
+        // 강제로 다시 재게(resize) 해서 좌우 정렬을 보정한다.
+        requestAnimationFrame(() => {
+            if (_ltLineChart) _ltLineChart.resize();
+            if (_ltBarChart)  _ltBarChart.resize();
+        });
+    }
+
+    function loadLt() {
+        document.getElementById('ltLoadingOverlay').style.display = 'flex';
+        document.getElementById('ltEmptyMsg').style.display = 'none';
+        const params = new URLSearchParams({
+            base_ym:      getBaseYm(),
+            legal_entity: getGlobalLegalEntity(),
+            division:     getGlobalDivision(),
+            lmsp_name:    getLmspName(),
+        });
+        fetch('/api/obs/lt?' + params.toString())
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    if (_ltLineChart) { _ltLineChart.destroy(); _ltLineChart = null; }
+                    if (_ltBarChart)  { _ltBarChart.destroy();  _ltBarChart  = null; }
+                    document.getElementById('ltLoadingOverlay').style.display = 'none';
+                    const emptyEl = document.getElementById('ltEmptyMsg');
+                    emptyEl.textContent = 'Failed to load.';
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+                renderLtChart(res.data || []);
+            })
+            .catch(() => {
+                if (_ltLineChart) { _ltLineChart.destroy(); _ltLineChart = null; }
+                if (_ltBarChart)  { _ltBarChart.destroy();  _ltBarChart  = null; }
+                document.getElementById('ltLoadingOverlay').style.display = 'none';
+                const emptyEl = document.getElementById('ltEmptyMsg');
+                emptyEl.textContent = 'Failed to load.';
+                emptyEl.style.display = 'block';
+            });
+    }
+
+    // ── Raw Data 그리드 (Active Orders/Active PO 화면과 동일한 AG Grid 설정) ──
+    function formatDt(v) {
+        if (!v || v.length < 12) return v || '';
+        return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)} ${v.slice(8,10)}:${v.slice(10,12)}`;
+    }
+
+    /** YYYYMMDDHHMM 문자열 날짜 컬럼 (Active Orders와 동일하게 고정폭 숫자 폰트 적용) */
+    function dtCol(field, headerName, opts = {}) {
+        return txtCol(field, headerName, {
+            width: 155,
+            cellClass: 'num',
+            valueFormatter: p => formatDt(p.value),
+            ...opts,
+        });
+    }
+
+    /** 소수 1자리 리드타임(일) 컬럼 */
+    function ltDayCol(field, headerName, opts = {}) {
+        return c(field, headerName, {
+            type: 'numericColumn',
+            width: 110,
+            cellClass: 'num',
+            valueFormatter: p => (p.value != null && isFinite(p.value)) ? p.value.toFixed(1) + 'd' : '-',
+            ...opts,
+        });
+    }
+
+    const rawColDefs = [
+        // ── 좌측 고정(pinned) — 법인명은 이미 필터로 걸려있어서 제외 ──
+        txtCol('OBS_ORDER_NO',      'OBS Order No', {
+            width: 170, pinned: 'left',
+            cellRenderer: params => params.value ? `<span class="order-no-link">${params.value}</span>` : '',
+        }),
+        txtCol('OBS_ORDER_LINE_NO', 'OBS Line No',  { width: 150, pinned: 'left' }),
+        setCol('ORDER_TYPE',        'Order Type',   { width: 100, pinned: 'left' }),
+        setCol('LMSP_NAME',         '3PL',          { width: 120, pinned: 'left' }),
+        // ── 식별자/분류 ──
+        txtCol('GERP_ORDER_NO', 'GERP Order No', { width: 150 }),
+        txtCol('SHIPMENT_ID',   'Shipment ID',   { width: 170 }),
+        setCol('DIVISION',      'Division',      { width: 100 }),
+        setCol('SUB_DIVISION',  'Sub Division',  { width: 110 }),
+        txtCol('MODEL_SUFFIX',  'Model Suffix',  { width: 140 }),
+        setCol('SERVICE_TYPE',             'Service Type',        { width: 100 }),
+        txtCol('SERVICE_TYPE_DESCRIPTION', 'Service Type Desc.',  { width: 160 }),
+        // ── 날짜: 업무 흐름 순서대로 (주문 → 요구일 → 피킹 → IOD → 실도착) ──
+        dtCol('ORDER_TXN_DATE', 'Order Date'),
+        dtCol('OBS_ORDER_DATE', 'Order Date (OBS raw)', { hide: true }),
+        dtCol('ORDER_DATE',     'Order Date (raw)',     { hide: true }),
+        dtCol('ORIGINAL_DELIVERY_APPT_DATE_TIME', 'Original Req. Date'),
+        dtCol('UPDATED_DELIVERY_APPT_DATE_TIME',  'Updated Req. Date'),
+        dtCol('PICK_RELEASED_DATE_TIME',          'Pick Release'),
+        dtCol('PICK_COMPLETE_DATE',               'Pick Complete'),
+        dtCol('IOD_INPUT_DATE',                   'IOD Input'),
+        dtCol('IOD_CONFIRM_DATE',                 'IOD Confirm'),
+        dtCol('ACTUAL_ARRIAVL_DATE',              'Actual Arrival'),
+        // ── 수량/규격 ──
+        qtyCol('ORDER_QTY',    'Order Qty',    { width: 80 }),
+        numCol('ORDER_VOLUME', 'Volume',       { width: 90 }),
+        setCol('VOLUME_UNIT',  'Volume Unit',  { width: 85 }),
+        numCol('ORDER_WEIGHT', 'Weight',       { width: 90 }),
+        setCol('WEIGHT_UNIT',  'Weight Unit',  { width: 85 }),
+        // ── 계산값 ──
+        ltDayCol('DELIVERY_LT_DAY',          'Delivery LT'),
+        ltDayCol('ORDER_PICKRELEASE_LT_DAY', 'Order transmission LT', { width: 140 }),
+        setCol('IRAD_RESULT', 'IRAD Result', {
+            width: 130,
+            cellStyle: p => p.value === 'Late' ? { color: '#d9534f', fontWeight: 'bold' }
+                          : p.value === 'On-time/Early' ? { color: '#5cb85c', fontWeight: 'bold' } : null,
+        }),
+    ];
+
+    let rawGridApi = null;
+    const rawGridOptions = {
+        columnDefs: rawColDefs,
+        defaultColDef: {
+            resizable: true, sortable: true, filter: true, wrapHeaderText: true, autoHeaderHeight: true,
+            headerClass: 'ag-header-center',
+            menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        },
+        rowData: [],
+        pagination: true,
+        paginationPageSize: 500,
+        paginationPageSizeSelector: [100, 500, 1000, 2000, 5000],
+        sideBar: { toolPanels: ['filters', 'columns'] },
+        onGridReady: (params) => { rawGridApi = params.api; },
+    };
+
+    function exportRawGrid() {
+        if (rawGridApi) rawGridApi.exportDataAsExcel({ fileName: 'obs_lmd_raw.xlsx' });
+    }
+
+    function loadRaw() {
+        document.getElementById('rawLoadingOverlay').style.display = 'flex';
+        const params = new URLSearchParams({
+            base_ym:      getBaseYm(),
+            legal_entity: getGlobalLegalEntity(),
+            division:     getGlobalDivision(),
+            lmsp_name:    getLmspName(),
+        });
+        fetch('/api/obs/raw?' + params.toString())
+            .then(r => r.json())
+            .then(res => {
+                if (res.success && rawGridApi) {
+                    const rows = res.data || [];
+                    rawGridApi.setGridOption('rowData', rows);
+                    document.getElementById('rawRowCount').textContent = rows.length.toLocaleString() + ' rows';
+                }
+            })
+            .catch(err => console.error('obs raw load error', err))
+            .finally(() => { document.getElementById('rawLoadingOverlay').style.display = 'none'; });
+    }
+
+    function loadLmspList() {
+        const params = new URLSearchParams({ legal_entity: getGlobalLegalEntity() });
+        fetch('/api/obs/lmsp-list?' + params.toString())
+            .then(r => r.json())
+            .then(res => {
+                const sel = document.getElementById('lmspFilter');
+                const prev = sel.value || '[ALL]';
+                sel.innerHTML = '<option value="[ALL]">All 3PL</option>';
+                if (res.success) {
+                    (res.data || []).forEach(name => {
+                        const opt = new Option(name, name);
+                        sel.appendChild(opt);
+                    });
+                }
+                sel.value = Array.from(sel.options).some(o => o.value === prev) ? prev : '[ALL]';
+            });
+    }
+
+    function loadAll() {
+        loadLmspList();
+        loadIrad();
+        loadLt();
+        loadRaw();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        agGrid.createGrid(document.getElementById('rawGrid'), rawGridOptions);
+        document.getElementById('rawGridSearch').addEventListener('input', e => {
+            if (rawGridApi) rawGridApi.setGridOption('quickFilterText', e.target.value);
+        });
+
+        // 기준년월 셀렉터 초기화 (최근 12개월, 기본=전날 기준 월, 최신 → 오래된 순)
+        (function initBaseYm() {
+            const sel = document.getElementById('baseYmFilter');
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const defaultYm = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}`;
+            const today = new Date();
+            for (let i = 0; i <= 11; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const opt = new Option(ym, ym);
+                if (ym === defaultYm) opt.selected = true;
+                sel.appendChild(opt);
+            }
+        })();
+
+        initGlobalDivision();
+        initGlobalLegalEntity(loadAll);
+
+        // globalDivision 변경은 common_global_legal_entity.html 의 initGlobalDivision() 이
+        // 자체적으로 location.reload() 를 수행하므로 별도 리스너 불필요.
+        document.getElementById('lmspFilter').addEventListener('change', () => { loadIrad(); loadLt(); loadRaw(); });
+        document.getElementById('baseYmFilter').addEventListener('change', () => { loadIrad(); loadLt(); loadRaw(); });
+    });
+    </script>
+</body>
+</html>

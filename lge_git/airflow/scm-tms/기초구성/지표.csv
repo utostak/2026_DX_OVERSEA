@@ -1,0 +1,73 @@
+SCM 실행 단계,,,,,,,관리 지표,,,,,
+실행 단계 LV 1,실행 단계 LV 2,관리 필요 항목,주기,관리주체,실행주체,KPI,현행 관리지표,우선 관리 필요 과정 지표,설명,필요 데이터,예상 컬럼,지원 시스템
+인바운드 관리,창고 입고 계획,컨테이너 POD ETA 현황,수시,물류,판토스 / 3PL,ETA 적확도,-,-,(POD ETA 적확도) 3일전 POD ETA와 POD ATA가 동일한 CNTR 수량 ,기존 유지,,FTV
+인바운드 관리,창고 입고 계획,통관요청 / 완료 현황,수시,물류,판토스 / 3PL,-,-,"OTEP
+(On-Time ETW Plan) ",(정시 ETW 수립율) ETW 수립 기준일자 이전 계획 수립된 CNTR 수량,ETW 수립 Due Date / 수립 일자,,GERP
+인바운드 관리,창고 입고 계획,컨테이너 우선순위 관리 현황,수시,DP,판토스 / 3PL,-,-,-,-,-,,Off-line
+인바운드 관리,창고 입고 계획,정시 컨테이너 입고계획 수립율,수시,물류,판토스 / 3PL,-,-,"OTCC
+(On-Time Customs clearance) ",(정시 통관 처리율) 통관 처리 기준일자 이전 통관 처리된 CNTR 수량,통관 Due Date / 완료 일자,,Off-line
+인바운드 관리,창고 입고 계획,CY 반출차량 요청 / 확정 현황,수시,물류,판토스 / 3PL,-,-,-,-,-,,Off-line
+인바운드 관리,창고 입고 계획,창고 Slot 요청 / 확정 현황,수시,물류,판토스 / 3PL,-,-,-,-,-,,Off-line
+인바운드 관리,창고 입고 처리,정시 창고 입고율,수시,물류,판토스 / 3PL,-,OTR,-,(정시 창고 입고율) WH에 도착한 트럭 총 CBM 중 당일에 하역된 총 CBM,기존 유지,,WMS
+인바운드 관리,창고 입고 처리,창고 입고 계획 대비 입고율 ,수시,물류,판토스 / 3PL,-,-,"OTRE
+(On-Time Receiving, ETW) ",(ETW 기준 창고 입고율) ETW 기준일자에 창고에 입고 처리된 CNTR 수량,ETW Target 일자 / 입고 일자,,Off-line
+인바운드 관리,창고 입고 처리,정시 컨테이너 반납 처리율,수시,물류,판토스 / 3PL,-,-,"OTCR
+(On-Time CNTR Return) ",(정시 컨테이너 반납율) Free Time 이전에 반납된 CNTR 수량,Free Time / CNTR 반납 일자,,Off-line
+인바운드 관리,사전 Risk 관리,예상 체화료 산출,수시,물류,판토스 / 3PL,-,-,-,-,-,,Off-line
+인바운드 관리,사전 Risk 관리,컨테이너 Aging 현황,수시,물류,판토스 / 3PL,-,-,-,-,-,,Off-line
+주문관리,주문 관리 일반,주문 에러 / 조치 현황,수시,오더,영업 / AR / 오더,-,-,-,-,-,,RPA / 엑셀
+주문관리,주문 관리 일반,정시 Hold Release 처리율,수시,오더,AR / 오더,-,-,"OTHR
+(On-Time Hold Release) ",(정시 Hold Release 처리율) Hold Release 예정일자 이전 Hold 해제된 오더 건수,Hold Release 예상일자 / 해제 일자,,GERP
+주문관리,주문 관리 일반,주문 변경 / 취소 현황,수시,오더,오더,-,-,-,-,-,,GERP
+주문관리,주문 관리 일반,정시 거래선 Slot 처리율,수시,오더,오더,-,-,"OTSC
+(On-Time Slot Confirm) ",(정시 거래선 Slot 확정율) Slot 요청 이후 D+0 내 Slot 확정된 오더 건수 ,Slot 요청 일자 / Slot 확정 일자,,Off-line
+주문관리,물류 실행 연계,주문-재고 연계 현황,수시,오더,오더,-,-,-,-,-,,GERP
+주문관리,물류 실행 연계,Pick Release 처리 적확도,수시,오더,오더,-,-,"PRA
+(Pick Release Accuracy)",(Pick Release 처리 적확도) 거래선 Slot 확정 후 D+0 내 Pick Release된 오더 건수,Slot 확정 일자 / Pick Release 일자,,GERP
+출하/배송 관리,운송/배차계획,정시 운송계획 처리율,-,물류,판토스 / 3PL,-,-,"OTSP
+(On-Time Suggested Plan) ",(정시 운송계획처리율) 운송계획 기준일자에 운송계획 된 Shipment 건수 ,운송계획 Due Date / 운송계획 일자,"Order Date, Req. Arrival Date (RAD_DTTM)",TMS
+출하/배송 관리,운송/배차계획,정시 운송사 Tender 응답율,-,물류,판토스 / 3PL,-,-,"OTTR
+(On-Time Tender Response)",(정시 운송사 응답율) 운송사 응답 납기 기준일자에 Response된 Load 건수,운송사 응답 Due Date / 응답 일자,"Tender Request Date, Tender Response Date",TMS
+출하/배송 관리,운송/배차계획,정시 배차계획 확정 처리율,-,물류,판토스 / 3PL,-,-,"OTCA
+(On-Time Carrier Allocation Confirm)",(정시 배차계획율) 배차계획확정 기준일자에 운송사 확정이 완료된 Load 건수,배차계획 Due Date / 배차계획확정 일자,"Load Creation Date, Tender Accept Date",TMS
+출하/배송 관리,운송/배차계획,정시 창고 작업 지시율,-,물류,판토스 / 3PL,-,-,"OTRW
+(On-Time Release To WMS)",(정시 창고 작업지시율) 작업지시 목표일자(RSD)에 작업지시 된 오더 건수,창고 작업 지시 Target 일자 / 지시 일자,"Pick Request Date, Pick Confirm Date",TMS
+출하/배송 관리,창고 출하처리,작업계획 할당 현황,-,물류,판토스 / 3PL,-,-,-,-,-,,WMS
+출하/배송 관리,창고 출하처리,정시 재고피킹 처리율,수시,물류,판토스 / 3PL,-,OTP,-,(정시 창고 피킹 처리율) 창고에 도착한 트럭 총 CBM 중 당일에 하역된 CBM,기존 유지,,WMS
+출하/배송 관리,창고 출하처리,정시 운송사 입차율,일1회,물류,판토스 / 3PL,-,OTTA,"OTS
+(On-Time Ship Confirm) ","OTTA : (정시 차량 입차율) 입차 예정일 전에 트럭이 창고 도착한 CBM 
+OTS : (정시 창고 출하확정 처리율) 출하확정 목표일자에 출하 확정된 오더 건수","OTTA : 기존 유지
+OTS : 출하 확정 Target 일자 / 출하 확정 일자",,WMS
+출하/배송 관리,창고 출하처리,정시 창고 출하확정 처리율,수시,물류,판토스 / 3PL,-,-,-,-,-,,WMS
+출하/배송 관리,도착/완료처리,정시 고객 최종 도착율,수시,물류,판토스 / 3PL,OTA,-,-,(정시 배송율) 고객과 약속된 도착 목표일자(RAD)에 도착한 오더 건수,배송 도착 Target 일자 / 도착 일자,,Off-line
+출하/배송 관리,도착/완료처리,정시 IOD 입수율,수시,물류,판토스 / 3PL,-,OTIC,-,(정시 IOD 입수율) D+0 내 IOD 시스템 입력된 매출액,기존 유지,,TMS / GERP
+출하/배송 관리,도착/완료처리,POD 입수 현황,수시,물류,판토스 / 3PL,-,-,-,-,-,,TMS / GERP
+반품관리,주문/회수처리,반품 주문 현황,수시,물류,판토스 / 3PL,-,-,"OTTB
+(On-Time Take Back) ",(정시 반품 제품 수거율) 제품 수거 목표일자에 회수 처리된 반품 오더 건수,반품 제품 회수 Target 일자 / 회수 일자,,GERP
+반품관리,주문/회수처리,정시 반품 주문 수거율,수시,물류,판토스 / 3PL,-,-,"OTBR
+(On-Time Take Back Receiving)",(정시 반품 제품 자창 입고율) 입고 기준일자에 창고에 입고된 반품 오더 건수,반품 입고 예상일자 / 입고 일자,,Off-line
+반품관리,주문/회수처리,정시 반품 제품 창고 입고율,일 1회,물류,판토스 / 3PL,-,-,-,-,-,,Off-line
+,,,,,,,,,,,,
+,,Update date (KST),,,Tender Reqeust Date,,,,,,,
+,,Req. Arrival Date,,,Tender Accept Date,,,,,,,
+,,Order Date,,,,,,,,,,
+,,Pick Request Date,,,Ship Confirm Month,,,,,,,
+,,Load Creation Date,,,Ship Confirm Date,,,,,,,
+,,Pick Confirm Date,,,Ship Confirm Week,,,,,,,
+,,,,,,,,,,,,
+,,Latest Appt. Date,,,,,,,,,,
+,,Initial Appt. Week,,,Pick Released Date,,,,,,,
+,,Initial Appt. Month,,,Release to WH Date,,,,,,,
+,,Initial Appt. Log Date,,,,,,,,,,
+,,Initial Appt. Date,,,,,,,,,,
+,,Latest Appt. Log Date,,,,,,,,,,
+,,Latest Appt. Month,,,,,,,,,,
+,,Latest Appt. Week,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,
+,,Actual Arrival Month,,,,,,,,,,
+,,Actual Arrival Date (Close Date),,,,,,,,,,
+,,IOD Input Date,,,,,,,,,,
+,,Actual Arrival Week,,,,,,,,,,
+,,TMS interface Date,,,,,,,,,,

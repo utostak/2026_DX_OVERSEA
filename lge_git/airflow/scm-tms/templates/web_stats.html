@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Usage Stats</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <link href="{{ url_for('static', filename='css/ag-xls-grid.css') }}" rel="stylesheet">
+    <style>
+        .master-grid  { width:100%; height:calc(100vh - 310px); min-height:380px; }
+        .detail-grid  { width:100%; height:300px; }
+        .master-toolbar {
+            display:flex; align-items:center; gap:.5rem;
+            padding:.6rem 0; flex-wrap:wrap;
+        }
+        .master-toolbar .search-wrap { position:relative; }
+        .master-toolbar .search-wrap i {
+            position:absolute; left:.6rem; top:50%; transform:translateY(-50%);
+            color:var(--muted-foreground); font-size:.8rem; pointer-events:none;
+        }
+        .master-toolbar .input-search { padding-left:1.9rem; }
+        /* ── 요약 카드 ── */
+        .summary-cards {
+            display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:.75rem;
+        }
+        .s-card {
+            flex:1; min-width:140px; max-width:200px;
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius-xl); padding:.75rem 1rem;
+            display:flex; flex-direction:column; gap:.2rem;
+        }
+        .s-card .s-label { font-size:.75rem; color:var(--muted-foreground); font-weight:500; }
+        .s-card .s-value { font-size:1.45rem; font-weight:700; color:var(--foreground); font-family:"JetBrains Mono",monospace; }
+        /* ── 상세 패널 ── */
+        .detail-panel {
+            margin-top:.75rem; display:none;
+            border:1px solid var(--border); border-radius:var(--radius-xl); overflow:hidden;
+        }
+        .detail-panel.open { display:block; }
+        .detail-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:.6rem 1rem; background:var(--surface-muted);
+            border-bottom:1px solid var(--border);
+            font-size:.85rem; font-weight:600;
+        }
+        /* ── 토스트 ── */
+        .toast {
+            position:fixed; bottom:1.5rem; right:1.5rem;
+            background:var(--foreground); color:var(--background);
+            padding:.65rem 1.1rem; border-radius:var(--radius);
+            font-size:.88rem; font-weight:500;
+            box-shadow:var(--shadow-lg); z-index:600;
+            display:none;
+        }
+        .toast.show { display:block; }
+        .toast.ok  { background:oklch(0.508 0.118 165.6); color:#fff; }
+        .toast.err { background:oklch(0.55 0.2 20); color:#fff; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'web-stats' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+        <section class="section">
+            <div class="section-header" style="margin-bottom:.75rem;">
+                <div>
+                    <h1 class="section-title">
+                        <i class="fas fa-chart-bar" style="margin-right:8px;color:var(--primary);"></i>Usage Statistics
+                    </h1>
+                    <p class="section-subtitle">Monthly page access log by user &amp; menu</p>
+                </div>
+            </div>
+
+            <!-- ── 요약 카드 ── -->
+            <div class="summary-cards">
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-calendar-day" style="margin-right:4px;"></i>Month</div>
+                    <div class="s-value" id="cMonth">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-users" style="margin-right:4px;"></i>Unique Users</div>
+                    <div class="s-value" id="cUsers">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-eye" style="margin-right:4px;"></i>Total Visits</div>
+                    <div class="s-value" id="cVisits">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-triangle-exclamation" style="margin-right:4px;"></i>Issues Created</div>
+                    <div class="s-value" id="cIssues">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-file-excel" style="margin-right:4px;"></i>Downloads</div>
+                    <div class="s-value" id="cDownloads">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-file-arrow-down" style="margin-right:4px;"></i>Mail Download</div>
+                    <div class="s-value" id="cMailDownloads">—</div>
+                </div>
+                <div class="s-card">
+                    <div class="s-label"><i class="fas fa-sitemap" style="margin-right:4px;"></i>Pages Accessed</div>
+                    <div class="s-value" id="cPages">—</div>
+                </div>
+            </div>
+
+            <!-- ── 툴바 ── -->
+            <div class="master-toolbar">
+                <label style="font-size:.85rem;font-weight:600;">Month</label>
+                <select id="monthSelect" class="input" style="width:130px;" onchange="loadStats()"></select>
+                <div class="search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                           oninput="statsGridApi && statsGridApi.setGridOption('quickFilterText', this.value)">
+                </div>
+                <span id="rowCount" class="pill pill-slate">—</span>
+                <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);" onclick="loadStats()">
+                    <i class="fas fa-rotate-right"></i> Refresh
+                </button>
+                <button id="pivotBtn" class="btn btn-sm" style="background:var(--primary);color:#fff;"
+                        onclick="togglePivotMode()" title="Toggle Pivot / Table mode">
+                    <i class="fas fa-table-columns"></i> Pivot
+                </button>
+                <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                        onclick="resetLayout()" title="Reset to default layout">
+                    <i class="fas fa-arrow-rotate-left"></i> Reset Layout
+                </button>
+                <button class="btn btn-sm" style="background:#1d6f42;color:#fff;"
+                        onclick="exportExcel()" title="Export to Excel">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+            </div>
+
+            <!-- ── 집계 그리드 ── -->
+            <div id="statsGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+
+            <!-- ── 상세 로그 패널 (행 클릭 시 표시) ── -->
+            <div class="detail-panel" id="detailPanel">
+                <div class="detail-header">
+                    <span id="detailTitle"><i class="fas fa-list" style="margin-right:6px;"></i>Access Detail</span>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);padding:.2rem .6rem;"
+                            onclick="closeDetail()"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div id="detailGrid" class="ag-theme-alpine detail-grid xls-grid"></div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    const LAYOUT_KEY  = 'liw_web_stats_layout_v7';
+    let statsGridApi  = null;
+    let detailGridApi = null;
+    let _saveTimer    = null;
+
+    // ── 레이아웃 저장 (디바운스 500ms) ──────────────────────────────────
+    function saveLayout() {
+        if (!statsGridApi) return;
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(() => {
+            try {
+                const layout = {
+                    columnState:      statsGridApi.getColumnState(),
+                    columnGroupState: statsGridApi.getColumnGroupState(),
+                    filterModel:      statsGridApi.getFilterModel(),
+                    pivotMode:        statsGridApi.getGridOption('pivotMode') || false,
+                };
+                localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+            } catch(e) { /* silent */ }
+        }, 500);
+    }
+
+    // ── 레이아웃 복원 ────────────────────────────────────────────────────
+    function restoreLayout() {
+        try {
+            const saved = localStorage.getItem(LAYOUT_KEY);
+            if (!saved) { updatePivotBtn(true); return false; }
+            const layout = JSON.parse(saved);
+            if (typeof layout.pivotMode === 'boolean') {
+                statsGridApi.setGridOption('pivotMode', layout.pivotMode);
+                updatePivotBtn(layout.pivotMode);
+            } else {
+                updatePivotBtn(true);
+            }
+            if (layout.columnState) {
+                statsGridApi.applyColumnState({ state: layout.columnState, applyOrder: true });
+            }
+            if (layout.columnGroupState) {
+                statsGridApi.applyColumnGroupState(layout.columnGroupState);
+            }
+            if (layout.filterModel) {
+                statsGridApi.setFilterModel(layout.filterModel);
+            }
+            return true;
+        } catch(e) { updatePivotBtn(true); return false; }
+    }
+
+    // ── Excel Export ─────────────────────────────────────────────────────
+    function exportExcel() {
+        if (!statsGridApi) return;
+        const ym = document.getElementById('monthSelect').value || 'all';
+        statsGridApi.exportDataAsExcel({
+            fileName: `web_usage_${ym}.xlsx`,
+            sheetName: 'Usage Stats',
+            author: 'LIW',
+        });
+    }
+
+    // ── 레이아웃 초기화 ──────────────────────────────────────────────────
+    function resetLayout() {
+        if (!statsGridApi) return;
+        localStorage.removeItem(LAYOUT_KEY);
+        statsGridApi.resetColumnState();
+        statsGridApi.setFilterModel(null);
+        statsGridApi.setGridOption('pivotMode', true);
+        updatePivotBtn(true);
+        showToast('Layout has been reset to default.', 'ok');
+    }
+
+    // ── autoGroupColumn 헤더명 동적 갱신 ────────────────────────────────
+    function updateAutoGroupHeader() {
+        if (!statsGridApi) return;
+        const rowGroupCols = statsGridApi.getRowGroupColumns();
+        const label = rowGroupCols.length
+            ? rowGroupCols.map(c => c.getColDef().headerName || c.getColId()).join(' / ')
+            : 'Group';
+        statsGridApi.setGridOption('autoGroupColumnDef', {
+            headerName: label,
+            minWidth: 220,
+            pinned: 'left',
+            cellRendererParams: { suppressCount: false },
+        });
+    }
+
+    // ── 피벗 모드 토글 ──────────────────────────────────────────────────
+    function togglePivotMode() {
+        if (!statsGridApi) return;
+        const next = !statsGridApi.getGridOption('pivotMode');
+        statsGridApi.setGridOption('pivotMode', next);
+        updatePivotBtn(next);
+        saveLayout();
+    }
+
+    function updatePivotBtn(isPivot) {
+        const btn = document.getElementById('pivotBtn');
+        if (!btn) return;
+        btn.style.background = isPivot ? 'var(--primary)' : 'var(--muted)';
+        btn.style.color      = isPivot ? '#fff'           : 'var(--foreground)';
+    }
+
+    // ── 집계 그리드 컬럼 정의 ────────────────────────────────────────────
+    // 기본: 플랫 테이블 (pivotMode: false)
+    // Pivot 버튼 → pivotMode ON 후 사이드바에서 Row/Pivot/Value 배치 가능
+    const _aggMax = p => { const v = p.values.filter(x => x != null && x !== ''); return v.length ? v.reduce((a,b) => a>b?a:b) : null; };
+    const _aggMin = p => { const v = p.values.filter(x => x != null && x !== ''); return v.length ? v.reduce((a,b) => a<b?a:b) : null; };
+    const _aggUserList = p => {
+        const ids = new Set();
+        p.values.forEach(v => { if (v) String(v).split(', ').forEach(u => ids.add(u.trim())); });
+        return [...ids].sort().join(', ') || null;
+    };
+    const _aggUserCount = p => {
+        const ids = new Set();
+        p.values.forEach(v => { if (v) String(v).split(', ').forEach(u => ids.add(u.trim())); });
+        return ids.size || null;
+    };
+
+    const statsColDefs = [
+        // ── Row Group: Entity → Menu ────────────────────────────────
+        { field: 'subsdr_name',    headerName: 'Entity',      width: 120,
+          enableRowGroup: true, rowGroup: true, hide: true },
+        { field: 'menu_id',        headerName: 'Menu',        width: 160,
+          enableRowGroup: true, rowGroup: true, hide: true },
+        // ── 사이드바에서 추가 가능한 차원 (기본 비활성) ─────────────
+        { field: 'user_id',        headerName: 'User ID',     width: 150,
+          enableRowGroup: true, enablePivot: true, hide: true,
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.82rem' } },
+        { field: 'user_name',      headerName: 'Name',        width: 150,
+          enableRowGroup: true, hide: true },
+        { field: 'menu_name',      headerName: 'Page',        width: 200,
+          enableRowGroup: true, enablePivot: true, hide: true },
+        { field: 'page_id',        headerName: 'Page ID',     width: 120,
+          enablePivot: true, hide: true },
+        // ── Values ─────────────────────────────────────────────────
+        { field: 'visit_count',    headerName: 'Visits',      width: 100,
+          enableValue: true, aggFunc: 'sum',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontWeight: '600', textAlign: 'right' } },
+        { field: 'issue_count',    headerName: 'Issues',      width: 100,
+          enableValue: true, aggFunc: 'sum',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontWeight: '600', textAlign: 'right', color: 'oklch(0.55 0.2 20)' } },
+        { field: 'download_count', headerName: 'Downloads',   width: 110,
+          enableValue: true, aggFunc: 'sum',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontWeight: '600', textAlign: 'right', color: 'oklch(0.508 0.118 165.6)' } },
+        { field: 'mail_download_count', headerName: 'Mail Download', width: 130,
+          enableValue: true, aggFunc: 'sum',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontWeight: '600', textAlign: 'right', color: 'oklch(0.55 0.15 260)' } },
+        { field: 'first_visit_dt', headerName: 'First Visit', width: 165,
+          enableValue: true, aggFunc: 'minStr',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.8rem' } },
+        { field: 'last_visit_dt',  headerName: 'Last Visit',  width: 165,
+          enableValue: true, aggFunc: 'maxStr',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.8rem' } },
+        { field: 'user_id', headerName: 'Active Users', width: 120, colId: 'user_count_val',
+          enableValue: true, aggFunc: 'userCount',
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontWeight: '600', textAlign: 'right' } },
+        { field: 'user_id', headerName: 'User List', width: 300, colId: 'user_list_val',
+          enableValue: true, aggFunc: 'userList',
+          tooltipValueGetter: p => p.value || '' },
+    ];
+
+    // ── 집계 그리드 초기화 ────────────────────────────────────────────────
+    agGrid.createGrid(document.getElementById('statsGrid'), {
+        columnDefs: statsColDefs,
+        rowData: [],
+        defaultColDef: {
+            resizable: true, sortable: true, filter: true,
+            enableRowGroup: true, enablePivot: true, enableValue: true,
+            menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        },
+        defaultColGroupDef: { opened: true },   // 피벗 컬럼 그룹 기본 펼침
+        pivotMode: true,                        // 기본: 피벗 모드
+        groupDefaultExpanded: -1,               // 행 그룹 전체 펼침 (-1 = 모든 레벨)
+        rowHeight: 38,
+        headerHeight: 36,
+        groupHeaderHeight: 36,
+        enableRangeSelection: true,
+        animateRows: true,
+        grandTotalRow: 'bottom',
+        suppressAggFuncInHeader: true,
+        aggFuncs: {
+            'maxStr':    _aggMax,
+            'minStr':    _aggMin,
+            'userList':  _aggUserList,
+            'userCount': _aggUserCount,
+        },
+        autoGroupColumnDef: {
+            headerName: 'Entity / User',
+            minWidth: 220,
+            pinned: 'left',
+            cellRendererParams: { suppressCount: false },
+        },
+        sideBar: {
+            toolPanels: [
+                'filters', 'columns'
+            ],
+            defaultToolPanel: 'filters',
+        },
+        onGridReady: p => {
+            statsGridApi = p.api;
+            const restored = restoreLayout();
+            if (!restored) updatePivotBtn(true);  // 저장 레이아웃 없으면 기본 pivot 모드
+            updateAutoGroupHeader();
+        },
+        onFirstDataRendered: () => {
+            // 데이터가 처음 렌더링된 후 모든 pivot 컬럼 그룹 강제 펼침
+            statsGridApi?.getAllDisplayedColumnGroups?.()?.forEach(g => {
+                try { statsGridApi.setColumnGroupOpened(g.groupId, true); } catch(e) {}
+            });
+        },
+        onRowClicked: p => {
+            if (!p.node || p.node.footer) return;
+            if (p.data) {
+                // 리프 행: 행 데이터의 모든 필드를 필터로 사용
+                openDetail(p.data);
+            } else {
+                // 그룹 행: 노드 계층을 순회해서 그룹 dimension 값 수집
+                openDetailByGroupNode(p.node);
+            }
+        },
+        onColumnRowGroupChanged: e => { updateAutoGroupHeader(); saveLayout(); },
+        onColumnPivotChanged:    saveLayout,
+        onColumnValueChanged:    saveLayout,
+        onColumnVisible:         saveLayout,
+        onColumnResized:         saveLayout,
+        onColumnMoved:           saveLayout,
+        onColumnPinned:          saveLayout,
+        onSortChanged:           saveLayout,
+        onFilterChanged:         saveLayout,
+        onColumnGroupOpened:     saveLayout,
+    });
+
+    // ── 상세 그리드 컬럼 ────────────────────────────────────────────────
+    const detailColDefs = [
+        { field: 'log_dt',       headerName: 'Date/Time',    width: 170,
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.8rem' } },
+        { field: 'log_type',     headerName: 'Type',         width: 130,
+          cellStyle: p => {
+              const c = { PAGEVIEW: 'var(--muted-foreground)',
+                          ISSUE_CREATE: 'oklch(0.55 0.2 20)',
+                          EXCEL_DOWNLOAD: 'oklch(0.508 0.118 165.6)',
+                          EMAIL_SEND: 'oklch(0.55 0.15 260)',
+                          MAIL_DOWNLOAD: 'oklch(0.55 0.15 260)' }[p.value] || 'var(--foreground)';
+              return { fontFamily: '"JetBrains Mono",monospace', fontSize: '.78rem', fontWeight: '600', color: c };
+          } },
+        { field: 'user_id',      headerName: 'User ID',      width: 130,
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.82rem' } },
+        { field: 'user_name',    headerName: 'Name',         width: 130 },
+        { field: 'subsdr_name',  headerName: 'Entity',       width: 110 },
+        { field: 'menu_name',    headerName: 'Menu',         width: 160 },
+        { field: 'request_path', headerName: 'Path',         flex: 1, minWidth: 140,
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.8rem' } },
+        { field: 'ip_address',   headerName: 'IP',           width: 130,
+          cellStyle: { fontFamily: '"JetBrains Mono",monospace', fontSize: '.8rem' } },
+    ];
+
+    agGrid.createGrid(document.getElementById('detailGrid'), {
+        columnDefs: detailColDefs,
+        rowData: [],
+        defaultColDef: { resizable: true, sortable: true, filter: true, menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'] },
+        rowHeight: 36,
+        headerHeight: 34,
+        animateRows: true,
+        onGridReady: p => { detailGridApi = p.api; },
+    });
+
+    // ── 년월 목록 로드 ──────────────────────────────────────────────────
+    async function loadMonths() {
+        const now   = new Date();
+        const curYm = now.getFullYear() * 100 + (now.getMonth() + 1);  // 당월 YYYYMM
+
+        // 작년 1월 ~ 당월까지 목록 생성 (내림차순)
+        const months = [];
+        const startYm = (now.getFullYear() - 1) * 100 + 1;             // 작년 01월
+        for (let ym = curYm; ym >= startYm; ) {
+            months.push(String(ym));
+            // 이전 월로 이동
+            let y = Math.floor(ym / 100);
+            let m = ym % 100 - 1;
+            if (m === 0) { y--; m = 12; }
+            ym = y * 100 + m;
+        }
+
+        const sel = document.getElementById('monthSelect');
+        sel.innerHTML = months.map(ym =>
+            `<option value="${ym}">${ym.slice(0,4)}-${ym.slice(4)}</option>`
+        ).join('');
+        // 기본값: 당월
+        sel.value = String(curYm);
+    }
+
+    // ── 집계 데이터 로드 ────────────────────────────────────────────────
+    async function loadStats() {
+        const ym = document.getElementById('monthSelect').value;
+        if (!ym) return;
+        if (statsGridApi) statsGridApi.showLoadingOverlay();
+        closeDetail();
+        try {
+            const res  = await fetch('/api/web-log/stats?log_ym=' + ym);
+            const data = await res.json();
+            if (!data.success) { showToast(data.message || 'Load failed', 'err'); return; }
+            const rows = data.data || [];
+            statsGridApi.setGridOption('rowData', rows);
+
+            // 요약 카드
+            const month       = ym.slice(0,4) + '-' + ym.slice(4);
+            const userSet     = [...new Set(rows.map(r => r.user_id))].sort();
+            const uniqueUsers = userSet.length;
+            const totalVisits = rows.reduce((s, r) => s + (r.visit_count || 0), 0);
+            const totalIssues = rows.reduce((s, r) => s + (r.issue_count || 0), 0);
+            const totalDownloads = rows.reduce((s, r) => s + (r.download_count || 0), 0);
+            const totalMailDownloads = rows.reduce((s, r) => s + (r.mail_download_count || 0), 0);
+            const uniqueMenus = new Set(rows.map(r => r.menu_id)).size;
+            document.getElementById('cMonth').textContent   = month;
+            document.getElementById('cUsers').textContent   = uniqueUsers;
+            document.getElementById('cVisits').textContent  = totalVisits.toLocaleString();
+            document.getElementById('cIssues').textContent  = totalIssues.toLocaleString();
+            document.getElementById('cDownloads').textContent = totalDownloads.toLocaleString();
+            document.getElementById('cMailDownloads').textContent = totalMailDownloads.toLocaleString();
+            document.getElementById('cPages').textContent   = uniqueMenus;
+            document.getElementById('rowCount').textContent = `${rows.length} row(s)`;
+        } catch (e) {
+            showToast('Failed to load stats.', 'err');
+        } finally {
+            statsGridApi?.hideOverlay();
+        }
+    }
+
+    // ── 상세 로그 공통 fetch ─────────────────────────────────────────────
+    async function _fetchDetail(params, label) {
+        document.getElementById('detailTitle').innerHTML =
+            `<i class="fas fa-list" style="margin-right:6px;"></i>${label}`;
+        document.getElementById('detailPanel').classList.add('open');
+        if (detailGridApi) detailGridApi.showLoadingOverlay();
+        try {
+            const res  = await fetch('/api/web-log/detail?' + new URLSearchParams(params));
+            const data = await res.json();
+            if (data.success) {
+                detailGridApi.setGridOption('rowData', data.data || []);
+            } else {
+                showToast(data.message || 'Detail load failed', 'err');
+            }
+        } catch (e) {
+            showToast('Failed to load detail.', 'err');
+        }
+    }
+
+    // 일반(테이블) 모드: row 클릭 — 행 데이터의 필드를 기준으로 필터
+    function openDetail(rowData) {
+        const ym = document.getElementById('monthSelect').value;
+        const params = { log_ym: ym };
+        if (rowData.subsdr_name) params.subsdr_name = rowData.subsdr_name;
+        if (rowData.user_id)     params.user_id     = rowData.user_id;
+        if (rowData.menu_id)     params.menu_id     = rowData.menu_id;
+        const label = [rowData.subsdr_name, rowData.user_id, rowData.menu_name]
+            .filter(Boolean).join(' · ');
+        _fetchDetail(params, label + ' — Detail');
+    }
+
+    // 피벗/그룹 모드: group 행 클릭 — 노드 계층에서 그룹 dimension 값을 수집
+    function openDetailByGroupNode(node) {
+        const ym = document.getElementById('monthSelect').value;
+        const params = { log_ym: ym };
+        const labelParts = [];
+
+        // 현재 노드부터 루트까지 순회하며 rowGroupColumn → key 수집
+        let cur = node;
+        while (cur && cur.rowGroupColumn) {
+            const field = cur.rowGroupColumn.getColDef().field;
+            const key   = cur.key;
+            if (field && key) {
+                params[field] = key;
+                labelParts.unshift(key);
+            }
+            cur = cur.parent;
+        }
+
+        const label = labelParts.join(' · ') || 'Group';
+        _fetchDetail(params, label + ' — Detail');
+    }
+
+    function closeDetail() {
+        document.getElementById('detailPanel').classList.remove('open');
+        detailGridApi?.setGridOption('rowData', []);
+    }
+
+    // ── 토스트 ────────────────────────────────────────────────────────────
+    let _toastTimer;
+    function showToast(msg, type = 'ok') {
+        const el = document.getElementById('toast');
+        el.textContent = (type === 'ok' ? '✅ ' : '❌ ') + msg;
+        el.className = `toast show ${type}`;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // ── 초기 로드 ─────────────────────────────────────────────────────────
+    initGlobalLegalEntity(async () => {
+        await loadMonths();
+        await loadStats();
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

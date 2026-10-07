@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Master Data</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <link href="{{ url_for('static', filename='css/ag-xls-grid.css') }}" rel="stylesheet">
+    <style>
+        /* -- 탭 -- */
+        .master-tabs { display:flex; gap:.25rem; border-bottom:2px solid var(--border); margin-bottom:0; }
+        .master-tab {
+            padding:.55rem 1.1rem; background:none; border:none; cursor:pointer;
+            font-size:.92rem; font-weight:600; color:var(--muted-foreground);
+            border-bottom:2px solid transparent; margin-bottom:-2px;
+            transition:color .12s, border-color .12s;
+        }
+        .master-tab:hover { color:var(--foreground); }
+        .master-tab.active { color:var(--foreground); border-bottom-color:var(--primary); }
+        .master-tab i { margin-right:.4rem; font-size:.85em; }
+        /* -- 패널 표시 -- */
+        .master-panel { display:none; }
+        .master-panel.active { display:block; }
+        .master-grid { width:100%; height:calc(100vh - 280px); min-height:400px; }
+        /* -- 툴바 -- */
+        .master-toolbar {
+            display:flex; align-items:center; gap:.5rem;
+            padding:.6rem 0; flex-wrap:wrap;
+        }
+        .master-toolbar .search-wrap { position:relative; }
+        .master-toolbar .search-wrap i {
+            position:absolute; left:.6rem; top:50%; transform:translateY(-50%);
+            color:var(--muted-foreground); font-size:.8rem; pointer-events:none;
+        }
+        .master-toolbar .input-search { padding-left:1.9rem; }
+        /* -- 툴바 -- */
+        .md-backdrop {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.35); z-index:500;
+            align-items:center; justify-content:center;
+        }
+        .md-backdrop.open { display:flex; }
+        .md-card {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius-xl); box-shadow:var(--shadow-lg);
+            width:100%; max-width:480px; margin:1rem; overflow:hidden;
+            animation:mdIn .15s ease;
+        }
+        @keyframes mdIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+        .md-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1rem 1.25rem; border-bottom:1px solid var(--border);
+            font-size:.95rem; font-weight:600; color:var(--foreground);
+        }
+        .md-close { background:none;border:none;cursor:pointer;color:var(--muted-foreground);font-size:1rem; }
+        .md-close:hover { color:var(--foreground); }
+        .md-body { padding:1.25rem; display:grid; gap:.75rem; }
+        .md-footer { display:flex; justify-content:flex-end; gap:.5rem; padding:.85rem 1.25rem; border-top:1px solid var(--border); }
+        /* 폼 필드 */
+        .form-field label { display:block; font-size:.8rem; font-weight:500; color:var(--muted-foreground); margin-bottom:.3rem; }
+        .form-field .input { width:100%; box-sizing:border-box; }
+        .form-field .input[readonly] { background:var(--muted); color:var(--muted-foreground); cursor:default; }
+        /* 에러 메시지 */
+        .md-err { display:none; background:var(--rose-50); border:1px solid var(--rose-200);
+                  color:var(--rose-700); border-radius:var(--radius); padding:.5rem .8rem;
+                  font-size:.82rem; }   
+        .md-err.show { display:block; }
+    </style>
+</head>
+<body>
+    {% set active_page = 'master-data' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+    <main class="app-main">
+        <section class="section">
+            <div class="section-header" style="margin-bottom:.75rem;">
+                <div>
+                    <h1 class="section-title">Master Data</h1>
+                    <p class="section-subtitle">Entity: <strong id="masterLegalEntityLabel">{{ session_user.subsdr_name }}</strong></p>
+                </div>
+            </div>
+            {# -- 탭 설정: web.py 에서 d_menu_mst 조회 + 탭 키/아이콘/레이블 데이터 전달 #}
+            {%- set _vtabs_list = master_tabs if master_tabs else [] -%}
+            {%- set _vkeys = _vtabs_list | map(attribute='key') | list -%}
+            {%- set _first_key = _vtabs_list[0].key if _vtabs_list else 'billto' -%}
+            <!-- 탭 -->
+            <div class="master-tabs">
+                {% for tab in _vtabs_list %}
+                <button class="master-tab" data-tab="{{ tab.key }}" onclick="switchTab('{{ tab.key }}', this)">
+                    <i class="fas {{ tab.icon }}"></i> {{ tab.label }}
+                    <span id="{{ tab.count_id }}" class="pill pill-slate" style="margin-left:.3rem;">—</span>
+                </button>
+                {% endfor %}
+            </div>
+            <!-- -- Bill-To -- -->
+            <div id="panelBillto" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                               oninput="billtoGridApi && billtoGridApi.setGridOption('quickFilterText', this.value)">
+                    </div>
+                    <button id="saveBtn_billto" class="btn btn-primary btn-sm edit-btn" data-edit-tab="billto" onclick="saveChanges('billto')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid('billto')">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="billto" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importGrid('billto')">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="billto" onclick="refreshTab('billto')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_billto" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_billto"></span></div>
+                <div id="billtoGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+            <!-- -- Bill-To (PH 전용) -- -->
+            <div id="panelBilltoPh" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                               oninput="typeof billtoPhGridApi !== 'undefined' && billtoPhGridApi && billtoPhGridApi.setGridOption('quickFilterText', this.value)">
+                    </div>
+                    <button id="saveBtn_billtoPh" class="btn btn-primary btn-sm edit-btn" data-edit-tab="billto-ph" onclick="saveChanges('billtoPh')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid('billtoPh')">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="billto-ph" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importGrid('billtoPh')">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="billtoPh" onclick="refreshTab('billtoPh')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_billtoPh" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_billtoPh"></span></div>
+                <div id="billtoPhGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+            <!-- -- Ship-To -- -->
+            <div id="panelShipto" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                               oninput="shiptoGridApi && shiptoGridApi.setGridOption('quickFilterText', this.value)">
+                    </div>
+                    <button id="saveBtn_shipto" class="btn btn-primary btn-sm edit-btn" data-edit-tab="shipto" onclick="saveChanges('shipto')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid('shipto')">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="shipto" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importGrid('shipto')">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="shipto" onclick="refreshTab('shipto')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_shipto" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_shipto"></span></div>
+                <div id="shiptoGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+            <!-- -- Product -- -->
+            <div id="panelProduct" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                               oninput="productGridApi && productGridApi.setGridOption('quickFilterText', this.value)">
+                    </div>
+                    <button id="saveBtn_product" class="btn btn-primary btn-sm edit-btn" data-edit-tab="product" onclick="saveChanges('product')">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid('product')">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="product" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importGrid('product')">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="product" onclick="refreshTab('product')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div id="valBanner_product" class="val-banner"><i class="fas fa-triangle-exclamation"></i><span id="valMsg_product"></span></div>
+                <div id="productGrid" class="ag-theme-alpine master-grid xls-grid"></div>
+            </div>
+            <!-- -- Sales Team -- -->
+            <div id="panelSalesTeam" class="master-panel">
+                <div class="master-toolbar">
+                    <button id="saveBtn_salesTeam" class="btn btn-primary btn-sm edit-btn" data-edit-tab="salesTeam"
+                            onclick="saveSalesTeam()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportSalesTeam()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="salesTeam" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importSalesTeam()">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="salesTeam" onclick="refreshTab('salesTeam')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                    <span id="sttRowCount" class="pill pill-slate" style="margin-left:.3rem;">—</span>
+                </div>
+                <div id="sttGrid" class="ag-theme-alpine master-grid xls-grid"
+                     style="height:calc(100vh - 280px);min-height:400px;"></div>
+            </div>
+            <!-- -- Sales Target -- -->
+            <div id="panelSalesTarget" class="master-panel">
+                <div class="master-toolbar">
+                    <label style="font-size:.85rem;font-weight:600;">Base YM</label>
+                    <select id="stBaseYm" class="input" style="width:130px;"
+                            onchange="loadSalesTarget()"></select>
+                    <label style="font-size:.85rem;font-weight:600;margin-left:.5rem;">Currency</label>
+                    <span id="stCurrency" data-value="USD"
+                          style="font-size:.85rem;font-weight:700;padding:.3rem .6rem;
+                                 background:var(--muted);border-radius:var(--radius);
+                                 min-width:48px;text-align:center;">USD</span>
+                    <button id="saveBtn_salesTarget" class="btn btn-primary btn-sm edit-btn" data-edit-tab="salesTarget" style="margin-left:.5rem;"
+                            onclick="saveSalesTarget()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportSalesTarget()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="salesTarget" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importSalesTarget()">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="salesTarget" onclick="refreshTab('salesTarget')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                    <span id="stRowCount" class="pill pill-slate" style="margin-left:.3rem;">—</span>
+                </div>
+                <div id="stGrid" class="ag-theme-alpine master-grid xls-grid"
+                     style="height:calc(100vh - 280px);min-height:400px;"></div>
+            </div>
+            <!-- -- Bill-To Biz -- -->
+            <div id="panelBilltoBiz" class="master-panel">
+                <div class="master-toolbar">
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="input input-search" style="width:220px;" placeholder="Quick search…"
+                               oninput="bbizGridApi && bbizGridApi.setGridOption('quickFilterText', this.value)">
+                    </div>
+                    <button id="saveBtn_billtoBiz" class="btn btn-primary btn-sm edit-btn" data-edit-tab="billtoBiz"
+                            onclick="saveBilltoBiz()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button class="btn btn-accent btn-sm" onclick="exportBilltoBiz()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-sm edit-btn" data-edit-tab="billtoBiz" style="background:var(--muted);color:var(--foreground);"
+                            onclick="importBilltoBiz()">
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <button class="btn btn-sm" style="background:var(--muted);color:var(--foreground);"
+                            data-refresh="billtoBiz" onclick="refreshTab('billtoBiz')">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                    <span id="bbizRowCount" class="pill pill-slate" style="margin-left:.3rem;">—</span>
+                </div>
+                <div id="bbizGrid" class="ag-theme-alpine master-grid xls-grid"
+                     style="height:calc(100vh - 280px);min-height:400px;"></div>
+            </div>
+        </section>
+        <script type="application/json" id="__edit_map__">{{ edit_map | tojson }}</script>
+        <script>
+        /* ── 편집 권한 맵: {page_id: bool} — false면 Save/Import 버튼 숨김 ── */
+        const EDIT_MAP = JSON.parse(document.getElementById('__edit_map__').textContent || '{}');
+
+        /* edit=false 인 탭의 .edit-btn 버튼을 즉시 숨김 처리 */
+        (function applyEditPermissions() {
+            document.querySelectorAll('.edit-btn[data-edit-tab]').forEach(function(btn) {
+                const tab = btn.getAttribute('data-edit-tab');
+                if (EDIT_MAP[tab] === false) {
+                    btn.style.display = 'none';
+                }
+            });
+        })();
+
+        /* ── 초기 활성 탭 결정(URL hash 기반)은 master-shared.js 의 _initInitialTab()
+              에서 처리한다. (탭 패널/canonical 매핑 통합: _TAB_DEFS) ── */
+        </script>
+    </main>
+    <!-- -- 생성/수정 모달 ---------------------------------------------- -->
+    <div id="mdBackdrop" class="md-backdrop">
+        <div class="md-card" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span id="mdTitle"></span>
+                <button class="md-close" onclick="closeMd()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" id="mdBody"></div>
+            <div class="md-footer">
+                <button class="btn btn-sm" onclick="closeMd()" style="background:var(--muted);color:var(--foreground);">Cancel</button>
+                <button class="btn btn-primary btn-sm" id="mdSaveBtn" onclick="saveMd()">Save</button>
+            </div>
+        </div>
+    </div>
+    <!-- -- 삭제 확인 모달 ---------------------------------------------- -->
+    <div id="delBackdrop" class="md-backdrop">
+        <div class="md-card" style="max-width:360px;" onclick="event.stopPropagation()">
+            <div class="md-header">
+                <span><i class="fas fa-triangle-exclamation" style="color:oklch(0.55 0.2 20);margin-right:.4rem;"></i>삭제 확인</span>
+                <button class="md-close" onclick="closeDel()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="md-body" id="delMsg" style="font-size:.9rem;gap:0;"></div>
+            <div class="md-footer">
+                <button class="btn btn-sm" onclick="closeDel()" style="background:var(--muted);color:var(--foreground);">Cancel</button>
+                <button class="btn btn-sm" id="delConfirmBtn"
+                        style="background:oklch(0.55 0.2 20);color:#fff;">Delete</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ag-xls-grid.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    {# -- 페이지 데이터 전달 (type=application/json 로 JS 변수 초기화) #}
+    <script type="application/json" id="__page_data__">{"firstTab": {{ _first_key | tojson }}, "tabs": {{ _vtabs_list | map(attribute='key') | list | tojson }}}</script>
+    <script>
+    // -- AG Grid 라이선스 + 페이지 데이터 초기화 (tab JS 로딩 전에 먼저 실행 필요) --
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+    const { firstTab: _FIRST_TAB, tabs: TABS } = JSON.parse(
+        document.getElementById('__page_data__').textContent
+    );
+    </script>
+    {# -- 공통 유틸리티 (각 탭 공유) -- #}
+    <script src="{{ url_for('static', filename='js/master-shared.js') }}"></script>
+    {# -- 탭 스크립트: 법인별 탭 목록에 맞춰 서버가 결정한 파일만 로드 -- #}
+    {% for src in (master_scripts or []) %}
+    <script src="{{ url_for('static', filename=src) }}"></script>
+    {% endfor %}
+    <script>
+    // -- 키보드 단축키 -------------------------------------------------
+    document.getElementById('mdBackdrop').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) saveMd();
+        if (e.key === 'Escape') closeMd();
+    });
+
+    // 탭별 초기화 함수 디스패처 (법인 변경 재로드에도 사용)
+    function _doInitTab(tab) {
+        if (tab === 'salesTarget') initSalesTarget();
+        else if (tab === 'salesTeam') initSalesTeam();
+        else if (tab === 'billtoBiz') initBilltoBiz();
+        else if (tab === 'billto')  initBillto();
+        else if (tab === 'billtoPh') initBilltoPh();
+        else if (tab === 'shipto')  initShipto();
+        else if (tab === 'product') initProduct();
+    }
+
+    $(document).ready(function() {
+        // 초기 활성 탭은 상단 인라인 스크립트에서 URL hash 기준으로 이미 결정됨
+        // (window.__INITIAL_TAB__). billto 를 거치지 않고 해당 탭을 바로 초기화한다.
+        initGlobalLegalEntity(() => {
+            const le = getGlobalLegalEntity();
+            document.getElementById('masterLegalEntityLabel').textContent = le;
+
+            // 법인이 바뀌면 권한에 따라 탭 목록이 달라질 수 있으므로,
+            // 조회 시마다 탭 목록을 재조회하여 점검한다.
+            // 현재 탭이 목록에 없으면 refreshMasterTabs 내부에서 첫 탭으로 이동한다.
+            refreshMasterTabs().then(({ validKeys, activeTab }) => {
+                // 그리드 API → 탭 키 매핑
+                const _GRID_TAB_MAP = [
+                    { getApi: () => (typeof billtoGridApi  !== 'undefined' ? billtoGridApi  : null), tab: 'billto'      },
+                    { getApi: () => (typeof billtoPhGridApi!== 'undefined' ? billtoPhGridApi: null), tab: 'billtoPh'    },
+                    { getApi: () => (typeof shiptoGridApi  !== 'undefined' ? shiptoGridApi  : null), tab: 'shipto'      },
+                    { getApi: () => (typeof productGridApi !== 'undefined' ? productGridApi : null), tab: 'product'     },
+                    { getApi: () => (typeof stGridApi      !== 'undefined' ? stGridApi      : null), tab: 'salesTarget' },
+                    { getApi: () => (typeof sttGridApi     !== 'undefined' ? sttGridApi     : null), tab: 'salesTeam'   },
+                    { getApi: () => (typeof bbizGridApi    !== 'undefined' ? bbizGridApi    : null), tab: 'billtoBiz'   },
+                ];
+
+                // 이미 초기화된 그리드(getDisplayedRowCount >= 0) 목록 수집
+                const initializedTabs = _GRID_TAB_MAP
+                    .filter(({ getApi }) => {
+                        try { const api = getApi(); return api && api.getDisplayedRowCount() >= 0; }
+                        catch(e) { return false; }
+                    })
+                    .map(({ tab }) => tab);
+
+                _loadedTabs.clear();
+
+                if (initializedTabs.length === 0) {
+                    // 첫 진입: 활성 탭(재점검 반영) 로드
+                    const tab = _normalizeTab(activeTab || window.__INITIAL_TAB__ || _FIRST_TAB || 'billto');
+                    _doInitTab(tab);
+                    _logMasterPageView(tab);   // ← 초기 진입 로그
+                } else {
+                    // 법인 변경: 여전히 유효한(탭 목록에 존재하는) 탭만 재조회
+                    const stillValid = initializedTabs.filter(tab =>
+                        !validKeys || validKeys.indexOf(_normalizeTab(tab)) !== -1);
+                    // 현재 활성 탭이 첫 탭으로 이동됐고 아직 목록에 없으면 추가
+                    if (activeTab
+                        && stillValid.indexOf(activeTab) === -1
+                        && (!validKeys || validKeys.indexOf(_normalizeTab(activeTab)) !== -1)) {
+                        stillValid.push(activeTab);
+                    }
+                    stillValid.forEach(tab => _doInitTab(tab));
+                }
+            });
+        });
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

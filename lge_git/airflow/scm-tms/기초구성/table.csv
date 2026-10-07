@@ -1,0 +1,49 @@
+구분	테이블명	스키마	설명	사용SQL	필수테이블	EDL	EDL설명	Bigquery_TABLE
+1. 핵심 운송/배송 테이블	LD_LEG_DETL_T	TMSPROD	운송 Leg(구간) 상세 테이블. Shipment를 출발지→경유지→도착지 단위로 분해한 핵심 기준 테이블	전체 공통	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__LD_LEG_DETL_T_OS
+1. 핵심 운송/배송 테이블	LD_LEG_T	TMSPROD	Load(차량/운송 단위) 마스터. 배차된 차량·운송사·상태·스케줄을 관리	전체 공통	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__LD_LEG_T_OS
+1. 핵심 운송/배송 테이블	TB_GTM_LOAD	TMS_IF	GTM 확장 Load 정보. ERP 연계·송장·출고 수량·ePOD·WH Release 날짜 관리	Appointment, IOD&POD, Load Release	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_LOAD_OS
+2. Shipment 인터페이스 테이블	TB_GTM_SHIPMENT_TMS_S_IF		ERP(GERP) ↔ TMS Shipment 인터페이스 테이블. 출하의 핵심 속성 및 주문 연계 정보 보유	전체 공통	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_SHIPMENT_TMS_S_IF_OS
+2. Shipment 인터페이스 테이블	TB_GTM_CONTAINER_TMS_S_IF		Shipment 내 컨테이너/모델/수량/부피 단위 정보	Appointment, IOD&POD, Load Release, Load Tender, Shipment	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_CONTAINER_TMS_S_IF_OS
+2. Shipment 인터페이스 테이블	TB_GTM_SHIPMENT_DETAIL		Shipment 부가 정보. XDOCK ETA/ETW·Short Name 등 ATTRIBUTE 컬럼 활용	Shipment, Load Release	_	N	적재 아예 안됨	
+3. Booking / Appointment 테이블	TB_GTM_BOOKINGHISTORY		Appointment/Booking 이력 테이블. 고객 배송 예약 요청·확정·취소 등 전체 이력 관리	Appointment, IOD&POD, Load Release, Load Tender, Shipment	Y	M	메타 등록하면 사용가능	
+4. IOD / POD 테이블	TB_GTM_IOD		IOD(Inbound/출고 확인) 메인 테이블. 고객의 실제 상품 수령 확인 및 POD 파일 관리	Appointment, IOD&POD	Y	M	메타 등록하면 사용가능	
+4. IOD / POD 테이블	TB_GTM_IOD_IRREGULAR_HIST		배송 이슈/클레임/반품 이력 테이블	IOD&POD	_	N	적재 아예 안됨	
+5. Due Date / KPI 테이블	TB_GTM_DUE_DATE_CALC		SLA 기반 Due Date 계산 결과 테이블. 각 프로세스 단계별 마감 기한 저장	Appointment, Load Release, Load Tender, Shipment	Y	N	적재 아예 안됨	
+6. 마스터 / 코드 테이블	TB_GTM_CODE_MST	TMS_IF	공통 코드 마스터. 상태명·유형명 등 코드 → 명칭 변환	전체 공통	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_CODE_MST_OS
+6. 마스터 / 코드 테이블	TB_GTM_CODEMAPPING_MST	TMS_IF	법인별 코드 매핑. 팔레트 표준 용량·Delivery Note 제한 등 운영 정책	Load Release, Load Tender, Shipment	_	N		
+6. 마스터 / 코드 테이블	TB_GTM_DCCONFIG	TMS_IF	DC(창고)별 운영 설정. WMS 타입·팔레트 사용 여부·배송 노트 정책 등	Appointment, IOD&POD, Load Release, Shipment	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_DCCONFIG_OS
+6. 마스터 / 코드 테이블	STATUS_R	TMSPROD	Shipment/Load 상태 코드 참조 테이블	Appointment, IOD&POD	_	N	적재 아예 안됨	
+6. 마스터 / 코드 테이블	CARR_T	TMSPROD	운송사 마스터	Appointment, Load Release, Load Tender	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__CARR_T_OS
+6. 마스터 / 코드 테이블	ZN_T	TMSPROD	Zone 마스터. Zone 코드·명칭·Hub 판단 정보	IOD&POD, Load Release, Load Tender, Shipment	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__ZN_T_OS
+6. 마스터 / 코드 테이블	HUB_T	TMSPROD	Hub 마스터. Hub 위치 코드 → Hub 명칭 매핑	IOD&POD, Load Tender, Shipment	_	N		
+6. 마스터 / 코드 테이블	STAT_T	TMSPROD	상태 마스터 (STAT_SHRT_DESC 조회용)	Load Tender	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__STAT_T_OS
+6. 마스터 / 코드 테이블	TFF_T	TMSPROD	운임 Tariff 마스터	Load Tender	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TFF_T_OS
+6. 마스터 / 코드 테이블	TDR_REQ_T	TMSPROD	Tender 요청 마스터	Load Release, Load Tender	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TDR_REQ_T_OS
+6. 마스터 / 코드 테이블	STOP_T	TMSPROD	Load 내 Stop(정차지) 마스터. Ship-To 개수 산출 기준	Load Release, Load Tender	_	N	US만 있음	
+6. 마스터 / 코드 테이블	ADDR_T	TMSPROD	주소 마스터 (국가/주/도시 코드)	Load Tender, Shipment	_	N		
+6. 마스터 / 코드 테이블	CTRY_T	TMSPROD	국가 코드 마스터	Shipment	_	N		
+6. 마스터 / 코드 테이블	STA_T	TMSPROD	주/도 코드 마스터	Shipment	_	N		
+6. 마스터 / 코드 테이블	GEO_AREA_T	TMSPROD	우편번호 범위 → Hub 자동 매핑	Shipment	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__GEO_AREA_T_OS
+6. 마스터 / 코드 테이블	APT_T	TMSPROD	Appointment 상태 (Drop 단위 Appointment 상태 조회)	Shipment	_	N	US만 있음	
+6. 마스터 / 코드 테이블	DIV_T	TMSPROD	법인(Division) 마스터. 법인 코드 필터링 기준	Load Tender	_	N		
+7. 고객 / 배송지 테이블	TB_GTM_SHIPTO		Ship-To(배송지) 마스터. 고객 유형·배송 시간 대역·Multi-drop 설정 등	Appointment, IOD&POD, Shipment	_	N	적재 아예 안됨	
+7. 고객 / 배송지 테이블	TB_GTM_OBS_CUSTOMER		OBS(Online Booking System) 고객 마스터. 이메일 주소 등 OBS 전용 고객 정보	Appointment	_	N		
+7. 고객 / 배송지 테이블	TB_GTM_BILLTO		Bill-To(청구처) 마스터	IOD&POD	_	N	적재 아예 안됨	
+8. ERP 연계 테이블	TB_GTM_ORDERS_GERP_R_IF		ERP(GERP) 주문 인터페이스 수신 테이블. 통화·XDock 정보·수화인 연락처 등	Appointment, IOD&POD, Load Tender, Shipment	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_ORDERS_GERP_R_IF_OS
+8. ERP 연계 테이블	TB_GTM_SHPCFM_GERP_S_IF		ERP(GERP) 출하 확인 인터페이스 송신 테이블. 배송 완료 후 ERP로 전송하는 데이터	Load Build	Y	N	적재 아예 안됨	
+9. Load 조정 / Tender 이력 테이블	TB_GTM_LOADADJUST_REQUEST		Load 운임 변경 / 조정 요청 이력	Load Release, Load Tender	Y	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_LOADADJUST_REQUEST_OS
+9. Load 조정 / Tender 이력 테이블	TB_GTM_TENDER_HISTORY		Tender 요청/수락/거절 이력 및 Tour No 관리	Load Release, Load Tender	Y	M	메타 등록하면 사용가능	
+9. Load 조정 / Tender 이력 테이블	TB_GTM_LOAD_HISTORY		Load 생성 이력 (수동/자동 생성자 추적)	Load Release, Load Tender	_	N		
+9. Load 조정 / Tender 이력 테이블	TB_GTM_LOAD_PRT		배송 노트 출력 이력	Load Release	_	N		
+9. Load 조정 / Tender 이력 테이블	TB_GTM_COST_OFFER_HIS		운임 입찰(Offer) 이력	Load Tender	_	N		
+10. 모델 / 서비스 테이블	TB_GTM_MODEL		제품 모델 마스터. 부피·중량·팔레트 계산 기준  (또는 VI_GTM_MODEL)	Load Release, Load Tender, Shipment	_	Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TB_GTM_MODEL_OS
+10. 모델 / 서비스 테이블	TB_GTM_SERVICE_LEADTIME		서비스 유형별 리드타임 설정	Load Tender	_	N	적재 아예 안됨	
+	TB_GTM_CARRIER_HUB_MST		운송사-Hub 매핑 마스터	IOD&POD		N		
+	TB_GTM_EPOD_BILLTO		ePOD 대상 Bill-To 설정	IOD&POD		N		
+	SHIPMENT_R		Shipment 마스터 (TMS 내부)	Appointment		N		
+	SHPM_T		Shipment 마스터 (TMS 운영)	Shipment		N		
+	TFF_SRVC_EQMT_T		Tariff-서비스-차량 유형 매핑	Load Release		Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__TFF_SRVC_EQMT_T_OS
+	RSTC_T		차량 적재 제한 마스터 (Stuffing Ratio 계산용)	Load Release		Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__RSTC_T_OS
+	SHPG_LOC_T		Shipping Location(창고/배송지) 마스터	Appointment		Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__SHPG_LOC_T_OS
+	CNCY_T		통화 마스터	Load Tender		Y		`pjt-lge-edl-ob`.OB_00030.V_L0TMS__CNCY_T_OS
+주문								`pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE

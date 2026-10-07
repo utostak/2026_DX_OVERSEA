@@ -1,0 +1,208 @@
+<style>
+/* ══════════════════════════════════════════════════════════════════════════════
+   Customer Orders Modal (Bill To Customer 클릭 → R4 Sparkline 팝업)
+   참조: 참조/mockup-multi-order-v5.html (R4 · Sparkline + Transition Dots)
+══════════════════════════════════════════════════════════════════════════════ */
+.custname-link {
+    color: #0066cc !important;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.custname-link:hover { color: #0052a3 !important; }
+
+.cust-orders-modal {
+    width: min(1400px, 100%);
+    max-height: 92vh;
+}
+
+/* ── 상단 요약 카드 ── */
+.cust-summary-row {
+    display: flex; gap: 0.75rem; flex-wrap: wrap;
+}
+.cust-summary-card {
+    flex: 1; min-width: 160px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--surface-muted);
+    padding: 0.65rem 0.9rem;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.cust-summary-card .cs-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted-foreground); font-weight: 700;
+}
+.cust-summary-card .cs-value {
+    font-size: 18px; font-weight: 700; color: var(--foreground);
+    font-family: "JetBrains Mono", monospace;
+}
+.cust-summary-card.risk .cs-value { color: var(--danger); }
+
+/* ── legend ── */
+.cust-legend {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    font-size: 11px; color: var(--muted-foreground);
+}
+.cust-legend .lg-item { display: inline-flex; align-items: center; gap: 5px; }
+.cust-legend .lg-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--success); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--success);
+}
+.cust-legend .lg-dot.est { background: #dcd6c8; box-shadow: 0 0 0 1px #c9c2b1; }
+.cust-legend .lg-dot.hold { background: var(--warning); box-shadow: 0 0 0 1px var(--warning); }
+.cust-legend .lg-dot.current { width: 14px; height: 14px; box-shadow: 0 0 0 1px var(--success), 0 0 6px rgba(34,197,94,.4); }
+.cust-legend .lg-line { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--success); }
+.cust-legend .lg-line.est { border-top: 2px dashed #c9c2b1; }
+.cust-legend .lg-line.rad { border-left: 2px solid var(--foreground); border-top: none; width: 0; height: 12px; }
+.cust-legend .lg-line.rad.moved { border-left-color: var(--danger); }
+
+/* ============================================
+   그룹 헤더 (Ship To 별)
+   ============================================ */
+.grp-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: color-mix(in oklab, var(--surface-muted) 60%, transparent);
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.grp-head:hover {
+    background: color-mix(in oklab, var(--surface-muted) 90%, transparent);
+}
+.grp-head .gh-caret { 
+    color: var(--muted-foreground); 
+    font-size: 10px; 
+    width: 12px; 
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.grp-head .gh-name { font-weight: 700; color: var(--foreground); font-size: 13px; }
+.grp-head .gh-cnt {
+    font-size: 10.5px; padding: 1px 8px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted-foreground);
+    font-family: "JetBrains Mono", monospace; font-weight: 700;
+}
+.grp-head .gh-meta {
+    margin-left: auto; display: flex; align-items: center; gap: 14px;
+    font-size: 11.5px; color: var(--muted-foreground);
+}
+.grp-head .gh-meta b { color: var(--foreground); font-weight: 700; font-family: "JetBrains Mono", monospace; margin-right: 3px; }
+.grp-head .gh-meta .alert { color: var(--danger); font-weight: 700; }
+
+.cust-group-body {
+    transition: opacity 0.2s;
+}
+
+/* ============================================
+   목록 wrap
+   ============================================ */
+.cust-list-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md, 0.5rem);
+}
+.cust-list-wrap .list-axis {
+    display: grid; grid-template-columns: 400px 1fr;
+    background: var(--surface-muted); border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-md, 0.5rem) var(--radius-md, 0.5rem) 0 0;
+    font-size: 10.5px; color: var(--muted-foreground); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+.cust-list-wrap .head-l { padding: 6px 12px; }
+.cust-list-wrap .head-r { padding: 0; border-left: 1px solid var(--border); position: relative; }
+.cust-list-wrap .list-lane {
+    display: grid; grid-template-columns: 400px 1fr;
+    border-top: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+    min-height: 58px;
+}
+.cust-list-wrap .list-lane:hover { background: color-mix(in oklab, var(--muted) 40%, transparent); }
+.cust-list-wrap .lane-l {
+    padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; gap: 3px;
+}
+.cust-list-wrap .lane-l .l1 { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.cust-list-wrap .lane-l .l1 > * { flex-shrink: 0; }
+.cust-list-wrap .lane-l .l1 .ono {
+    font-family: "JetBrains Mono", monospace; font-weight: 600; color: #0066cc; font-size: 12px;
+    cursor: pointer; text-decoration: underline;
+}
+.cust-list-wrap .lane-l .l1 .ono:hover { color: #0052a3; }
+.cust-list-wrap .lane-l .l1 .metric {
+    font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--foreground); font-size: 11px;
+    padding: 1px 6px; border-radius: 3px; background: color-mix(in oklab, var(--muted) 40%, transparent);
+}
+.cust-list-wrap .lane-l .l1 .metric.rad { background: #e6f5ec; color: #1d6f42; }
+.cust-list-wrap .lane-l .l1 .metric.rad.moved { background: #fef1f4; color: #b02245; }
+.cust-list-wrap .lane-l .l1 .metric.amount { background: #e6f2fb; color: #205b8f; }
+.cust-list-wrap .lane-l .l1-right { margin-left: auto; display: flex; gap: 4px; }
+.cust-list-wrap .lane-l .l2 {
+    color: var(--muted-foreground); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; min-width: 0;
+}
+.cust-list-wrap .lane-l .l2 .model { font-family: "JetBrains Mono", monospace; color: var(--foreground); font-weight: 500; }
+.cust-list-wrap .lane-l .l2 .sep { color: var(--border); margin: 0 4px; }
+.cust-list-wrap .lane-r {
+    padding: 8px 12px; border-left: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+    display: flex; flex-direction: column; justify-content: center;
+}
+.cust-list-wrap .risk-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 999px;
+    background: #fef1f4; color: #b02245; font-size: 10px; font-weight: 700;
+}
+
+/* ── 일단위 축 헤더 ── */
+.cust-list-wrap .day-axis { position: relative; height: 22px; background: var(--surface-muted); }
+.cust-list-wrap .day-axis .month-label {
+    position: absolute; top: 3px; font-size: 10px; font-family: "JetBrains Mono", monospace; font-weight: 700;
+    color: var(--muted-foreground); padding: 0 6px; pointer-events: none;
+}
+.cust-list-wrap .day-axis .month-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--border); }
+.cust-list-wrap .day-axis .today-marker { position: absolute; top: 0; bottom: 0; border-left: 1.5px dashed var(--info); z-index: 2; }
+.cust-list-wrap .day-axis .today-marker .t-lbl {
+    position: absolute; top: 3px; left: 3px; color: var(--info); font-size: 10px; font-weight: 700;
+    font-family: "JetBrains Mono", monospace;
+}
+
+/* ============================================
+   R4 · Sparkline + Transition Dots
+   ============================================ */
+.R4-track { position: relative; height: 42px; }
+.R4-baseline { position: absolute; top: 50%; left: 0; right: 0; border-top: 2px solid var(--muted); transform: translateY(-50%); pointer-events: none; }
+.R4-baseline.covered { right: auto; border-top: 3px solid var(--success); z-index: 1; }
+.R4-baseline.covered.hold { border-top-color: var(--warning); }
+.R4-baseline.projected { right: auto; border-top: 2px dashed #c9c2b1; z-index: 1; }
+.R4-dot {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--success); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--success);
+    z-index: 3; cursor: help;
+}
+.R4-dot.hold { background: var(--warning); box-shadow: 0 0 0 1px var(--warning); }
+.R4-dot.est { background: #dcd6c8; box-shadow: 0 0 0 1px #c9c2b1; }
+.R4-dot.current { width: 14px; height: 14px; box-shadow: 0 0 0 1px var(--success), 0 0 8px rgba(34,197,94,.45); }
+.R4-dot.current.hold { box-shadow: 0 0 0 1px var(--warning), 0 0 8px rgba(217,169,56,.5); }
+.R4-dot:hover { transform: translate(-50%, -50%) scale(1.3); z-index: 4; }
+.R4-dot-lbl {
+    position: absolute; top: calc(50% + 10px); transform: translateX(-50%);
+    font-size: 9px; font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--muted-foreground);
+    white-space: nowrap; pointer-events: none;
+}
+.R4-dot-lbl.emph { color: var(--foreground); font-weight: 700; }
+.R4-dot-lbl.est { color: #a49b86; opacity: .85; }
+.R4-line { position: absolute; top: 0; bottom: 0; z-index: 2; pointer-events: none; }
+.R4-line.rad { border-left: 2px solid var(--foreground); }
+.R4-line.rad.moved { border-left-color: #b02245; }
+.R4-line .l-lbl {
+    position: absolute; top: -14px; left: 3px; font-size: 9px; font-weight: 700;
+    font-family: "JetBrains Mono", monospace; white-space: nowrap; pointer-events: auto; cursor: help;
+}
+.R4-line.rad .l-lbl { color: var(--foreground); }
+.R4-line.rad.moved .l-lbl { color: #b02245; }
+
+/* ── JS 툴팁 (overflow escape) ── */
+.cust-tooltip {
+    position: fixed; background: #1e293b; color: #f8fafc;
+    font-size: 10.5px; font-weight: 500; line-height: 1.35; white-space: nowrap;
+    padding: 4px 8px; border-radius: 4px; z-index: 9999; pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25); display: none; transform: translateX(-50%);
+}
+</style>

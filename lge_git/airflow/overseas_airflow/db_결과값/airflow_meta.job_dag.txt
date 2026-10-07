@@ -1,0 +1,3079 @@
+spw.job_d_lumpsum_daily_weight	replicate_ptg_to_bq_table	SELECT * FROM spms.d_lumpsum_daily_weight	{"bq_table_id": "pjt-lge-oversea-sales-olap.SPW_OLAP.D_LUMPSUM_DAILY_WEIGHT"}	D_LUMPSUM_DAILY_WEIGHT PG → BQ	false	2026-05-29 17:25:36.532	2026-05-29 17:25:36.532	{}	{}	1	1
+spw.job_d_billto_store_mst	replicate_ptg_to_bq_table	"SELECT subsdr_nm,
+       billto_cust_cd,
+       channel_nm,
+       sub_channel_nm,
+       channel_cd,
+       attribute1, attribute2, attribute3, attribute4, attribute5,
+       input_user, input_dt, division_nm, delete_flag, billto_channel_seq
+  FROM spms.d_billto_store_mst"	{"bq_table_id": "pjt-lge-oversea-sales-olap.SPW_OLAP.D_BILLTO_STORE_MST"}	D_BILLTO_STORE_MST PG → BQ	false	2026-05-29 17:25:36.532	2026-05-29 17:25:36.532	{}	{}	1	1
+spw.job_d_customers	replicate_ptg_to_bq_table	SELECT * FROM spms.d_customers	{"bq_table_id": "pjt-lge-oversea-sales-olap.PRD_OLAP.D_PUNIT_BILLTO_MST"}	D_CUSTOMERS PG → BQ	false	2026-05-29 17:25:36.532	2026-05-29 17:25:36.532	{}	{}	1	1
+liw.TB_GTM_ORDER_OLAP_S_IF_OS	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_TB_GTM_ORDER_OLAP_S_IF_OS();	{}	TB_GTM_ORDER_OLAP_S_IF_OS	true	2026-06-01 02:00:37.043	2026-09-09 16:22:16.474	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job_sp_lumpsum_update_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_LUMPSUM_UPDATE_ANA();	{}		true		2026-08-27 08:54:11.065	{}	{}	0	1
+spw.job_m_spms_selling_price_ana	replicate_bq_to_ptg2	SELECT SUBSDR_NM, AFFILIATE_CODE, ACCOUNTING_UNIT_CODE, MODEL_CODE,
+       BILL_TO_CUSTOMER_CODE, BILL_TO_CUSTOMER_NAME, CURRENCY_CODE,
+       LAST_UNIT_PRICE, INVENTORY_QTY, SELLABLE_QTY, UNIT_LIST_PRICE,
+       INVENTORY_UNIT_LIST_PRICE, CHANGE_DATA
+FROM `pjt-lge-oversea-sales-olap`.SPW_OLAP.M_SPMS_SELLING_PRICE_ANA
+;	{"if_table": "spms.m_spms_selling_price_ana_if", "dst_table": "spms.m_spms_selling_price_ana"}	M_SPMS_SELLING_PRICE_ANA BQ → PG	true	2026-05-29 17:25:36.532	2026-09-10 16:11:18.422	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+spw.job_v_snps_effects_ana	execute_sql_ptg	REFRESH MATERIALIZED VIEW spms.v_snps_effects_ana	{}	V_SNPS_EFFECTS_ANA 뷰 리프레시	false	2026-05-29 17:25:36.532	2026-08-11 17:47:01.128	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	1
+spw.job_m_gdmi_channel_psi_result	replicate_bq_to_ptg2	"SELECT SUBSDR_NM, PARTIAL_YMD, NORMAL_YMD, CHANNEL_ID, CHANNEL_NM,
+       SUB_CHANNEL_ID, SUB_CHANNEL_NM, P_UNIT_NM, MDL_SFFX_CD,
+       SO_TOTAL_QTY, SO_AMT, SO_AMT_USD, SO_QTY,
+       TOTAL_INV, SELLABLE_INV, DISP_INV, INPUT_DATE
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.V_GDMI_CHANNEL_PSI_RESULT"	{"if_table": "spms.m_gdmi_channel_psi_result_if", "dst_table": "spms.m_gdmi_channel_psi_result"}	V_GDMI_CHANNEL_PSI_RESULT BQ → PG	true	2026-05-29 17:25:36.532	2026-08-25 16:58:20.893	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+spw.job_m_uk_ha_promo_calendar_ana	replicate_bq_to_ptg2	"SELECT BU, CATEGORY, MDL_NEW_CD, MDL_OLD_CD, STATUS, CHANNEL_NM, YMD,
+       `pjt-lge-oversea-sales-olap.PRD_OLAP.parse_flexible_date`(YMD) AS BASE_DT,
+       WEEK_NO, YYYY, MM, SRP, SOA, INVOICE,
+       INPUT_YMD, INPUT_USER, REVISION_CNT
+  FROM `pjt-lge-uk-olap`.PRD_OLAP.M_UK_HA_PROMO_CALENDAR_ANA
+ WHERE YYYY >= '2026'"	{"if_table": "spms.m_uk_ha_promo_calendar_ana_if", "dst_table": "spms.m_uk_ha_promo_calendar_ana"}	M_UK_HA_PROMO_CALENDAR_ANA BQ → PG	true	2026-05-29 17:25:36.532	2026-08-25 16:58:58.894	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+spw.job_sp_snps_finished_proc	execute_sql_ptg	CALL spms.sp_snps_finished_proc()	{}	SP_SNPS_FINISHED_PROC 프로시저 실행	true	2026-05-29 17:25:36.532	2026-08-21 16:47:52.207	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	1
+spw.job_sp_m_gdmi_channel_psi_ana	execute_sql_bq	CALL `pjt-lge-jp-olap`.PRD_OLAP.SP_M_GDMI_CHANNEL_PSI_ANA();	{}		true			{}	{}	0	1
+spw.job_d_product_level_mst	replicate_bq_to_ptg2	"SELECT P_PTT
+     , ETL_LOAD_TS
+     , PRODUCT_CODE
+     , PRODUCT_LEVEL
+     , CUR_LEVEL_PROD_CODE
+     , PRODUCT_ENG_NAME
+     , PARENT_PROD_CODE
+     , PRCTR_CODE
+     , INC_SALES_QTY_FLAG
+     , MODEL_HEADER_DESC
+     , ENABLED_FLAG
+     , CREATION_DATE
+     , CREATION_USER_ID
+     , LAST_UPDATE_DATE
+     , LAST_UPDATE_USER_ID
+     , HS_CODE
+     , UNSPSC
+     , LONT_INV_TYPE_CD
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L0MDM3_V_EDL_MDMS3_PRODUCT_MASTER"	{"if_table": "spms.d_product_level_mst", "dst_table": "spms.d_product_level_mst_if"}		true		2026-08-25 17:00:38.196	{}	{}	0	1
+spw.job_d_subsdr_mst	replicate_bq_to_ptg2	"SELECT SUBSDR_CD, SUBSDR_NM, REGION, SHRT_REGION_NM, CURRENCY_CD,
+       LOCAL_CURRENCY_CD, NERP_OPEN_YMD, DISPLAY_RANK, USE_YN,
+       DATA_AGG_YN, PROMOTION_CURRENCY_CD
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST"	{"if_table": "spms.d_subsdr_mst_if", "dst_table": "spms.d_subsdr_mst"}	D_SUBSDR_MST BQ → PG	true	2026-05-29 17:25:36.532	2026-08-27 14:05:28.103	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+liw.M_RPA_GET_SO_LINE_T11	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_RPA_GET_SO_LINE_T11();	{}	RPA로 Download한 Sales_Order Data를 테이블로 구축	true		2026-09-18 14:51:43.742	{dongkun.kim@lge.com}	{}	2	1
+liw.M_SO_LINE_T01	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_SO_LINE_T01();	{}	M_SO_LINE_T01	true	2026-06-01 02:05:31.727	2026-09-22 09:54:50.624	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+liw_dev.M_SO_LINE_INVOICE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_SO_LINE_INVOICE();	{}	GERP + NERP Invoice Data	true		2026-09-22 10:00:17.320	{dongkun.kim@lge.com}	{}	0	1
+liw.job_M_SEA_SHIPMENT_INFO	execute_sql_bq	"/*
+ * 테이블 : `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SEA_SHIPMENT_INFO 
+ * 설명  : 배송중인 컨테이너 정보를 일별로 적재함
+ * 데이터 유지기간 : 7일(파티션 기준으로 7일치 유지함)
+ * 비고
+	CREATE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SEA_SHIPMENT_INFO
+		PARTITION BY P_PPT
+		CLUSTER   BY SUBSDR_NM
+		OPTIONS  (require_partition_filter = FALSE)
+		
+	ALTER TABLE `pjt-lge-oversea-sales-olap.SCM_OLAP.M_SEA_SHIPMENT_INFO`
+	SET OPTIONS (
+	    partition_expiration_days = 7
+	)
+*/
+ 
+DELETE
+  FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SEA_SHIPMENT_INFO 
+ WHERE P_PPT = CURRENT_DATE('Asia/Seoul')
+;
+
+INSERT INTO `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SEA_SHIPMENT_INFO
+    (P_PPT, SUBSDR_NM, HOUSE_BL_NO, BL_DATE, CONTAINER_NO, CONTAINER_SIZE, MASTER_BL_NO, INVOICE_NO, INVOICE_DATE, POL_ETD_DATE, POL_ATD_DATE, POD_ETA_DATE, POD_ATA_DATE, CY1_ETA_DATE, CY1_ATA_DATE, CY1_ETD_DATE, CY1_ATD_DATE, FDEST_ETA_DATE, FDEST_ATA_DATE, ZLOADTMP9, BF_FDEST_ETA_DATE, CHANGE_YN, DFF_DAYS)
+SELECT CURRENT_DATE('Asia/Seoul') AS P_PPT
+    ,  S.SUBSDR_NM 
+    ,  T.HOUSE_BL_NO
+    ,  T.BL_DATE
+    ,  T.CONTAINER_NO
+    ,  T.CONTAINER_SIZE
+    ,  T.MASTER_BL_NO
+    ,  T.INVOICE_NO
+    ,  T.INVOICE_DATE
+    ,  T.POL_ETD_DATE      -- 선적항출발예정일자   (POL Depature)
+    ,  T.POL_ATD_DATE      -- 선적항출발실제일자   (POL Depature)
+    ,  T.POD_ETA_DATE      -- 양하항도착예정일자   (POD Arrival)
+    ,  T.POD_ATA_DATE      -- 양하항도착실제일자   (POD Arrival)
+    ,  T.CY1_ETA_DATE      -- CY도착예정일자     (CY Arrival)
+    ,  T.CY1_ATA_DATE      -- CY도착실제일자     (CY Arrival)
+    ,  T.CY1_ETD_DATE      -- CY출발예정일자     (CY Depature)
+    ,  T.CY1_ATD_DATE      -- CY출발실제일자     (CY Depature)
+    ,  T.FDEST_ETA_DATE    -- 최종목적지도착예정일자(F.Destination Arrival)
+    ,  T.FDEST_ATA_DATE    -- 최종목적지도착실제일자(F.Destination Arrival)
+    ,  T.ZLOADTMP9
+    ,  BF.FDEST_ETA_DATE                                                AS BF_FDEST_ETA_DATE  -- 전일 최종목적지도착예정일자
+    ,  CASE
+           WHEN BF.FDEST_ETA_DATE IS NULL          THEN 'N'             -- 전일 데이터 없음
+           WHEN BF.FDEST_ETA_DATE != T.FDEST_ETA_DATE THEN 'Y'         -- ETA 변경됨
+           ELSE                                          'N'
+       END                                                              AS CHANGE_YN           -- ETA 변경여부
+    ,  DATE_DIFF(T.FDEST_ETA_DATE, BF.FDEST_ETA_DATE, DAY)             AS DFF_DAYS            -- ETA 변경일수 (양수: 지연, 음수: 단축)
+ FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZSLEI1021 T
+ JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST S
+   ON T.PURCHASING_COMP_CD = S.SUBSDR_CD
+ LEFT JOIN `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SEA_SHIPMENT_INFO BF
+   ON  BF.P_PPT        = DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
+   AND BF.SUBSDR_NM    = S.SUBSDR_NM
+   AND BF.HOUSE_BL_NO  = T.HOUSE_BL_NO
+   AND BF.CONTAINER_NO = T.CONTAINER_NO
+WHERE  1=1
+  AND  T.PURCHASING_COMP_CD  != '*' 
+  AND  T.FDEST_ATA_DATE IS NULL
+  QUALIFY ROW_NUMBER() OVER (
+                                        PARTITION BY  T.PURCHASING_COMP_CD
+                                                   ,  T.HOUSE_BL_NO
+                                                   ,  T.CONTAINER_NO
+                                            ORDER BY  T.P_PTT       DESC
+                                                   ,  T.ETL_LOAD_TS DESC
+                                                   ,  T.ZLOADTMP9   DESC
+                                     )  =  1
+;"	{}		true		2026-08-18 10:59:37.159	{}	{}	0	1
+liw.M_SO_LINE-1	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE 
+PARTITION BY ORDERED_DATE
+CLUSTER   BY SUBSDR_NAME
+OPTIONS  (require_partition_filter = FALSE)
+AS
+    WITH T_LIST AS
+      (
+        SELECT T1.P_PTT
+             , T1.P_SEQ
+             , T1.AFFILIATE_CODE
+             , T1.SUBSDR_NAME
+             , T1.ACCOUNTING_UNIT_CODE
+             , T1.HQ_ACCOUNTING_UNIT_CODE
+             , T1.DOMAIN_CODE
+             , T1.PARENT_CHANNEL_MEANING
+             , T1.SALES_CHANNEL_NAME
+             , T1.CUSTOMER_CODE
+             , T1.MDMS_CUSTOMER_CODE
+             , T1.CUSTOMER_NAME
+             , T1.BILL_TO_CUSTOMER_CODE
+             , T1.BILL_TO_CUSTOMER_NAME
+             , T1.SHIP_TO_CUSTOMER_CODE
+             , T1.SHIP_TO_CUSTOMER_NAME
+             , T1.PROJECT_CODE
+             , T1.SHIP_TO_STATE_CODE
+             , T1.SHIP_TO_CITY_NAME
+             , T1.SHIP_TO_POSTAL_CODE
+             , T1.MODEL_CODE
+             , T1.DIV_NM
+             , T1.MODE_DESC
+             , T1.MODEL_CATEGORY
+             , T1.PRODUCT_LEVEL1_CODE
+             , T1.PRODUCT_LEVEL2_CODE
+             , T1.PRODUCT_LEVEL3_CODE
+             , T1.PRODUCT_LEVEL4_CODE
+             , T1.ORDER_CATEGORY_CODE
+             , T1.ORDER_TYPE_NAME
+             , T1.LINE_CATEGORY_CODE
+             , T1.SALES_ORDER_NO
+             , T1.ORDER_HEADER_ID
+             , T1.SALES_ORDER_LINE_NO
+             , T1.ORDER_LINE_ID
+             , T1.CUST_PO_NO
+             , T1.ORDER_STATUS_CODE
+             , T1.LINE_STATUS_CODE
+             , T1.LINE_TYPE_NAME
+             , T1.LINE_STATUS_CODE2
+             , T1.PICK_NO
+             , T1.OPEN_FLAG
+             , T1.INVENTORY_RESERVED
+             , T1.WAREHOUSE_CODE
+             , T1.SUBINVENTORY_CODE
+             , T1.PICK_RELEASE_YN
+             , T1.HOLD_FLAG
+             , CASE WHEN COUNT(1) OVER (PARTITION BY T1.SALES_ORDER_NO) <> COUNT(CASE WHEN T1.HOLD_FLAG = 'Y' THEN 1 END) OVER (PARTITION BY T1.SALES_ORDER_NO)
+                     AND COUNT(CASE WHEN T1.HOLD_FLAG = 'Y' THEN 1 END) OVER (PARTITION BY T1.SALES_ORDER_NO) <> 0
+               THEN 'Y' END AS PARTIAL_HOLD_FLAG
+             , T1.HOLD_TYPE
+             , CAST(NULL AS STRING)                    AS AR_HOLD
+             , T1.ORDER_HOLD_ID
+             , T1.RELEASE_DATE
+             , T1.BACK_ORDER_HOLD
+             , T1.CREDIT_HOLD
+             , T1.OVERDUE_HOLD
+             , T1.CUSTOMER_HOLD
+             , T1.PAYTERM_TERM_HOLD
+             , T1.FP_HOLD
+             , T1.MINIMUM_HOLD
+             , T1.FUTURE_HOLD
+             , T1.RESERVE_HOLD
+             , T1.MANUAL_HOLD
+             , T1.AUTO_PENDING_HOLD
+             , T1.SA_HOLD
+             , T1.FORM_HOLD
+             , T1.BANK_COLLATERAL_HOLD
+             , T1.INSURANCE_HOLD
+             , T1.ETC_HOLD
+             , T1.UNIT_SELLING_PRICE
+             , T1.UNIT_LIST_PRICE
+             , T1.CURRENCY_CODE
+             , T1.CUST_PO_DATE
+             , T1.ORDERED_DATE
+             , T1.BOOKED_DATE
+             , T1.REQUEST_ARRIVAL_FROM_DATE
+             , T1.REQUEST_ARRIVAL_TO_DATE
+             , T1.CUSTOMER_RAD
+             , T1.REQUEST_SHIPPING_DATE
+             , T1.PICK_RELEASE_DATE
+             , T1.APPOINTMENT_FROM_DATE
+             , T1.APPOINTMENT_TO_DATE
+             , T1.PROMISED_ARRIVAL_DATE
+             , T1.PROMISED_SHIP_DATE
+             , T1.PICKING_DATE
+             , T1.ACTUAL_SHIPMENT_DATE
+             , T1.SALES_DATE
+             , T1.SALESPERSON_NAME
+             , T1.SHIPPING_METHOD_CODE
+             , T1.SHIPPING_REMARK_INFO
+             , T1.STATUS
+             , T1.CONVERSION_RATE 
+             , T1.INVOICE_REMARK
+             , T1.CREATION_DATE
+             , T1.ORDER_QTY
+             , T1.CANCEL_QTY
+             , T1.ORDER_AMOUNT
+             , T1.PICK_RELEASE_QTY
+             , T1.USD_ORDER_AMOUNT
+             , T1.IL_BRANCH
+             , T1.TAX_AMOUNT
+             , T1.CHARGE_AMOUNT
+             , T1.IL_MODEL_CATEGORY
+             , T1.PRODUCT_VALUE
+             , T1.ITEM_TYPE
+             , T1.RAD_DATE
+             , T1.INIT_PROMISED_ARRIVAL_DATE
+             , T1.HOLD_RELEASED_FLAG
+             , T1.HOLD_DATE
+             , T1.HOLD_RELEASE_DATE
+             , T1.HOLD_NAME
+             , T1.HOLD_REASON_CODE
+             , CASE WHEN T1.HOLD_RELEASED_FLAG = 'N' THEN T1.HOLD_DAYS + DATE_DIFF(T1.P_PTT, DATE(T1.HOLD_DATE), DAY)
+                    ELSE T1.HOLD_DAYS
+               END                                     AS HOLD_DAYS
+             , CAST(T3.PICK_RELEASE_DATE AS DATETIME)  AS TMS_PICK_RELEASE_DATE
+             , T3.WH_RELEASE_DATE                      AS TMS_WH_RELEASE_DATE
+             , T3.LOAD_CREATION_DATE                   AS TMS_LOAD_CREATION_DATE
+             , T3.TENDER_DATE                          AS TMS_TENDER_DATE
+             , T3.SHIPPING_CONFIRM_DATE                AS WMS_SHIPPING_CONFIRM_DATE
+             , T3.SHIPPED_DATE                         AS WMS_SHIPPED_DATE
+             , CAST(NULL AS DATETIME)                  AS SHIPPING_DATE
+             , T3.IOD_DATE                             AS TMS_IOD_DATE
+             , T3.POD_DATE                             AS TMS_POD_DATE
+             , T3.RAD_DATE                             AS TMS_RAD_DATE 
+             , T3.APPOINTMENT_FROM_DATE                AS TMS_APPOINTMENT_FROM_DATE
+             , T3.APPOINTMENT_TO_DATE                  AS TMS_APPOINTMENT_TO_DATE
+             , CASE WHEN  T1.LINE_STATUS_CODE IN ('CANCELLED') THEN 'CANCELLED'
+                    WHEN  T1.LINE_STATUS_CODE IN ('CLOSED')    THEN 'CLOSED'
+                    WHEN  T1.SALES_DATE            IS NOT NULL THEN 'CLOSED'
+                    WHEN  T1.HOLD_FLAG = 'Y'                   THEN 'HOLD'
+                    WHEN  T3.IOD_DATE              IS NOT NULL THEN 'IOD'
+                    WHEN  T3.SHIPPED_DATE          IS NOT NULL THEN 'SHIPPED'
+                    WHEN  T3.SHIPPING_CONFIRM_DATE IS NOT NULL THEN 'SHIPPING_CONFIRM'
+                    WHEN  T3.WH_RELEASE_DATE       IS NOT NULL THEN 'WH_RELEASE' 
+                    WHEN  T3.LOAD_CREATION_DATE    IS NOT NULL THEN 'LOAD_CREATION'
+                    WHEN  T3.PICK_RELEASE_DATE     IS NOT NULL THEN 'PICK_RELEASE'
+                    WHEN  T1.PICK_RELEASE_DATE     IS NOT NULL THEN 'PICK_RELEASE'
+                    WHEN  T1.HOLD_RELEASE_DATE     IS NOT NULL THEN 'PICK_READY'
+                    WHEN  T1.BOOKED_DATE           IS NOT NULL THEN 'BOOKED'
+                    WHEN  T1.ORDERED_DATE          IS NOT NULL THEN 'ENTERED'
+               END                                             AS PROGESS_STATUS 
+             , IF(T1.SALES_DATE IS NULL, 0, T1.ORDER_QTY)      AS SALES_QTY
+             , IF(T1.SALES_DATE IS NULL, 0, T1.ORDER_AMOUNT)   AS SALES_AMOUNT
+             , T1.PRDT_GRP_CD
+             , T1.PRDT_CAT_CD
+               /* 2026-08-18 : GERP SO-SA Mapping Direct Shipment 반영 */
+             , T1.BL_ID
+             , T1.HOUSE_BL_NO
+             , T1.CONTAINER_NO
+             , T1.SO_SA_MAPPING_FLAG
+        FROM   `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T01  AS T1
+        LEFT OUTER JOIN
+               `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T03  AS T3
+           ON  T1.ORDER_HEADER_ID  =  T3.SOURCE_HEADER_ID
+          AND  T1.ORDER_LINE_ID    =  T3.SOURCE_LINE_ID 
+          AND  T1.HOLD_FLAG        =  'N'
+      )
+    , T_IN_DAYS AS
+      (
+        SELECT M1.ORDER_HEADER_ID
+             , M1.ORDER_LINE_ID
+             , CASE WHEN PROGESS_STATUS = 'ENTERED'          THEN DATE_DIFF(P_PTT, DATE(M1.ORDERED_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(BOOKED_DATE), DATE(M1.ORDERED_DATE), DAY)
+               END       AS ENTERED_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'BOOKED'           THEN DATE_DIFF(P_PTT, DATE(M1.BOOKED_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(M1.HOLD_RELEASE_DATE), DATE(M1.BOOKED_DATE), DAY)
+               END       AS BOOKED_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'HOLD'             THEN DATE_DIFF(P_PTT, DATE(M1.HOLD_DATE), DAY)
+                    ELSE HOLD_DAYS
+               END       AS HOLD_IN_DAYS 
+             , CASE WHEN PROGESS_STATUS = 'PICK_READY'       THEN DATE_DIFF(P_PTT, DATE(COALESCE(M1.HOLD_RELEASE_DATE,M1.BOOKED_DATE)), DAY)
+                    ELSE DATE_DIFF( DATE(M1.TMS_PICK_RELEASE_DATE), DATE(M1.HOLD_RELEASE_DATE), DAY)
+               END       AS PICK_READY_IN_DAYS 
+             , CASE WHEN PROGESS_STATUS = 'PICK_RELEASE'     THEN DATE_DIFF(P_PTT, DATE(M1.TMS_PICK_RELEASE_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(M1.TMS_LOAD_CREATION_DATE), DATE(M1.TMS_PICK_RELEASE_DATE), DAY)
+               END       AS PICK_RELEASE_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'LOAD_CREATION'    THEN DATE_DIFF(P_PTT, DATE(M1.TMS_LOAD_CREATION_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(M1.TMS_WH_RELEASE_DATE), DATE(M1.TMS_LOAD_CREATION_DATE), DAY)
+               END       AS LOAD_CREATION_IN_DAYS 
+             , CASE WHEN PROGESS_STATUS = 'WH_RELEASE'       THEN DATE_DIFF(P_PTT, DATE(M1.TMS_WH_RELEASE_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(M1.WMS_SHIPPING_CONFIRM_DATE), DATE(M1.TMS_WH_RELEASE_DATE), DAY)
+               END       AS WH_RELEASE_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'SHIPPING_CONFIRM' THEN DATE_DIFF(P_PTT, DATE(M1.WMS_SHIPPING_CONFIRM_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(M1.WMS_SHIPPED_DATE), DATE(M1.WMS_SHIPPING_CONFIRM_DATE), DAY)
+               END       AS SHIPPING_CONFIRM_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'SHIPPED'          THEN DATE_DIFF(P_PTT, DATE(M1.WMS_SHIPPED_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(TMS_IOD_DATE), DATE(M1.WMS_SHIPPED_DATE), DAY)
+               END       AS SHIPPED_IN_DAYS
+             , CASE WHEN PROGESS_STATUS = 'IOD'              THEN DATE_DIFF(P_PTT, DATE(M1.TMS_IOD_DATE), DAY)
+                    ELSE DATE_DIFF(DATE(SALES_DATE), DATE(M1.TMS_IOD_DATE), DAY)
+               END       AS IOD_IN_DAYS
+        FROM   T_LIST  AS M1
+       )
+    SELECT T1.*
+         , T2.ENTERED_IN_DAYS
+         , T2.BOOKED_IN_DAYS
+         , T2.HOLD_IN_DAYS
+         , T2.PICK_READY_IN_DAYS
+         , T2.PICK_RELEASE_IN_DAYS
+         , T2.LOAD_CREATION_IN_DAYS
+         , T2.WH_RELEASE_IN_DAYS
+         , T2.SHIPPING_CONFIRM_IN_DAYS
+         , T2.SHIPPED_IN_DAYS
+         , T2.IOD_IN_DAYS
+		       -- 현재 PROGESS_STATUS 기준 잔여 평균 소요일 합산 → 도착 예정일 추정
+		     , DATE_ADD(T1.P_PTT,
+		                INTERVAL CAST(
+		                              ROUND(
+		                                    CASE T1.PROGESS_STATUS
+		                                         WHEN 'ENTERED'          THEN COALESCE(T3.REM_ENTERED_DAYS,          T4.REM_ENTERED_DAYS)
+		                                         WHEN 'BOOKED'           THEN COALESCE(T3.REM_BOOKED_DAYS,           T4.REM_BOOKED_DAYS)
+		                                         WHEN 'HOLD'             THEN COALESCE(T3.REM_HOLD_DAYS,             T4.REM_HOLD_DAYS)
+		                                         WHEN 'PICK_RELEASE'     THEN COALESCE(T3.REM_PICK_RELEASE_DAYS,     T4.REM_PICK_RELEASE_DAYS)
+		                                         WHEN 'PICK_READY'       THEN COALESCE(T3.REM_PICK_READY_DAYS,       T4.REM_PICK_READY_DAYS)
+		                                         WHEN 'LOAD_CREATION'    THEN COALESCE(T3.REM_LOAD_CREATION_DAYS,    T4.REM_LOAD_CREATION_DAYS)
+		                                         WHEN 'WH_RELEASE'       THEN COALESCE(T3.REM_WH_RELEASE_DAYS,       T4.REM_WH_RELEASE_DAYS)
+		                                         WHEN 'SHIPPING_CONFIRM' THEN COALESCE(T3.REM_SHIPPING_CONFIRM_DAYS, T4.REM_SHIPPING_CONFIRM_DAYS)
+		                                         WHEN 'SHIPPED'          THEN COALESCE(T3.REM_SHIPPED_DAYS,          T4.REM_SHIPPED_DAYS)
+		                                         ELSE NULL
+		                                    END) AS INT64
+		                ) DAY)     AS EST_ARRIVAL_DATE 
+         , T1.ORDER_QTY        AS ACTIVE_QTY
+         , T1.ORDER_AMOUNT     AS ACTIVE_AMOUNT
+         , CAST(0 AS NUMERIC)  AS AR_HOLD_QTY 
+         , CAST(0 AS NUMERIC)  AS AR_HOLD_AMOUNT
+         , CAST(0 AS NUMERIC)  AS BACK_ORDER_QTY 
+         , CAST(0 AS NUMERIC)  AS BACK_ORDER_AMOUNT
+         , CAST(0 AS NUMERIC)  AS PICK_QTY
+         , CAST(0 AS NUMERIC)  AS PICK_AMOUNT
+         , CAST(0 AS NUMERIC)  AS OPEN_QTY
+         , CAST(0 AS NUMERIC)  AS OPEN_AMOUNT
+         , CAST(0 AS NUMERIC)  AS DELY_QTY
+         , CAST(0 AS NUMERIC)  AS DELY_AMOUNT
+         , 'GERP'              AS SOURCE
+         , FORMAT_DATE('%Y%m%d', T1.P_PTT) || '000000'  AS LOGSTAMP
+         , B.BILLTO_BIZ_NAME
+         , B.TEAM_NAME
+    FROM   T_LIST                                               AS T1
+    JOIN   T_IN_DAYS                                            AS T2
+       ON  T1.ORDER_HEADER_ID  =  T2.ORDER_HEADER_ID
+      AND  T1.ORDER_LINE_ID    =  T2.ORDER_LINE_ID
+    LEFT OUTER JOIN
+           `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_SO_REM_DAYS  AS T3
+		   ON  T1.SUBSDR_NAME = T3.SUBSDR_NAME  
+		  AND  T1.SHIP_TO_CUSTOMER_CODE = T3.SHIP_TO_CUSTOMER_CODE
+    LEFT OUTER JOIN
+           `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_SO_REM_DAYS  AS T4
+       ON  T1.SUBSDR_NAME           = T4.SUBSDR_NAME  
+      AND  T4.SHIP_TO_CUSTOMER_CODE = '[ALL]'
+    LEFT OUTER JOIN 
+           `pjt-lge-oversea-sales-olap`.SCM_OLAP.REF_D_BILLTO_BIZ_MST B
+       ON  T1.SUBSDR_NAME            = B.SUBSDR_NAME
+      AND  T1.BILL_TO_CUSTOMER_CODE  = B.BILLTO_CODE
+      AND  T1.PRDT_GRP_CD            = B.PRODUCT_GROUP_CODE
+;
+
+
+INSERT INTO  `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE
+(
+      P_PTT
+    , P_SEQ
+    , OPEN_FLAG
+    , AFFILIATE_CODE
+    , SUBSDR_NAME
+    , DOMAIN_CODE
+    , BILL_TO_CUSTOMER_CODE
+    , BILL_TO_CUSTOMER_NAME
+    , SHIP_TO_CUSTOMER_CODE
+    , SHIP_TO_CUSTOMER_NAME
+    , PROJECT_CODE
+    , MODEL_CODE
+    , DIV_NM
+    , MODE_DESC
+    , MODEL_CATEGORY
+    , ORDER_TYPE_NAME
+    , LINE_CATEGORY_CODE
+    , SALES_ORDER_NO
+    , SALES_ORDER_LINE_NO
+    , LINE_STATUS_CODE
+    , HOLD_FLAG
+    , PARTIAL_HOLD_FLAG
+    , HOLD_TYPE
+    , AR_HOLD
+    , FUTURE_HOLD
+    , BACK_ORDER_HOLD
+    , CREDIT_HOLD
+    , OVERDUE_HOLD
+    , CUSTOMER_HOLD
+    , PAYTERM_TERM_HOLD
+    , FP_HOLD
+    , MINIMUM_HOLD
+    , RESERVE_HOLD
+    , MANUAL_HOLD
+    , AUTO_PENDING_HOLD
+    , ETC_HOLD
+    , UNIT_SELLING_PRICE
+    , UNIT_LIST_PRICE
+    , CURRENCY_CODE
+    , ORDERED_DATE
+    , BOOKED_DATE
+    , CUSTOMER_RAD
+    , REQUEST_SHIPPING_DATE
+    , PICK_RELEASE_DATE
+    , APPOINTMENT_FROM_DATE
+    , APPOINTMENT_TO_DATE
+    , PROMISED_ARRIVAL_DATE
+    , SALES_DATE
+    , CONVERSION_RATE
+    , CREATION_DATE
+    , ORDER_QTY
+    , CANCEL_QTY
+    , ORDER_AMOUNT
+    , PICK_RELEASE_QTY
+    , USD_ORDER_AMOUNT 
+    , RAD_DATE
+    , INIT_PROMISED_ARRIVAL_DATE
+    , HOLD_RELEASED_FLAG
+    , HOLD_DATE
+    , HOLD_RELEASE_DATE
+    , HOLD_NAME
+    , HOLD_DAYS
+    , TMS_PICK_RELEASE_DATE
+    , TMS_WH_RELEASE_DATE
+    , TMS_LOAD_CREATION_DATE
+    , TMS_TENDER_DATE
+    , WMS_SHIPPING_CONFIRM_DATE
+    , WMS_SHIPPED_DATE
+    , SHIPPING_DATE
+    , TMS_IOD_DATE
+    , TMS_POD_DATE
+    , TMS_RAD_DATE
+    , TMS_APPOINTMENT_FROM_DATE
+    , TMS_APPOINTMENT_TO_DATE
+    , PROGESS_STATUS
+    , ENTERED_IN_DAYS
+    , BOOKED_IN_DAYS
+    , HOLD_IN_DAYS
+    , PICK_READY_IN_DAYS
+    , PICK_RELEASE_IN_DAYS
+    , LOAD_CREATION_IN_DAYS
+    , WH_RELEASE_IN_DAYS
+    , SHIPPING_CONFIRM_IN_DAYS
+    , SHIPPED_IN_DAYS
+    , IOD_IN_DAYS
+    , EST_ARRIVAL_DATE
+    , SALES_QTY
+    , SALES_AMOUNT
+    , ACTIVE_QTY
+    , ACTIVE_AMOUNT
+    , AR_HOLD_QTY 
+    , AR_HOLD_AMOUNT
+    , BACK_ORDER_QTY 
+    , BACK_ORDER_AMOUNT
+    , PICK_QTY
+    , PICK_AMOUNT
+    , OPEN_QTY
+    , OPEN_AMOUNT
+    , DELY_QTY
+    , DELY_AMOUNT
+    , SOURCE
+    , PRDT_GRP_CD
+    , PRDT_CAT_CD
+    , LOGSTAMP
+    , BILLTO_BIZ_NAME
+    , TEAM_NAME
+      /* 2026-08-18 : NERP SO-SA Mapping Direct Shipment 반영 */
+    , BL_ID
+    , HOUSE_BL_NO
+    , CONTAINER_NO
+    , SO_SA_MAPPING_FLAG
+)
+WITH T_LIST AS
+(
+    SELECT M1.* 
+         , CASE WHEN PROGESS_STATUS = 'ENTERED'          THEN DATE_DIFF(P_PTT, DATE(M1.ORDERED_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.BOOKED_DATE), DATE(M1.ORDERED_DATE), DAY)
+           END       AS ENTERED_IN_DAYS
+         , CASE WHEN PROGESS_STATUS = 'BOOKED'           THEN DATE_DIFF(P_PTT, DATE(M1.BOOKED_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.HOLD_RELEASE_DATE), DATE(M1.BOOKED_DATE), DAY)
+           END       AS BOOKED_IN_DAYS
+         , CASE WHEN PROGESS_STATUS = 'HOLD'             THEN DATE_DIFF(P_PTT, DATE(M1.HOLD_DATE), DAY)
+                ELSE HOLD_DAYS
+           END       AS HOLD_IN_DAYS 
+         , CASE WHEN PROGESS_STATUS = 'PICK_READY'       THEN DATE_DIFF(P_PTT, DATE(COALESCE(M1.HOLD_RELEASE_DATE,M1.BOOKED_DATE)), DAY)
+                ELSE DATE_DIFF( DATE(M1.TMS_PICK_RELEASE_DATE), DATE(M1.HOLD_RELEASE_DATE), DAY)
+           END       AS PICK_READY_IN_DAYS 
+         , CASE WHEN PROGESS_STATUS = 'PICK_RELEASE'     THEN DATE_DIFF(P_PTT, DATE(M1.TMS_PICK_RELEASE_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.TMS_LOAD_CREATION_DATE), DATE(M1.TMS_PICK_RELEASE_DATE), DAY)
+           END       AS PICK_RELEASE_IN_DAYS 
+         , CASE WHEN PROGESS_STATUS = 'LOAD_CREATION'    THEN DATE_DIFF(P_PTT, DATE(M1.TMS_LOAD_CREATION_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.TMS_WH_RELEASE_DATE), DATE(M1.TMS_LOAD_CREATION_DATE), DAY)
+           END       AS LOAD_CREATION_IN_DAYS 
+         , CASE WHEN PROGESS_STATUS = 'WH_RELEASE'       THEN DATE_DIFF(P_PTT, DATE(M1.TMS_WH_RELEASE_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.WMS_SHIPPING_CONFIRM_DATE), DATE(M1.TMS_WH_RELEASE_DATE), DAY)
+           END       AS WH_RELEASE_IN_DAYS
+         , CASE WHEN PROGESS_STATUS = 'SHIPPING_CONFIRM' THEN DATE_DIFF(P_PTT, DATE(M1.WMS_SHIPPING_CONFIRM_DATE), DAY)
+                ELSE DATE_DIFF(DATE(M1.WMS_SHIPPED_DATE), DATE(M1.WMS_SHIPPING_CONFIRM_DATE),DAY)
+           END       AS SHIPPING_CONFIRM_IN_DAYS
+         , CASE WHEN PROGESS_STATUS = 'SHIPPED'          THEN DATE_DIFF(P_PTT, DATE(M1.WMS_SHIPPED_DATE), DAY)
+                ELSE DATE_DIFF(DATE(TMS_IOD_DATE), DATE(M1.WMS_SHIPPED_DATE), DAY)
+           END       AS SHIPPED_IN_DAYS
+         , CASE WHEN PROGESS_STATUS = 'IOD'              THEN DATE_DIFF(P_PTT, DATE(M1.TMS_IOD_DATE), DAY)
+                ELSE DATE_DIFF(DATE(SALES_DATE), DATE(M1.TMS_IOD_DATE), DAY)
+           END       AS IOD_IN_DAYS
+         , OPEN_QTY    + PICK_QTY    + DELY_QTY    + AR_HOLD_QTY    + BACK_ORDER_QTY      AS ACTIVE_QTY
+         , OPEN_AMOUNT + PICK_AMOUNT + DELY_AMOUNT + AR_HOLD_AMOUNT + BACK_ORDER_AMOUNT   AS ACTIVE_AMOUNT
+    FROM (
+           SELECT T1.P_PTT
+                , T1.P_SEQ
+                , T1.AFFILIATE_CODE
+                , T1.SUBSDR_NAME 
+                , T1.DOMAIN_CODE   
+                , T1.BILL_TO_CUSTOMER_CODE
+                , T1.BILL_TO_CUSTOMER_NAME
+                , T1.SHIP_TO_CUSTOMER_CODE
+                , T1.SHIP_TO_CUSTOMER_NAME
+                , T1.PROJECT_CODE 
+                , T1.MODEL_CODE
+                , T1.DIV_NM
+                , T1.MODE_DESC
+                , T1.MODEL_CATEGORY  
+                , T1.ORDER_TYPE_NAME
+                , T1.LINE_CATEGORY_CODE
+                , T1.SALES_ORDER_NO 
+                , T1.SALES_ORDER_LINE_NO   
+                , T1.LINE_STATUS_CODE
+                , T1.HOLD_FLAG
+                , CASE WHEN COUNT(1) OVER (PARTITION BY T1.SALES_ORDER_NO) <> COUNT(CASE WHEN T1.HOLD_FLAG = 'Y' THEN 1 END) OVER (PARTITION BY T1.SALES_ORDER_NO)
+                       AND COUNT(CASE WHEN T1.HOLD_FLAG = 'Y' THEN 1 END) OVER (PARTITION BY T1.SALES_ORDER_NO) <> 0
+                  THEN 'Y' END AS PARTIAL_HOLD_FLAG
+                , T1.HOLD_TYPE
+                , T1.AR_HOLD
+                , T1.FUTURE_HOLD
+                , T1.BACK_ORDER_HOLD
+                , T1.CREDIT_HOLD
+                , T1.OVERDUE_HOLD
+                , T1.CUSTOMER_HOLD
+                , T1.PAYTERM_TERM_HOLD
+                , T1.FP_HOLD
+                , T1.MINIMUM_HOLD
+                , T1.RESERVE_HOLD
+                , T1.MANUAL_HOLD
+                , T1.AUTO_PENDING_HOLD
+                , T1.ETC_HOLD
+                , T1.UNIT_SELLING_PRICE
+                , T1.UNIT_LIST_PRICE
+                , T1.CURRENCY_CODE
+                , T1.ORDERED_DATE
+                , T1.BOOKED_DATE
+                , T1.CUSTOMER_RAD
+                , T1.REQUEST_SHIPPING_DATE
+                , T1.PICK_RELEASE_DATE
+                , T1.APPOINTMENT_FROM_DATE
+                , T1.APPOINTMENT_TO_DATE
+                , T1.PROMISED_ARRIVAL_DATE
+                , T1.SALES_DATE 
+                , T1.CONVERSION_RATE 
+                , T1.CREATION_DATE
+                , T1.ORDER_QTY
+                , T1.CANCEL_QTY
+                , T1.ORDER_AMOUNT
+                , T1.PICK_RELEASE_QTY
+                , T1.USD_ORDER_AMOUNT
+                , T1.OPEN_FLAG
+                , T1.RAD_DATE
+                , T1.INIT_PROMISED_ARRIVAL_DATE
+                , T1.HOLD_RELEASED_FLAG
+                , T1.HOLD_DATE
+                , T1.HOLD_RELEASE_DATE
+                , T1.HOLD_NAME
+                , CASE WHEN T1.HOLD_RELEASED_FLAG = 'N' THEN T1.HOLD_DAYS + DATE_DIFF(T1.P_PTT, DATE(T1.HOLD_DATE), DAY)
+                       ELSE T1.HOLD_DAYS
+                  END                                      AS HOLD_DAYS
+                , CAST(T3.PICK_RELEASE_DATE AS DATETIME)   AS TMS_PICK_RELEASE_DATE
+                , T3.WH_RELEASE_DATE                       AS TMS_WH_RELEASE_DATE
+                , T3.LOAD_CREATION_DATE                    AS TMS_LOAD_CREATION_DATE
+                , T3.TENDER_DATE                           AS TMS_TENDER_DATE
+                , T3.SHIPPING_CONFIRM_DATE                 AS WMS_SHIPPING_CONFIRM_DATE
+                , T3.SHIPPED_DATE                          AS WMS_SHIPPED_DATE
+                , T1.SHIPPING_DATE
+                , T3.IOD_DATE                              AS TMS_IOD_DATE
+                , T3.POD_DATE                              AS TMS_POD_DATE
+                , T3.RAD_DATE                              AS TMS_RAD_DATE 
+                , T3.APPOINTMENT_FROM_DATE                 AS TMS_APPOINTMENT_FROM_DATE
+                , T3.APPOINTMENT_TO_DATE                   AS TMS_APPOINTMENT_TO_DATE
+                , CASE WHEN  T1.LINE_STATUS_CODE      IN ('Fully Cancelled')             THEN 'CANCELLED'
+                       WHEN  T1.OPEN_FLAG = 'N'                                          THEN 'CLOSED'
+                       WHEN  T1.LINE_STATUS_CODE      IN ('Completed', 'Fully Returned') THEN 'CLOSED'
+                       WHEN  T1.HOLD_FLAG = 'Y'                                          THEN 'HOLD'
+                       /*(26.07.30)--KDK
+                       --(26.07.29) 엑셀 DB OPEN 버킷을 1차 축으로. ACTIVE_AMOUNT가 이미 버킷합(OPEN+PICK+DELY+AR_HOLD+BACK_ORDER)이므로
+                       --           카드 분류도 같은 축으로 맞춘다. 출고분(DELY)은 TMS/WMS 일자로 단계 세분, 근거 없으면 SHIPPED.
+                       WHEN  T1.PICK_QTY > 0                                            THEN 'PICK_RELEASE'
+                       WHEN  T1.DELY_QTY > 0 THEN
+                             CASE WHEN  T3.SHIPPED_DATE          IS NOT NULL
+                                     OR T3.IOD_DATE              IS NOT NULL             THEN 'SHIPPED'
+                                  WHEN  T3.SHIPPING_CONFIRM_DATE IS NOT NULL             THEN 'SHIPPING_CONFIRM'
+                                  WHEN  T3.WH_RELEASE_DATE       IS NOT NULL             THEN 'WH_RELEASE'
+                                  WHEN  T3.LOAD_CREATION_DATE    IS NOT NULL             THEN 'LOAD_CREATION'
+                                  ELSE 'SHIPPED'
+                             END
+                       WHEN  T1.OPEN_QTY > 0 THEN IF(T1.HOLD_RELEASE_DATE IS NOT NULL, 'PICK_READY', 'BOOKED')
+                       --(26.07.29) 이하 기존 로직 = 버킷이 전부 0인 라인의 폴백
+                       */
+                       WHEN  T1.SHIPPING_DATE         IS NOT NULL  THEN IF(T1.PRDT_CAT_CD = 'CE', 'SHIPPED', '')                       
+                       --WHEN  T3.SHIPPED_DATE          IS NOT NULL  OR
+                       --      T3.IOD_DATE              IS NOT NULL  THEN IF(T1.PRDT_CAT_CD = 'CE', 'SHIPPED', '')
+                       WHEN  T3.SHIPPING_CONFIRM_DATE IS NOT NULL  THEN 'SHIPPING_CONFIRM'
+                       WHEN  T3.WH_RELEASE_DATE       IS NOT NULL  THEN 'WH_RELEASE'
+                       WHEN  T3.LOAD_CREATION_DATE    IS NOT NULL  THEN 'LOAD_CREATION'
+                       --WHEN  T3.PICK_RELEASE_DATE     IS NOT NULL  THEN 'PICK_RELEASE'
+                       WHEN  T1.PICK_RELEASE_DATE     IS NOT NULL  THEN 'PICK_RELEASE'
+                       WHEN  T1.HOLD_RELEASE_DATE     IS NOT NULL  THEN 'PICK_READY'
+                       WHEN  T1.BOOKED_DATE           IS NOT NULL  THEN 'BOOKED'
+                       WHEN  T1.ORDERED_DATE          IS NOT NULL  THEN 'ENTERED'
+                  END                                      AS PROGESS_STATUS
+                , T1.SALES_QTY
+                , T1.SALES_AMOUNT
+                , T1.AR_HOLD_QTY
+                , T1.BACK_ORDER_QTY
+                , T1.PICK_QTY
+                , T1.OPEN_QTY
+                , T1.DELY_QTY
+                , T1.AR_HOLD_AMOUNT
+                , T1.BACK_ORDER_AMOUNT
+                , T1.PICK_AMOUNT
+                , T1.OPEN_AMOUNT
+                , T1.DELY_AMOUNT
+                , T1.PRDT_GRP_CD
+                , T1.PRDT_CAT_CD
+                , T1.LOGSTAMP
+                  /* 2026-08-18 : NERP SO-SA Mapping Direct Shipment 반영 */
+                , T1.BL_ID
+                , T1.HOUSE_BL_NO
+                , T1.CONTAINER_NO
+                , T1.SO_SA_MAPPING_FLAG
+           FROM   `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T11  AS T1 
+           LEFT OUTER JOIN
+                  `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T13  AS T3
+              ON  T1.SALES_ORDER_NO       =  T3.SALES_ORDER_NO
+             AND  T1.SALES_ORDER_LINE_NO  =  T3.SALES_ORDER_LINE_NO  
+             AND  T1.HOLD_FLAG            =  'N'
+         )   AS M1
+)
+SELECT P_PTT
+     , P_SEQ
+     , OPEN_FLAG
+     , AFFILIATE_CODE
+     , T1.SUBSDR_NAME
+     , DOMAIN_CODE
+     , BILL_TO_CUSTOMER_CODE
+     , BILL_TO_CUSTOMER_NAME
+     , T1.SHIP_TO_CUSTOMER_CODE
+     , SHIP_TO_CUSTOMER_NAME
+     , PROJECT_CODE
+     , MODEL_CODE
+     , DIV_NM
+     , MODE_DESC
+     , MODEL_CATEGORY
+     , ORDER_TYPE_NAME
+     , LINE_CATEGORY_CODE
+     , SALES_ORDER_NO
+     , SALES_ORDER_LINE_NO
+     , LINE_STATUS_CODE
+     , HOLD_FLAG
+     , PARTIAL_HOLD_FLAG
+     , HOLD_TYPE
+     , AR_HOLD
+     , FUTURE_HOLD
+     , BACK_ORDER_HOLD
+     , CREDIT_HOLD
+     , OVERDUE_HOLD
+     , CUSTOMER_HOLD
+     , PAYTERM_TERM_HOLD
+     , FP_HOLD
+     , MINIMUM_HOLD
+     , RESERVE_HOLD
+     , MANUAL_HOLD
+     , AUTO_PENDING_HOLD
+     , ETC_HOLD
+     , UNIT_SELLING_PRICE
+     , UNIT_LIST_PRICE
+     , CURRENCY_CODE
+     , ORDERED_DATE
+     , BOOKED_DATE
+     , CUSTOMER_RAD
+     , REQUEST_SHIPPING_DATE
+     , PICK_RELEASE_DATE
+     , APPOINTMENT_FROM_DATE
+     , APPOINTMENT_TO_DATE
+     , PROMISED_ARRIVAL_DATE
+     , SALES_DATE
+     , CONVERSION_RATE
+     , CREATION_DATE
+     , ORDER_QTY
+     , CANCEL_QTY
+     , ORDER_AMOUNT
+     , PICK_RELEASE_QTY
+     , USD_ORDER_AMOUNT
+     , RAD_DATE
+     , INIT_PROMISED_ARRIVAL_DATE
+     , HOLD_RELEASED_FLAG
+     , HOLD_DATE
+     , HOLD_RELEASE_DATE
+     , HOLD_NAME
+     , HOLD_DAYS
+     , TMS_PICK_RELEASE_DATE
+     , TMS_WH_RELEASE_DATE
+     , TMS_LOAD_CREATION_DATE
+     , TMS_TENDER_DATE
+     , WMS_SHIPPING_CONFIRM_DATE
+     , SHIPPING_DATE
+     , WMS_SHIPPED_DATE
+     , TMS_IOD_DATE
+     , TMS_POD_DATE
+     , TMS_RAD_DATE
+     , TMS_APPOINTMENT_FROM_DATE
+     , TMS_APPOINTMENT_TO_DATE
+     , PROGESS_STATUS
+     , T1.ENTERED_IN_DAYS
+     , T1.BOOKED_IN_DAYS
+     , T1.HOLD_IN_DAYS
+     , T1.PICK_READY_IN_DAYS
+     , T1.PICK_RELEASE_IN_DAYS
+     , T1.LOAD_CREATION_IN_DAYS
+     , T1.WH_RELEASE_IN_DAYS
+     , T1.SHIPPING_CONFIRM_IN_DAYS
+     , T1.SHIPPED_IN_DAYS
+     , T1.IOD_IN_DAYS
+ 	     -- 현재 PROGESS_STATUS 기준 잔여 평균 소요일 합산 → 도착 예정일 추정
+     , DATE_ADD(T1.P_PTT,
+                INTERVAL CAST(
+                              ROUND(
+                                    CASE T1.PROGESS_STATUS
+                                         WHEN 'ENTERED'          THEN COALESCE(T3.REM_ENTERED_DAYS,          T4.REM_ENTERED_DAYS)
+                                         WHEN 'BOOKED'           THEN COALESCE(T3.REM_BOOKED_DAYS,           T4.REM_BOOKED_DAYS)
+                                         WHEN 'HOLD'             THEN COALESCE(T3.REM_HOLD_DAYS,             T4.REM_HOLD_DAYS)
+                                         WHEN 'PICK_RELEASE'     THEN COALESCE(T3.REM_PICK_RELEASE_DAYS,     T4.REM_PICK_RELEASE_DAYS)
+                                         WHEN 'PICK_READY'       THEN COALESCE(T3.REM_PICK_READY_DAYS,       T4.REM_PICK_READY_DAYS)
+                                         WHEN 'LOAD_CREATION'    THEN COALESCE(T3.REM_LOAD_CREATION_DAYS,    T4.REM_LOAD_CREATION_DAYS)
+                                         WHEN 'WH_RELEASE'       THEN COALESCE(T3.REM_WH_RELEASE_DAYS,       T4.REM_WH_RELEASE_DAYS)
+                                         WHEN 'SHIPPING_CONFIRM' THEN COALESCE(T3.REM_SHIPPING_CONFIRM_DAYS, T4.REM_SHIPPING_CONFIRM_DAYS)
+                                         WHEN 'SHIPPED'          THEN COALESCE(T3.REM_SHIPPED_DAYS,          T4.REM_SHIPPED_DAYS)
+                                         ELSE NULL
+                                    END) AS INT64
+                ) DAY)     AS EST_ARRIVAL_DATE
+     , SALES_QTY
+     , SALES_AMOUNT
+     , ACTIVE_QTY
+     , ACTIVE_AMOUNT
+     , AR_HOLD_QTY 
+     , AR_HOLD_AMOUNT
+     , BACK_ORDER_QTY 
+     , BACK_ORDER_AMOUNT
+     , PICK_QTY
+     , PICK_AMOUNT
+     , OPEN_QTY
+     , OPEN_AMOUNT
+     , DELY_QTY
+     , DELY_AMOUNT
+     , 'NERP'              AS SOURCE
+     , PRDT_GRP_CD
+     , PRDT_CAT_CD
+     , LOGSTAMP
+     , B.BILLTO_BIZ_NAME
+     , B.TEAM_NAME
+       /* 2026-08-18 : NERP SO-SA Mapping Direct Shipment 반영 */
+     , T1.BL_ID
+     , T1.HOUSE_BL_NO
+     , T1.CONTAINER_NO
+     , T1.SO_SA_MAPPING_FLAG
+FROM   T_LIST                                               AS T1
+LEFT OUTER JOIN
+       `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_SO_REM_DAYS  AS T3
+   ON  T1.SUBSDR_NAME            =  T3.SUBSDR_NAME
+  AND  T1.SHIP_TO_CUSTOMER_CODE  =  T3.SHIP_TO_CUSTOMER_CODE
+LEFT OUTER JOIN
+       `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_SO_REM_DAYS  AS T4
+   ON  T1.SUBSDR_NAME            =  T4.SUBSDR_NAME  
+  AND  T4.SHIP_TO_CUSTOMER_CODE  =  '[ALL]'
+LEFT OUTER JOIN 
+       `pjt-lge-oversea-sales-olap`.SCM_OLAP.REF_D_BILLTO_BIZ_MST B
+   ON  T1.SUBSDR_NAME            = B.SUBSDR_NAME
+  AND  T1.BILL_TO_CUSTOMER_CODE  = B.BILLTO_CODE
+  AND  T1.PRDT_GRP_CD            = B.PRODUCT_GROUP_CODE
+;"	{}	M_SO_LINE-1	true	2026-06-01 02:12:58.834	2026-08-18 16:25:26.424	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+liw.M_SO_LINE_T12	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T12
+AS 
+WITH 
+-- ① 오더 기준 Shipment 매핑
+ORDER_SHPM AS ( 
+    SELECT *
+      FROM (
+        SELECT T1.SUBSIDIARY_CODE                                   AS LEGAL_ENTITY_NAME
+             , SOURCE_HEADER_NO                                     AS SALES_ORDER_NO
+             , LPAD(SPLIT(SOURCE_LINE_NO, '.')[OFFSET(0)], 6, '0')  AS SALES_ORDER_LINE_NO
+             , SOURCE_HEADER_NO
+             , SOURCE_LINE_NO
+             , T1.PICK_ORDER_NO                                     AS PICK_ORDER_NO
+             , T1.PICK_RELEASE_DATE 
+             , T1.RAD_DATE 
+             , T1.LOAD_CREATION_DATE 
+             , T1.SHIPMENTNUMBER
+             --, ROW_NUMBER() OVER(PARTITION BY T1.SUBSIDIARY_CODE,T1.SOURCE_HEADER_NO,LPAD(SPLIT(SOURCE_LINE_NO, '.')[OFFSET(0)], 6, '0'),T1.PICK_ORDER_NO ORDER BY ETL_LOAD_TS DESC,INTERFACE_ID DESC) AS RN
+             , ROW_NUMBER() OVER(PARTITION BY SHIPMENTNUMBER ORDER BY ETL_LOAD_TS DESC,INTERFACE_ID DESC) AS RN
+          FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.TB_GTM_ORDER_OLAP_S_IF_OS T1
+          JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST T2
+            ON T1.SUBSIDIARY_CODE = T2.SUBSDR_NM 
+           AND T2.NERP_OPEN_YMD <= format_date('%Y%m%d',CURRENT_DATE())
+         WHERE T1.SOURCE_HEADER_ID IS NULL   -- NERP는 NULL 
+         ORDER BY ETL_LOAD_TS DESC 
+        )
+    WHERE RN = 1 
+)
+-- ② Load 정보 (LD_LEG_DETL_T → LD_LEG_T)
+,LOAD_INFO AS (
+  SELECT
+    LEGD.SHPM_NUM,
+    L.LD_LEG_ID, 
+    L.CRTD_DTT                                  AS LOAD_CREATION_DATE,
+    L.CARR_CD,
+    L.SRVC_CD,
+    L.EQMT_TYP,
+    L.TRCTR_NUM,
+    L.TRLR_NUM,
+    L.SHPD_DTT                                  AS SHIPPED_DATE,  -- 예정 출발일  
+    LEGD.FRM_SHPG_LOC_CD 
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__LD_LEG_DETL_T_OS` LEGD
+  LEFT JOIN `pjt-lge-edl-ob.OB_00030.V_L0TMS__LD_LEG_T_OS` L  
+    ON L.LD_LEG_ID = LEGD.LD_LEG_ID
+  WHERE LEGD.SEQ_NUM = 100
+)
+-- ③ TB_GTM_LOAD (WH Release, Ship Confirm)
+,GTM_LOAD AS (
+  SELECT
+        GL.SHIPMENTNUMBER,
+        GL.LD_LEG_ID,
+        GL.LOAD_ID,
+        GL.SOURCE_HEADER_ID,
+        GL.SOURCE_LINE_ID,
+        GL.RELEASE_TO_WH_DATE,
+        GL.SHIPPING_DATE                            AS SHIPPING_CONFIRM_DATE,
+        GL.LOAD_CREATION_DATE,
+        GL.APPOINTMENT_FROM_DATE,
+        GL.APPOINTMENT_TO_DATE
+    FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_LOAD_OS` GL
+) 
+-- ④ Tender 최신 1건
+,TENDER AS (
+  SELECT
+    LD_LEG_ID,
+    MAX(TDR_RSPS_BY_DTT)                        AS TENDER_DATE
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TDR_REQ_T_OS`
+  GROUP BY LD_LEG_ID
+) 
+-- ⑤ IOD / POD 완료일자
+,IOD AS (
+  SELECT
+    SHIPMENTNUMBER,
+    LD_LEG_ID,
+    IOD_DATE                               AS IOD_DATE,          -- 실제 수령일 
+    IOD_INPUT_DATE                         AS IOD_INPUT_DATE,    -- IOD 시스템 입력일
+    IOD_CONFIRM_DATE                       AS IOD_CONFIRM_DATE,  -- IOD 최종 확정일
+    IOD_CONFIRM_FLAG                       AS IOD_CONFIRM_FLAG,  -- Y/N
+    POD_INPUT_DATE                         AS POD_INPUT_DATE,    -- POD 업로드일
+    POD_DATE                               AS POD_DATE,          -- POD 서명/수령일
+    POD_COLLECT_DATE                       AS POD_COLLECT_DATE,  -- POD 수거일 
+    (
+      CASE 
+        WHEN IOD_INPUT_DATE IS NULL AND POD_INPUT_DATE IS NULL  THEN 'Multi Pending'
+        WHEN IOD_INPUT_DATE IS NULL AND POD_INPUT_DATE IS NOT NULL THEN 'IOD Pending'
+        WHEN IOD_INPUT_DATE IS NOT NULL AND POD_FILE_NAME IS NULL  THEN 'POD Pending'
+        ELSE 'Closed'
+      END
+    )                                           AS IOD_STATUS
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_IOD_OS` 
+)
+-- ── 최종 SELECT
+SELECT
+      OS.LEGAL_ENTITY_NAME,  
+      OS.SOURCE_HEADER_NO,
+      OS.SOURCE_LINE_NO, 
+      OS.SALES_ORDER_NO,
+      OS.SALES_ORDER_LINE_NO,
+      OS.PICK_ORDER_NO,
+      -- ── 날짜
+      (OS.RAD_DATE)                             AS RAD_DATE,
+      (GL.APPOINTMENT_FROM_DATE)                AS APPOINTMENT_FROM_DATE,
+      (GL.APPOINTMENT_TO_DATE)                  AS APPOINTMENT_TO_DATE,
+      -- ── Load
+      GL.LD_LEG_ID,
+      OS.SHIPMENTNUMBER, 
+      OS.PICK_RELEASE_DATE                    AS PICK_RELEASE_DATE,
+      GL.RELEASE_TO_WH_DATE                   AS WH_RELEASE_DATE,
+      OS.LOAD_CREATION_DATE                   AS LOAD_CREATION_DATE,   
+      TDR.TENDER_DATE                         AS TENDER_DATE,
+      GL.SHIPPING_CONFIRM_DATE                AS SHIPPING_CONFIRM_DATE,
+      LI.SHIPPED_DATE                         AS SHIPPED_DATE, 
+      IO.IOD_DATE                             AS IOD_DATE,
+      IO.POD_DATE                             AS POD_DATE,
+      -- ── 운송사
+      LI.CARR_CD,
+      LI.SRVC_CD,
+      LI.EQMT_TYP,
+      LI.TRCTR_NUM,
+      LI.TRLR_NUM
+FROM ORDER_SHPM          OS
+LEFT JOIN GTM_LOAD        GL
+  ON GL.SHIPMENTNUMBER = OS.SHIPMENTNUMBER
+LEFT JOIN LOAD_INFO        LI  
+  ON LI.SHPM_NUM       = OS.SHIPMENTNUMBER
+LEFT JOIN TENDER           TDR 
+  ON TDR.LD_LEG_ID      = LI.LD_LEG_ID 
+LEFT JOIN IOD IO
+  ON GL.LD_LEG_ID = IO.LD_LEG_ID 
+ AND GL.SHIPMENTNUMBER = IO.SHIPMENTNUMBER 
+WHERE 1=1
+;
+
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T13
+AS 
+SELECT 
+      LEGAL_ENTITY_NAME, 
+      SALES_ORDER_NO,
+      SALES_ORDER_LINE_NO,
+      (MAX(PICK_RELEASE_DATE))     AS PICK_RELEASE_DATE,
+      (MAX(WH_RELEASE_DATE))       AS WH_RELEASE_DATE,
+      (COALESCE(MAX(LOAD_CREATION_DATE), MAX(TENDER_DATE)))  AS LOAD_CREATION_DATE,  /* 2026-07-28 Tender Date 추가 반영 */
+      (MAX(SHIPPING_CONFIRM_DATE)) AS SHIPPING_CONFIRM_DATE,
+      (MAX(SHIPPED_DATE))          AS SHIPPED_DATE,
+      (MAX(IOD_DATE))              AS IOD_DATE,
+      (MAX(POD_DATE))              AS POD_DATE,
+      (MAX(TENDER_DATE))           AS TENDER_DATE,
+      (MIN(APPOINTMENT_FROM_DATE))   AS APPOINTMENT_FROM_DATE,
+      (MAX(APPOINTMENT_TO_DATE))   AS APPOINTMENT_TO_DATE,
+      (MAX(RAD_DATE))              AS RAD_DATE
+  FROM (
+    SELECT 
+          T.LEGAL_ENTITY_NAME, 
+          SALES_ORDER_NO,
+          SALES_ORDER_LINE_NO,
+          SHIPMENTNUMBER,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(PICK_RELEASE_DATE) OVER(PARTITION BY SHIPMENTNUMBER)     THEN PICK_RELEASE_DATE END     AS PICK_RELEASE_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(WH_RELEASE_DATE) OVER(PARTITION BY SHIPMENTNUMBER)       THEN WH_RELEASE_DATE END       AS WH_RELEASE_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(LOAD_CREATION_DATE) OVER(PARTITION BY SHIPMENTNUMBER)    THEN LOAD_CREATION_DATE END    AS LOAD_CREATION_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(TENDER_DATE) OVER(PARTITION BY SHIPMENTNUMBER)           THEN TENDER_DATE END           AS TENDER_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(SHIPPING_CONFIRM_DATE) OVER(PARTITION BY SHIPMENTNUMBER) THEN SHIPPING_CONFIRM_DATE END AS SHIPPING_CONFIRM_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(SHIPPED_DATE) OVER(PARTITION BY SHIPMENTNUMBER)          THEN SHIPPED_DATE END          AS SHIPPED_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(IOD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)              THEN IOD_DATE END              AS IOD_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(POD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)              THEN POD_DATE END              AS POD_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(APPOINTMENT_FROM_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN APPOINTMENT_FROM_DATE END   AS APPOINTMENT_FROM_DATE, 
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(APPOINTMENT_TO_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN APPOINTMENT_TO_DATE END   AS APPOINTMENT_TO_DATE, 
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(RAD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN RAD_DATE END   AS RAD_DATE,  
+          COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) AS SHIPMENTNUMBER_CNT
+     FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T12 T
+    WHERE 1=1
+    )
+GROUP BY
+      LEGAL_ENTITY_NAME, 
+      SALES_ORDER_NO,
+      SALES_ORDER_LINE_NO
+      ;"	{}	M_SO_LINE_T12	true	2026-06-01 02:09:44.094	2026-07-28 15:45:35.209	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job_sp_lumpsum_update_middle	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_LUMPSUM_UPDATE_MIDDLE();	{}		true		2026-08-27 08:54:33.813	{}	{}	0	1
+liw.M_SO_LINE_T02	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T02
+AS 
+WITH 
+-- ① 오더 기준 Shipment 매핑
+ORDER_SHPM AS (
+  SELECT
+    S.LEGAL_ENTITY_NAME,
+    S.SHIPMENTNUMBER,
+    OD.SOURCE_HEADER_ID, 
+    OD.SOURCE_LINE_ID, 
+    OD.SOURCE_HEADER_NO,
+    OD.SOURCE_LINE_NO,
+    S.PICK_RELEASE_DATE,
+    S.ORI_DELY_TO                               AS RAD_DATE,
+    S.GERP_SHIPTO_CODE 
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_SHIPMENT_TMS_S_IF_OS` S
+  LEFT JOIN `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_ORDERS_GERP_R_IF_OS` OD
+    ON  OD.MOVE_ORDER_LINE_ID = S.MOVE_ORDER_LINE_ID
+    AND OD.LEGAL_ENTITY_NAME  = S.LEGAL_ENTITY_NAME
+    AND OD.TMS_PRCS_FLAG      = 'Y' 
+ WHERE OD.P_PTT >= '2025-01-01'
+)
+-- ② Load 정보 (LD_LEG_DETL_T → LD_LEG_T)
+,LOAD_INFO AS (
+  SELECT
+    LEGD.SHPM_NUM,
+    L.LD_LEG_ID, 
+    L.CRTD_DTT                                  AS LOAD_CREATION_DATE,
+    L.CARR_CD,
+    L.SRVC_CD,
+    L.EQMT_TYP,
+    L.TRCTR_NUM,
+    L.TRLR_NUM,
+    L.SHPD_DTT                                  AS SHIPPED_DATE,  -- 예정 출발일 
+    LEGD.FRM_SHPG_LOC_CD 
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__LD_LEG_DETL_T_OS` LEGD
+  LEFT JOIN `pjt-lge-edl-ob.OB_00030.V_L0TMS__LD_LEG_T_OS` L  
+    ON L.LD_LEG_ID = LEGD.LD_LEG_ID
+  WHERE LEGD.SEQ_NUM = 100
+)
+-- ③ TB_GTM_LOAD (WH Release, Ship Confirm)
+,GTM_LOAD AS (
+  SELECT
+        GL.SHIPMENTNUMBER,
+        GL.LD_LEG_ID,
+        GL.LOAD_ID,
+        GL.SOURCE_HEADER_ID,
+        GL.SOURCE_LINE_ID,
+        GL.RELEASE_TO_WH_DATE,
+        GL.SHIPPING_DATE                            AS SHIPPING_CONFIRM_DATE,
+        GL.LOAD_CREATION_DATE,
+        GL.APPOINTMENT_FROM_DATE,
+        GL.APPOINTMENT_TO_DATE
+    FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_LOAD_OS` GL
+)
+, GTM_OLAP AS (
+    SELECT GO.SHIPMENTNUMBER
+         , GO.LOAD_CREATION_DATE 
+      FROM  `pjt-lge-oversea-sales-olap`.SCM_OLAP.TB_GTM_ORDER_OLAP_S_IF_OS GO
+)
+-- ④ Tender 최신 1건
+,TENDER AS (
+  SELECT
+    LD_LEG_ID,
+    MAX(TDR_RSPS_BY_DTT)                        AS TENDER_DATE
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TDR_REQ_T_OS`
+  GROUP BY LD_LEG_ID
+) 
+-- ⑤ IOD / POD 완료일자
+,IOD AS (
+  SELECT
+    SHIPMENTNUMBER,
+    LD_LEG_ID,
+    IOD_DATE                               AS IOD_DATE,          -- 실제 수령일 
+    IOD_INPUT_DATE                         AS IOD_INPUT_DATE,    -- IOD 시스템 입력일
+    IOD_CONFIRM_DATE                       AS IOD_CONFIRM_DATE,  -- IOD 최종 확정일
+    IOD_CONFIRM_FLAG                       AS IOD_CONFIRM_FLAG,  -- Y/N
+    POD_INPUT_DATE                         AS POD_INPUT_DATE,    -- POD 업로드일
+    POD_DATE                               AS POD_DATE,          -- POD 서명/수령일
+    POD_COLLECT_DATE                       AS POD_COLLECT_DATE,  -- POD 수거일 
+    (
+      CASE 
+        WHEN IOD_INPUT_DATE IS NULL AND POD_INPUT_DATE IS NULL  THEN 'Multi Pending'
+        WHEN IOD_INPUT_DATE IS NULL AND POD_INPUT_DATE IS NOT NULL THEN 'IOD Pending'
+        WHEN IOD_INPUT_DATE IS NOT NULL AND POD_FILE_NAME IS NULL  THEN 'POD Pending'
+        ELSE 'Closed'
+      END
+    )                                           AS IOD_STATUS
+  FROM `pjt-lge-edl-ob.OB_00030.V_L0TMS__TB_GTM_IOD_OS` 
+)
+-- ── 최종 SELECT
+SELECT
+      OS.LEGAL_ENTITY_NAME,
+      OS.SOURCE_HEADER_ID, 
+      OS.SOURCE_LINE_ID, 
+      OS.SOURCE_HEADER_NO,
+      OS.SOURCE_LINE_NO,
+      OS.GERP_SHIPTO_CODE,
+      -- ── 날짜
+      (OS.RAD_DATE)                             AS RAD_DATE,
+      GL.APPOINTMENT_FROM_DATE                  AS APPOINTMENT_FROM_DATE,
+      (GL.APPOINTMENT_TO_DATE)                  AS APPOINTMENT_TO_DATE,
+      -- ── Load
+      GL.LD_LEG_ID,
+      OS.SHIPMENTNUMBER, 
+      OS.PICK_RELEASE_DATE                    AS PICK_RELEASE_DATE,
+      GL.RELEASE_TO_WH_DATE                   AS WH_RELEASE_DATE,
+      GO.LOAD_CREATION_DATE                   AS LOAD_CREATION_DATE,   
+      TDR.TENDER_DATE                         AS TENDER_DATE,
+      GL.SHIPPING_CONFIRM_DATE                AS SHIPPING_CONFIRM_DATE,
+      LI.SHIPPED_DATE                         AS SHIPPED_DATE, 
+      IO.IOD_DATE                             AS IOD_DATE,
+      IO.POD_DATE                             AS POD_DATE,
+      -- ── 운송사
+      LI.CARR_CD,
+      LI.SRVC_CD,
+      LI.EQMT_TYP,
+      LI.TRCTR_NUM,
+      LI.TRLR_NUM
+FROM ORDER_SHPM          OS
+LEFT JOIN GTM_LOAD        GL
+  ON GL.SHIPMENTNUMBER = OS.SHIPMENTNUMBER
+LEFT JOIN LOAD_INFO        LI  
+  ON LI.SHPM_NUM       = OS.SHIPMENTNUMBER
+LEFT JOIN TENDER           TDR 
+  ON TDR.LD_LEG_ID      = LI.LD_LEG_ID 
+LEFT JOIN IOD IO
+  ON GL.LD_LEG_ID = IO.LD_LEG_ID 
+ AND GL.SHIPMENTNUMBER = IO.SHIPMENTNUMBER
+LEFT JOIN GTM_OLAP GO
+  ON OS.SHIPMENTNUMBER = GO.SHIPMENTNUMBER
+WHERE 1=1
+;
+
+
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T03
+AS 
+SELECT
+      LEGAL_ENTITY_NAME,
+      SOURCE_HEADER_ID, 
+      SOURCE_LINE_ID,
+      SOURCE_HEADER_NO,
+      SOURCE_LINE_NO,
+      (MAX(PICK_RELEASE_DATE))     AS PICK_RELEASE_DATE,
+      (MAX(WH_RELEASE_DATE))       AS WH_RELEASE_DATE,
+      (MAX(LOAD_CREATION_DATE))    AS LOAD_CREATION_DATE,
+      (MAX(SHIPPING_CONFIRM_DATE)) AS SHIPPING_CONFIRM_DATE,
+      (MAX(SHIPPED_DATE))          AS SHIPPED_DATE,
+      (MAX(IOD_DATE))              AS IOD_DATE,
+      (MAX(POD_DATE))              AS POD_DATE,
+      (MAX(TENDER_DATE))           AS TENDER_DATE,
+      MIN(APPOINTMENT_FROM_DATE)   AS APPOINTMENT_FROM_DATE,
+      (MAX(APPOINTMENT_TO_DATE))   AS APPOINTMENT_TO_DATE,
+      (MAX(RAD_DATE))              AS RAD_DATE
+  FROM (
+    SELECT 
+          T.LEGAL_ENTITY_NAME,
+          T.SOURCE_HEADER_ID, 
+          T.SOURCE_LINE_ID,
+          SOURCE_HEADER_NO,
+          SOURCE_LINE_NO,
+          LD_LEG_ID,
+          SHIPMENTNUMBER,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(PICK_RELEASE_DATE) OVER(PARTITION BY SHIPMENTNUMBER)     THEN PICK_RELEASE_DATE END     AS PICK_RELEASE_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(WH_RELEASE_DATE) OVER(PARTITION BY SHIPMENTNUMBER)       THEN WH_RELEASE_DATE END       AS WH_RELEASE_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(LOAD_CREATION_DATE) OVER(PARTITION BY SHIPMENTNUMBER)    THEN LOAD_CREATION_DATE END    AS LOAD_CREATION_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(TENDER_DATE) OVER(PARTITION BY SHIPMENTNUMBER)           THEN TENDER_DATE END           AS TENDER_DATE,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(SHIPPING_CONFIRM_DATE) OVER(PARTITION BY SHIPMENTNUMBER) THEN SHIPPING_CONFIRM_DATE END AS SHIPPING_CONFIRM_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(SHIPPED_DATE) OVER(PARTITION BY SHIPMENTNUMBER)          THEN SHIPPED_DATE END          AS SHIPPED_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(IOD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)              THEN IOD_DATE END              AS IOD_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(POD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)              THEN POD_DATE END              AS POD_DATE ,
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(APPOINTMENT_TO_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN APPOINTMENT_FROM_DATE END   AS APPOINTMENT_FROM_DATE, 
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(APPOINTMENT_TO_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN APPOINTMENT_TO_DATE END   AS APPOINTMENT_TO_DATE, 
+          CASE WHEN COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) = COUNT(RAD_DATE) OVER(PARTITION BY SHIPMENTNUMBER)   THEN RAD_DATE END   AS RAD_DATE,  
+          COUNT(1) OVER(PARTITION BY SHIPMENTNUMBER) AS SHIPMENTNUMBER_CNT
+     FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T02 T
+    WHERE 1=1
+    )
+GROUP BY
+      LEGAL_ENTITY_NAME,
+      SOURCE_HEADER_ID, 
+      SOURCE_LINE_ID,
+      SOURCE_HEADER_NO,
+      SOURCE_LINE_NO      
+;"	{}	M_SO_LINE_T02	true	2026-06-01 02:07:55.259	2026-07-22 08:51:39.651	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job_m_lumpsum_update_ana	replicate_bq_to_ptg2	"SELECT SUBSDR_NM, PROMOTION_NO, SALES_PGM_NO, SALES_PGM_NM, PRODUCT_TY, PRODUCT_CD
+     , EXPECTED_AMT, EXPECTED_QTY, EXPECTED_COST, LAST_EXPECTED_AMT, LAST_EXPECTED_QTY, LAST_EXPECTED_COST
+     , BALANCE_AMT, PAID_COST, REGISTER_AMT, RESULT_AMT, ADJUST_AMT, CURRENCY_CD
+     , PARSE_DATE('%Y%m%d', SPGM_FROM_YMD)                           AS PROMO_STA_DATE
+     , PARSE_DATE('%Y%m%d', SPGM_TO_YMD)                             AS PROMO_END_DATE
+     , FORMAT_DATE('%Y-%m-%d', PARSE_DATE('%Y%m%d', SPGM_FROM_YMD))  AS PROMO_STA_YMD
+     , FORMAT_DATE('%Y-%m-%d', PARSE_DATE('%Y%m%d', SPGM_TO_YMD))    AS PROMO_END_YMD
+     , APPLY_YYYYMM, CUST_NM, CUST_CD, CUST_TY, AU_CD, DIVISION_NM, CLOSED_YN, UPDATED_YN, LINE_REMARK
+     , REASON_CD, P_UNIT_NM, PLAN_YMD, GDMI_QTY, FCST_RSLT_QTY, UPDATED_AMT, UPDATED_QTY, UPDATED_COST
+FROM   `pjt-lge-oversea-sales-olap`.SPW_OLAP.M_LUMPSUM_UPDATE_ANA
+WHERE  APPLY_YYYYMM  >=  FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 YEAR))"	{"if_table": "spms.m_lumpsum_update_ana_if", "dst_table": "spms.m_lumpsum_update_ana"}	이 테이블은 Claim 보조 항목으로 BQ to Postgre로 이전하나, 후에는 m_promo_spms_result_ana를 대체하는 Promotion Main Table	true	2026-06-12 00:16:46.920	2026-08-25 16:18:32.462	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+spw.dashbord_check_log	execute_sql_bq	"SELECT  CASE WHEN T1.CNT + T2.CNT + T3.CNT + T4.CNT > 0 THEN '1' ELSE '0' END CNT
+  FROM ( SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END AS CNT
+           FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__VRSCM__NERP_NPTR_MDL_CUST_PRFT_S 
+          WHERE ETL_LOAD_TS BETWEEN timestamp('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 35 minute  
+                                AND timestamp('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 5 minute 
+       ) T1 
+     , ( SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END AS CNT
+           FROM `pjt-lge-edl-ob`.OB_00030.META_INFA_JOB
+          WHERE SESSION_NAME NOT LIKE '%bq_to_ora%'
+            AND OB_VIEW_NAME IN ('V_L0EDW__OIF_SALES_EDL_SPMS_RISK_MGT_A11_V','ZSPRI1011','ZCMII1205')
+            AND END_TIME BETWEEN DATETIME('{BATCH_DT}') - INTERVAL 45 MINUTE   
+                             AND DATETIME('{BATCH_DT}') - INTERVAL 15 MINUTE   /* EDL 로그가 15분 이후에 LOAD되기 때문에 -15분 함 */
+            AND SUCCESSFUL_ROWS > 0
+       ) T2
+     , ( SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END AS CNT
+           FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.OSO_BATCH_LOG
+          WHERE PROCEDURE_NAME IN ( 'SP_GDMI_FCST_RSLT_TOTAL_ANA')
+            AND JOB_STATUS <> 'ERROR'
+            AND JOB_STATUS = 'END'
+            AND BATCH_DATETIME BETWEEN TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 30 MINUTE
+                                   AND TIMESTAMP('{BATCH_DT}', 'Asia/Seoul')
+       ) T3
+     , ( SELECT CASE WHEN COUNT(1) > 0 THEN 1 ELSE 0 END AS CNT
+           FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__GDMI_PLAN_RSLT_S 
+          WHERE ETL_LOAD_TS BETWEEN TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 35 minute  
+                                AND TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 5 minute
+       ) T4"	{}	Dashboard 데이터 적재시에 선행 로그 확인	true		2026-08-27 08:28:44.991	{}	{BATCH_DT}	0	1
+liw.job_hold_mail	execute_python_module		{"module_name": "liw_jobs/hold_email"}		true			{yunchu.jo@lgepartner.com}	{}	1	1
+liw.M_SO_LINE_T11	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_SO_LINE_T11();	{}	M_SO_LINE_T11	true	2026-06-01 02:09:07.482	2026-09-22 09:56:18.687	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+liw.M_SO_LINE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_SO_LINE();	{}	LIW Main 화면용 Main Table	true		2026-09-22 09:57:51.922	{dongkun.kim@lge.com}	{}	1	2
+spw.job_sp_gdmi_fcst_rslt_total_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_GDMI_FCST_RSLT_TOTAL_ANA();	{}		true		2026-08-27 08:52:19.527	{}	{}	0	1
+spw.job_d_model_lgeus_mst	replicate_bq_to_ptg2	"SELECT SUBSDR_NM, MDL_SFFX_CD, CMPNY_NM, DIVISION_CD, DIVISION_NM, MDL_LV1_CD, MDL_LV2_CD, MDL_LV3_CD, MDL_LV4_CD
+     , MDL_EAN_CD, RELEASE_YYMM, ITEM_STATUS_CD, INPUT_DATE
+FROM   `pjt-lge-oversea-sales-olap`.SPW_OLAP.D_MODEL_MASTER_SET_LGEUS"	{"if_table": "spms.d_model_master_set_lgeus_if", "dst_table": "spms.d_model_master_set_lgeus"}	GERP의 Model Mst에서 LGEUS법인의 Data를 SPW의 Model_Mst에 Bulk로 Insert	true		2026-08-27 14:05:53.865	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+liw.M_SO_LINE_BACK_PO_MAP	execute_sql_bq	-- =====================================================================================
+-- M_SO_LINE_BACK_PO_MAP : 백오더 "주문라인 ↔ 공급원(현재고/PO)" 할당 매핑 테이블
+-- -------------------------------------------------------------------------------------
+--  ▷ 목적   : M_SO_LINE_BACK 생성 "전 단계" 선행 테이블.
+--             각 백오더 주문라인이 "어느 공급원(현재고 / 어느 PO·컨테이너)에서 몇 개를
+--             가져왔는지"를 수량(ALLOC_QTY)까지 매핑한다.
+--             → 오더키(SALES_ORDER_NO + LINE) 기준으로 PO키(PO_NO + PO_LINE_NO + CONTAINER_NO)별
+--                할당수량(ALLOC_QTY)을 바로 조회 가능.
+--  ▷ 그레인 : 법인 + 모델 + 주문라인 + 공급원(현재고 / 개별 PO키) = 1행
+--  ▷ 할당   : 모델별 "가까운 공급원부터(현재고→PO단계)" 정렬한 누적공급 구간과
+--             주문일자 우선순위로 정렬한 누적수요 구간을 교차(overlap)시켜 겹치는 수량을 할당.
+--             ALLOC_QTY = LEAST(수요끝, 공급끝) − GREATEST(수요시작, 공급시작)
+--  ▷ PO키   : PO_NO + PO_LINE_NO + CONTAINER_NO (현재고 공급원은 셋 다 NULL)
+--  ▷ 정렬   : PRIORITY(현재고1 → POD~FDEST2 → POL~POD3 → 출하4 → 공장5)
+--             → UNIT_ETA(빠른 도착 우선) → CONTAINER_NO → PO_NO → PO_LINE_NO
+--  ▷ 모수   : 백오더가 존재하는 주문라인만 (BACK_ORDER_HOLD='Y' 오픈오더)
+--  ▷ 공급 원천 : ① 현재고(`pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S.AVAILABLE_QTY)
+--                ② 인커밍 PO(M_PO_TRACKING) — 4개 진행단계 PO·컨테이너 물량
+--  ▷ 비고   : 공급 부족(PO Required) 잔량은 매핑되는 공급원이 없으므로 행이 생성되지 않음.
+-- =====================================================================================
+-- ※ 파티셔닝 스펙(ORDERED_DATE) 추가로 기존 테이블과 스펙이 달라 REPLACE 불가 → 선 DROP 후 재생성
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_BACK_PO_MAP
+    PARTITION BY ORDERED_DATE
+    CLUSTER BY SUBSDR_NAME, MODEL_CODE
+    OPTIONS (
+      require_partition_filter = FALSE
+    )
+    AS
+WITH
+-- ① 백오더 주문라인 모수 (라인별 백오더 수량)
+back_orders AS (
+    SELECT
+          T.SUBSDR_NAME
+        , T.MODEL_CODE
+        , T.SALES_ORDER_NO
+        , T.SALES_ORDER_LINE_NO
+        , T.ORDERED_DATE
+        , DATE(T.RAD_DATE) AS RAD_DATE
+        , T.ORDER_QTY      AS BACK_QTY
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE T
+     WHERE T.OPEN_FLAG       = 'Y'
+       AND T.LINE_CATEGORY_CODE NOT IN ('RETURN','Returns')
+       AND T.LINE_STATUS_CODE   NOT IN ('CANCELLED','CLOSED','Fully Cancelled','Completed')
+       AND T.BACK_ORDER_HOLD       = 'Y'
+),
+-- ①-2 점검 대상 법인+모델 (공급단위 적재 범위 한정)
+back_models AS (
+    SELECT DISTINCT SUBSDR_NAME, MODEL_CODE FROM back_orders
+),
+-- ② 현재고 공급 (법인+모델 단위 가용수량, 음수는 0으로 처리)
+stock AS (
+    SELECT
+          I.LEGAL_ENTITY_NAME                                          AS SUBSDR_NAME
+        , I.MODEL_CODE
+        , GREATEST(IFNULL(SUM(CAST(I.AVAILABLE_QTY AS FLOAT64)), 0), 0) AS STOCK_QTY
+        , MAX(I.P_PTT)                                                  AS STOCK_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S I
+      JOIN (SELECT LEGAL_ENTITY_NAME, MAX(P_PTT) AS MX_PTT
+              FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S GROUP BY 1) F
+        ON I.LEGAL_ENTITY_NAME = F.LEGAL_ENTITY_NAME AND I.P_PTT = F.MX_PTT
+     WHERE I.LEGAL_ENTITY_NAME <> 'LGEPH' OR I.SUBINVENTORY_CODE = '5000'
+     GROUP BY 1, 2
+),
+-- ③ 개별 공급단위 (현재고 1건 + 인커밍 PO 컨테이너 N건)
+--    현재고는 PO·컨테이너 없음(즉시 출고 가능, 우선순위 1), PO는 PO라인·컨테이너 단위 개별 물량(우선순위 2~5)
+supply_units AS (
+    -- 현재고: PO·컨테이너 없음(즉시 출고 가능), 우선순위 1
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , 1                      AS PRIORITY
+        , 'STOCK'                AS SUPPLY_TYPE
+        , 'From Stock'           AS BACK_STATUS
+        , CAST(NULL AS STRING)   AS PO_NO
+        , CAST(NULL AS STRING)   AS PO_LINE_NO
+        , CAST(NULL AS STRING)   AS CONTAINER_NO
+        , IFNULL(s.STOCK_QTY, 0) AS UNIT_QTY
+        , s.STOCK_ETA            AS UNIT_ETA
+      FROM back_models m
+      LEFT JOIN stock s
+        ON s.SUBSDR_NAME = m.SUBSDR_NAME
+       AND s.MODEL_CODE = m.MODEL_CODE
+    UNION ALL
+    -- 인커밍 PO: PO라인·컨테이너 단위 개별 물량 (진행단계 → 우선순위 2~5)
+    SELECT
+          P.subsdr_nm   AS SUBSDR_NAME
+        , P.mdl_sffx_cd AS MODEL_CODE
+        , CASE TRIM(P.po_status)
+            WHEN 'Intransit (POD~FDEST)' THEN 2
+            WHEN 'Intransit (POL~POD)'   THEN 3
+            WHEN 'Factory Ship Out'      THEN 4
+            WHEN 'On factory Processing' THEN 5
+          END                              AS PRIORITY
+        , 'PO'                             AS SUPPLY_TYPE
+        , CASE TRIM(P.po_status)
+            WHEN 'Intransit (POD~FDEST)' THEN 'POD → FDEST'
+            WHEN 'Intransit (POL~POD)'   THEN 'POL → POD'
+            WHEN 'Factory Ship Out'      THEN 'Ship Out'
+            WHEN 'On factory Processing' THEN 'On Factory'
+          END                              AS BACK_STATUS
+        , CAST(P.po_no AS STRING)          AS PO_NO
+        , CAST(P.po_line_no AS STRING)     AS PO_LINE_NO
+        , NULLIF(TRIM(P.cntr_no), '')      AS CONTAINER_NO
+        , SUM(CAST(P.qty AS FLOAT64))           AS UNIT_QTY
+        , max(P.FDEST_ETA_DATE)         AS UNIT_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_PO_TRACKING P
+      JOIN back_models m
+        ON m.SUBSDR_NAME = P.subsdr_nm
+       AND m.MODEL_CODE = P.mdl_sffx_cd
+     WHERE TRIM(P.po_status) IN ('Intransit (POD~FDEST)','Intransit (POL~POD)','Factory Ship Out','On factory Processing')
+     GROUP BY P.subsdr_nm , P.mdl_sffx_cd, P.po_status , P.po_no, P.po_line_no, P.cntr_no
+),
+-- ④ 공급단위 누적 경계 (가까운 공급원부터: 우선순위 → ETA → 컨테이너 → PO)
+--    SUP_START ~ SUP_END = 해당 공급단위가 점유하는 누적공급 물량 구간
+supply_cum AS (
+    SELECT
+          SUBSDR_NAME
+        , MODEL_CODE
+        , PRIORITY
+        , SUPPLY_TYPE
+        , BACK_STATUS
+        , PO_NO
+        , PO_LINE_NO
+        , CONTAINER_NO
+        , UNIT_ETA
+        , SUM(UNIT_QTY) OVER w            AS SUP_END
+        , SUM(UNIT_QTY) OVER w - UNIT_QTY AS SUP_START
+      FROM supply_units
+      WINDOW w AS (
+          PARTITION BY SUBSDR_NAME, MODEL_CODE
+          ORDER BY PRIORITY ASC,
+                   UNIT_ETA ASC NULLS LAST,
+                   CONTAINER_NO ASC NULLS LAST,
+                   PO_NO ASC NULLS LAST,
+                   PO_LINE_NO ASC NULLS LAST
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+),
+-- ⑤ 주문라인별 누적 수요 (주문일자 우선순위: 먼저 주문한 건부터 가까운 공급원 점유)
+ranked AS (
+    SELECT
+          b.*
+        , SUM(b.BACK_QTY) OVER (
+              PARTITION BY b.SUBSDR_NAME, b.MODEL_CODE
+              ORDER BY b.ORDERED_DATE ASC NULLS LAST,
+                       b.RAD_DATE ASC NULLS LAST,
+                       b.SALES_ORDER_NO,
+                       b.SALES_ORDER_LINE_NO
+              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS CUM_BACK_QTY
+      FROM back_orders b
+),
+-- ⑥ 라인 수요구간 ∩ 공급단위 구간 교차 → 겹치는 수량(ALLOC_QTY) 할당
+--    수요구간 (CUM_BACK_QTY - BACK_QTY, CUM_BACK_QTY] , 공급구간 (SUP_START, SUP_END]
+allocation AS (
+    SELECT
+          r.SUBSDR_NAME
+        , r.MODEL_CODE
+        , r.ORDERED_DATE
+        , r.SALES_ORDER_NO
+        , r.SALES_ORDER_LINE_NO
+        , r.BACK_QTY
+        , r.CUM_BACK_QTY
+        , su.PRIORITY
+        , su.SUPPLY_TYPE
+        , su.BACK_STATUS
+        , su.PO_NO
+        , su.PO_LINE_NO
+        , su.CONTAINER_NO
+        , su.UNIT_ETA
+        , LEAST(r.CUM_BACK_QTY, su.SUP_END)
+            - GREATEST(r.CUM_BACK_QTY - r.BACK_QTY, su.SUP_START) AS ALLOC_QTY
+      FROM ranked r
+      JOIN supply_cum su
+        ON su.SUBSDR_NAME = r.SUBSDR_NAME
+       AND su.MODEL_CODE  = r.MODEL_CODE
+       AND su.SUP_START < r.CUM_BACK_QTY                    -- 공급시작 < 수요끝
+       AND su.SUP_END   > (r.CUM_BACK_QTY - r.BACK_QTY)     -- 공급끝   > 수요시작
+)
+-- ⑦ 오더키 ↔ PO키 최종 매핑 (동일 PO키에 다중 공급단위가 걸리면 수량 합산)
+SELECT
+      SUBSDR_NAME
+    , MODEL_CODE
+    , ORDERED_DATE
+    , SALES_ORDER_NO
+    , SALES_ORDER_LINE_NO
+    , PRIORITY
+    , BACK_STATUS
+    , SUPPLY_TYPE
+    , PO_NO
+    , PO_LINE_NO
+    , CONTAINER_NO
+    , MAX(UNIT_ETA)           AS UNIT_ETA
+    , ANY_VALUE(BACK_QTY)     AS BACK_QTY
+    , ANY_VALUE(CUM_BACK_QTY) AS CUM_BACK_QTY
+    , SUM(ALLOC_QTY)          AS ALLOC_QTY
+  FROM allocation
+ WHERE ALLOC_QTY > 0
+ GROUP BY
+       SUBSDR_NAME
+     , MODEL_CODE
+     , ORDERED_DATE
+     , SALES_ORDER_NO
+     , SALES_ORDER_LINE_NO
+     , PRIORITY
+     , BACK_STATUS
+     , SUPPLY_TYPE
+     , PO_NO
+     , PO_LINE_NO
+     , CONTAINER_NO
+;
+
+
+-- =====================================================================================
+-- M_SO_LINE_BACK : 백오더(Back Order) 라인 공급 할당/도착예상 분석 테이블
+-- -------------------------------------------------------------------------------------
+--  ▷ 모수      : 백오더 걸린 오픈 오더만 (BACK_ORDER_HOLD = 'Y')
+--  ▷ 점검 기준 : 모델(MODEL_CODE) + 법인(SUBSDR_NAME) 단위
+--  ▷ 공급 원천 : ① 현재고(`pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S.AVAILABLE_QTY)
+--                ② 인커밍 PO(M_PO_TRACKING) — 4개 진행단계 물량
+--  ▷ 선행 테이블 : `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_BACK_PO_MAP (주문라인↔PO/컨테이너 할당 매핑)
+--                 → 라인별 컨테이너 집계에 사용. M_SO_LINE_BACK 생성 전 반드시 먼저 적재.
+--  ▷ 할당 방식 : 모델별 수요를 주문일자(ORDERED_DATE) 우선순위로 정렬 → 누적수요(CUM_BACK_QTY)를
+--                공급 누적 임계값과 비교하여 가장 가까운(=빠른) 공급원부터 워터폴 할당
+--                (먼저 주문한 건이 가까운 공급원을 먼저 점유 / 동일 주문일은 RAD 빠른 순)
+--  ▷ 상태값(우선순위 순):
+--        From Stock  →  POD → FDEST  →  POL → POD  →  Ship Out  →  On Factory  →  PO Required
+--        (현재고)       (POD~FDEST)     (POL~POD)     (공장출하)    (공장처리중)   (공급없음·신규PO필요)
+--  ▷ EST_ARRIVAL_DATE : 할당된 공급원의 도착예상일
+--        - From Stock : NULL (이미 창고 보유분·즉시 출고 가능 → 도착예정 개념 없음)
+--        - PO 단계    : 해당 단계 PO의 est_fdest_arrival_date 중 MAX (전량 도착 기준·보수적)
+--        - PO Required: NULL (아직 발주 전이라 ETA 없음)
+-- =====================================================================================
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_BACK
+    PARTITION BY ORDERED_DATE
+    CLUSTER BY SUBSDR_NAME
+    OPTIONS (
+      require_partition_filter = FALSE
+    )
+    AS
+WITH
+-- ① 백오더 모수 (모델 단위 점검을 위해 라인별 백오더 수량 산출)
+back_orders AS (
+    SELECT
+          T.P_PTT
+        , T.SUBSDR_NAME
+        , T.DIV_NM
+        , T.MODEL_CODE
+        , T.MODEL_CATEGORY
+        , T.SALES_ORDER_NO
+        , T.SALES_ORDER_LINE_NO
+        , T.ORDER_TYPE_NAME
+        , T.BILL_TO_CUSTOMER_CODE
+        , T.BILL_TO_CUSTOMER_NAME
+        , T.SHIP_TO_CUSTOMER_CODE
+        , T.SHIP_TO_CUSTOMER_NAME
+        , T.ORDERED_DATE
+        , T.BOOKED_DATE
+        , DATE(T.RAD_DATE)   AS RAD_DATE
+        , DATE(T.HOLD_DATE)  AS HOLD_DATE
+        , T.HOLD_NAME
+        , T.HOLD_IN_DAYS
+        , T.CURRENCY_CODE
+        , T.ORDER_AMOUNT
+        , T.USD_ORDER_AMOUNT
+        , T.ORDER_QTY
+        , T.CANCEL_QTY
+        , T.ORDER_QTY AS BACK_QTY
+        , T.PRDT_GRP_CD
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE T
+     WHERE T.OPEN_FLAG       = 'Y'
+       AND T.LINE_CATEGORY_CODE NOT IN ('RETURN','Returns')
+       AND T.LINE_STATUS_CODE   NOT IN ('CANCELLED','CLOSED','Fully Cancelled','Completed')
+       AND T.BACK_ORDER_HOLD       = 'Y'
+),
+zplant AS (
+    SELECT CAST(SAFE_CAST(DOC_NUMBER AS INT64) AS STRING) SO
+         , CAST(SAFE_CAST(S_ORD_ITEM AS INT64) AS STRING) LI
+         , PLANT
+      FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZSSDA0226
+     WHERE SALESORG LIKE '%00'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY DOC_NUMBER, S_ORD_ITEM ORDER BY ZLOGSTMP DESC) = 1
+),
+open_plants AS (
+    SELECT DISTINCT T.SUBSDR_NAME, T.MODEL_CODE, COALESCE(z.PLANT, T.WAREHOUSE_CODE) AS PLANT
+      FROM pjt-lge-oversea-sales-olap.SCM_OLAP.M_SO_LINE T
+      LEFT JOIN zplant z
+        ON CAST(SAFE_CAST(T.SALES_ORDER_NO AS INT64) AS STRING) = z.SO
+       AND CAST(SAFE_CAST(T.SALES_ORDER_LINE_NO AS INT64) AS STRING) = z.LI
+     WHERE T.OPEN_FLAG = 'Y'
+       AND COALESCE(z.PLANT, T.WAREHOUSE_CODE) IS NOT NULL
+),
+-- ③ 현재고 공급 (법인+모델 단위 가용수량, 음수는 0으로 처리)
+stock AS (
+    SELECT
+          I.LEGAL_ENTITY_NAME                AS SUBSDR_NAME
+        , I.MODEL_CODE
+        , I.INVENTORY_ORGANIZATION_CODE      AS PLANT
+        , GREATEST(IFNULL(SUM(CAST(I.AVAILABLE_QTY AS FLOAT64)), 0), 0) AS STOCK_QTY
+        , MAX(I.P_PTT)                       AS STOCK_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S I
+      JOIN (SELECT LEGAL_ENTITY_NAME, MAX(P_PTT) AS MX_PTT
+              FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S GROUP BY 1) F
+        ON I.LEGAL_ENTITY_NAME = F.LEGAL_ENTITY_NAME AND I.P_PTT = F.MX_PTT
+     WHERE I.LEGAL_ENTITY_NAME <> 'LGEPH' OR I.SUBINVENTORY_CODE = '5000'
+     GROUP BY 1, 2, 3
+),
+-- ④ 인커밍 PO 공급 (법인+모델 단위, 4개 진행단계별 물량 / 단계별 도착예상 MAX)
+po AS (
+    SELECT
+          P.subsdr_nm   AS SUBSDR_NAME
+        , P.mdl_sffx_cd AS MODEL_CODE
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Intransit (POD~FDEST)', P.qty, 0)) AS FLOAT64) AS POD_FDEST_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Intransit (POL~POD)',  P.qty, 0)) AS FLOAT64) AS POL_POD_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Factory Ship Out',      P.qty, 0)) AS FLOAT64) AS SHIPOUT_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'On factory Processing', P.qty, 0)) AS FLOAT64) AS ONFACTORY_QTY
+        , MAX(IF(TRIM(P.po_status) = 'Intransit (POD~FDEST)', P.FDEST_ETA_DATE, NULL)) AS POD_FDEST_ETA
+        , MAX(IF(TRIM(P.po_status) = 'Intransit (POL~POD)',  P.FDEST_ETA_DATE, NULL)) AS POL_POD_ETA
+        , MAX(IF(TRIM(P.po_status) = 'Factory Ship Out',      P.FDEST_ETA_DATE, NULL)) AS SHIPOUT_ETA
+        , MAX(IF(TRIM(P.po_status) = 'On factory Processing', P.FDEST_ETA_DATE, NULL)) AS ONFACTORY_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_PO_TRACKING P
+     WHERE TRIM(P.po_status) IN ('Intransit (POD~FDEST)','Intransit (POL~POD)','Factory Ship Out','On factory Processing')
+     GROUP BY 1, 2
+),
+-- ⑤ 모델별 공급 통합 (백오더가 존재하는 법인+모델 기준)
+supply AS (
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , IFNULL(s.STOCK_QTY,     0) AS STOCK_QTY
+        , s.STOCK_ETA
+        , IFNULL(p.POD_FDEST_QTY, 0) AS POD_FDEST_QTY
+        , IFNULL(p.POL_POD_QTY,   0) AS POL_POD_QTY
+        , IFNULL(p.SHIPOUT_QTY,   0) AS SHIPOUT_QTY
+        , IFNULL(p.ONFACTORY_QTY, 0) AS ONFACTORY_QTY
+        , p.POD_FDEST_ETA
+        , p.POL_POD_ETA
+        , p.SHIPOUT_ETA
+        , p.ONFACTORY_ETA
+      FROM (SELECT DISTINCT SUBSDR_NAME, MODEL_CODE FROM back_orders) m
+      LEFT JOIN (SELECT op.SUBSDR_NAME, op.MODEL_CODE, SUM(COALESCE(stk.STOCK_QTY,0)) AS STOCK_QTY, MAX(stk.STOCK_ETA) AS STOCK_ETA
+                   FROM open_plants op
+                   LEFT JOIN stock stk ON stk.SUBSDR_NAME=op.SUBSDR_NAME AND stk.MODEL_CODE=op.MODEL_CODE AND stk.PLANT=op.PLANT
+                  GROUP BY 1,2) s
+        ON s.SUBSDR_NAME = m.SUBSDR_NAME AND s.MODEL_CODE = m.MODEL_CODE
+      LEFT JOIN po    p ON p.SUBSDR_NAME = m.SUBSDR_NAME AND p.MODEL_CODE = m.MODEL_CODE
+),
+model_back AS (
+    SELECT SUBSDR_NAME, MODEL_CODE, SUM(BACK_QTY) AS MBACK FROM back_orders GROUP BY 1, 2
+),
+tier_qty AS (
+    SELECT
+          mb.SUBSDR_NAME, mb.MODEL_CODE, mb.MBACK
+        , sup.STOCK_QTY, sup.POD_FDEST_QTY, sup.POL_POD_QTY, sup.SHIPOUT_QTY, sup.ONFACTORY_QTY
+        , sup.POD_FDEST_ETA, sup.POL_POD_ETA, sup.SHIPOUT_ETA, sup.ONFACTORY_ETA
+        , LEAST(mb.MBACK, sup.STOCK_QTY) AS FS
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY,0), sup.POD_FDEST_QTY) AS PODF
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY,0), sup.POL_POD_QTY) AS POL
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY,0), sup.SHIPOUT_QTY) AS SHIP
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY-sup.SHIPOUT_QTY,0), sup.ONFACTORY_QTY) AS FAC
+        , GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY-sup.SHIPOUT_QTY-sup.ONFACTORY_QTY,0) AS POREQ
+      FROM model_back mb
+      JOIN supply sup ON sup.SUBSDR_NAME=mb.SUBSDR_NAME AND sup.MODEL_CODE=mb.MODEL_CODE
+),
+-- ⑦ 라인별 컨테이너 할당 (해당 라인이 실제 걸려있는 컨테이너만)
+--    선행 테이블 M_SO_LINE_BACK_PO_MAP 가 이미 "라인 ↔ 공급원(PO/컨테이너)" 할당을
+--    수량까지 산출해 두었으므로, 여기서는 라인별 컨테이너만 콤마 결합한다.
+--    → 같은 단계라도 라인마다 실제 할당된 컨테이너만 표시 (누적 표시 X)
+line_containers AS (
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , m.SALES_ORDER_NO
+        , m.SALES_ORDER_LINE_NO
+        , STRING_AGG(DISTINCT m.CONTAINER_NO, ', ' ORDER BY m.CONTAINER_NO) AS CONTAINER_NO
+      FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_BACK_PO_MAP m
+     WHERE m.CONTAINER_NO IS NOT NULL
+     GROUP BY 1, 2, 3, 4
+)
+SELECT
+      r.P_PTT
+    , r.SUBSDR_NAME
+    , r.DIV_NM
+    , r.MODEL_CODE
+    , r.MODEL_CATEGORY
+    , r.SALES_ORDER_NO
+    , r.SALES_ORDER_LINE_NO
+    , r.ORDER_TYPE_NAME
+    , r.BILL_TO_CUSTOMER_CODE
+    , r.BILL_TO_CUSTOMER_NAME
+    , r.SHIP_TO_CUSTOMER_CODE
+    , r.SHIP_TO_CUSTOMER_NAME
+    , r.ORDERED_DATE
+    , r.BOOKED_DATE
+    , r.RAD_DATE
+    , r.HOLD_DATE
+    , r.HOLD_NAME
+    , r.HOLD_IN_DAYS
+    , r.CURRENCY_CODE
+    , r.PRDT_GRP_CD
+    , B.BILLTO_BIZ_NAME
+    , B.TEAM_NAME
+    , CAST(ROUND(r.ORDER_AMOUNT     * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 2) AS NUMERIC) AS ORDER_AMOUNT
+    , CAST(ROUND(r.USD_ORDER_AMOUNT * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 2) AS NUMERIC) AS USD_ORDER_AMOUNT
+    , r.ORDER_QTY
+    , r.CANCEL_QTY
+    , CAST(ROUND(r.BACK_QTY * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 3) AS NUMERIC)         AS BACK_QTY
+    , CAST(r.BACK_QTY AS NUMERIC)                                                       AS CUM_BACK_QTY
+    , t.STOCK_QTY
+    , t.POD_FDEST_QTY
+    , t.POL_POD_QTY
+    , t.SHIPOUT_QTY
+    , t.ONFACTORY_QTY
+    , tt.BACK_STATUS
+    , tt.ETA AS EST_ARRIVAL_DATE
+    , IF(tt.BACK_STATUS IN ('POD → FDEST','POL → POD','Ship Out','On Factory'), lc.CONTAINER_NO, NULL) AS CONTAINER_NO
+    , CASE
+        WHEN me.ENABLED_FLAG = 'N' THEN 'Y'
+        WHEN me.ENABLED_FLAG = 'Y' THEN 'N'
+        ELSE NULL
+      END AS EOL_YN
+  FROM back_orders r
+  JOIN tier_qty t
+    ON t.SUBSDR_NAME = r.SUBSDR_NAME AND t.MODEL_CODE = r.MODEL_CODE
+  CROSS JOIN UNNEST([
+         STRUCT('From Stock'  AS BACK_STATUS, t.FS   AS TIER_QTY, CAST(NULL AS DATE) AS ETA),
+         STRUCT('POD → FDEST', t.PODF, t.POD_FDEST_ETA),
+         STRUCT('POL → POD',   t.POL,  t.POL_POD_ETA),
+         STRUCT('Ship Out',    t.SHIP, t.SHIPOUT_ETA),
+         STRUCT('On Factory',  t.FAC,  t.ONFACTORY_ETA),
+         STRUCT('PO Required', t.POREQ, CAST(NULL AS DATE))
+       ]) tt
+  LEFT JOIN line_containers lc
+    ON lc.SUBSDR_NAME         = r.SUBSDR_NAME
+   AND lc.MODEL_CODE          = r.MODEL_CODE
+   AND lc.SALES_ORDER_NO      = r.SALES_ORDER_NO
+   AND lc.SALES_ORDER_LINE_NO = r.SALES_ORDER_LINE_NO
+  LEFT OUTER JOIN 
+         `pjt-lge-oversea-sales-olap`.SCM_OLAP.REF_D_BILLTO_BIZ_MST B
+    ON  r.SUBSDR_NAME            = B.SUBSDR_NAME
+   AND  r.BILL_TO_CUSTOMER_CODE  = B.BILLTO_CODE
+   AND  r.PRDT_GRP_CD            = B.PRODUCT_GROUP_CODE
+  LEFT JOIN (
+      SELECT s.SUBSDR_NM AS SUBSDR_NAME, m.MODEL_CODE, m.SUFFIX_CODE,
+             MIN(m.ENABLED_FLAG) AS ENABLED_FLAG
+        FROM `pjt-lge-edl-ob`.OB_00030.V_L0MDM3_V_EDL_MDMS3_MODEL_MASTER m
+        JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST s
+          ON s.SUBSDR_CD = m.COMPANY_CODE
+        GROUP BY 1, 2, 3
+      ) me
+    ON me.SUBSDR_NAME = r.SUBSDR_NAME
+   AND CONCAT(me.MODEL_CODE, '.', me.SUFFIX_CODE) = r.MODEL_CODE
+ WHERE tt.TIER_QTY > 0
+;	{}		true		2026-09-28 16:53:43.838	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+liw.container_yard_delay_email	execute_python_module		{"module_name": "liw_jobs/container_yard_delay_email"}	Container_Yard_email_전송배치	true			{mg.jin@lgepartner.com}	{}	0	1
+liw.M_SO_LINE_TMS_INFO	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_SO_LINE_TMS_INFO();	{}	각종 TMS Data, Merge Table (OTMS, EUTMS, OBS)	true			{dongkun.kim@lge.com}	{}	1	2
+spw.job_sp_lumpsum_update_pool	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_LUMPSUM_UPDATE_POOL();	{}		true		2026-08-27 08:54:49.099	{}	{}	0	1
+liw.job_D_SO_REM_DAYS	execute_sql_bq	"CREATE OR replace TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_SO_REM_DAYS
+AS
+SELECT T.SUBSDR_NAME 
+    , T.SHIP_TO_CUSTOMER_CODE
+    , AVG(ENTERED_IN_DAYS)           AS ENTERED_IN_DAYS
+    , AVG(BOOKED_IN_DAYS)            AS BOOKED_IN_DAYS
+    , AVG(HOLD_IN_DAYS)              AS HOLD_IN_DAYS
+    , AVG(PICK_READY_IN_DAYS)        AS PICK_READY_IN_DAYS
+    , AVG(PICK_RELEASE_IN_DAYS)      AS PICK_RELEASE_IN_DAYS
+    , AVG(LOAD_CREATION_IN_DAYS)     AS LOAD_CREATION_IN_DAYS
+    , AVG(WH_RELEASE_IN_DAYS)        AS WH_RELEASE_IN_DAYS
+    , AVG(SHIPPING_CONFIRM_IN_DAYS)  AS SHIPPING_CONFIRM_IN_DAYS
+    , AVG(SHIPPED_IN_DAYS)           AS SHIPPED_IN_DAYS
+    , AVG(IOD_IN_DAYS)               AS IOD_IN_DAYS
+    -- 단계별 잔여 소요일 사전 계산 
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(ORDERED_DATE), DAY))               AS REM_ENTERED_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(BOOKED_DATE), DAY))                AS REM_BOOKED_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(HOLD_DATE), DAY))                  AS REM_HOLD_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(HOLD_RELEASE_DATE), DAY))          AS REM_PICK_READY_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(PICK_RELEASE_DATE), DAY))          AS REM_PICK_RELEASE_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(TMS_LOAD_CREATION_DATE), DAY))     AS REM_LOAD_CREATION_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(TMS_WH_RELEASE_DATE), DAY))        AS REM_WH_RELEASE_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(WMS_SHIPPING_CONFIRM_DATE), DAY))  AS REM_SHIPPING_CONFIRM_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(WMS_SHIPPED_DATE), DAY))           AS REM_SHIPPED_DAYS 
+FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE T
+WHERE 1=1
+--SALES_DATE BETWEEN '2025-01-01' AND '2025-12-31 23:59:59'
+AND LINE_CATEGORY_CODE IN ('ORDER' , 'Order', 'ZOR:Regular Order', 'Regular Order')
+AND LINE_STATUS_CODE IN ('Completed','CLOSED')
+GROUP BY T.SUBSDR_NAME 
+    , T.SHIP_TO_CUSTOMER_CODE
+UNION ALL 
+SELECT T.SUBSDR_NAME 
+    , '[ALL]'
+    , AVG(ENTERED_IN_DAYS)           AS ENTERED_IN_DAYS
+    , AVG(BOOKED_IN_DAYS)            AS BOOKED_IN_DAYS
+    , AVG(HOLD_IN_DAYS)              AS HOLD_IN_DAYS
+    , AVG(PICK_READY_IN_DAYS)        AS PICK_READY_IN_DAYS
+    , AVG(PICK_RELEASE_IN_DAYS)      AS PICK_RELEASE_IN_DAYS
+    , AVG(LOAD_CREATION_IN_DAYS)     AS LOAD_CREATION_IN_DAYS
+    , AVG(WH_RELEASE_IN_DAYS)        AS WH_RELEASE_IN_DAYS
+    , AVG(SHIPPING_CONFIRM_IN_DAYS)  AS SHIPPING_CONFIRM_IN_DAYS
+    , AVG(SHIPPED_IN_DAYS)           AS SHIPPED_IN_DAYS
+    , AVG(IOD_IN_DAYS)               AS IOD_IN_DAYS
+    -- 단계별 잔여 소요일 사전 계산 
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(ORDERED_DATE), DAY))               AS REM_ENTERED_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(BOOKED_DATE), DAY))                AS REM_BOOKED_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(HOLD_DATE), DAY))                  AS REM_HOLD_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(HOLD_RELEASE_DATE), DAY))          AS REM_PICK_READY_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(PICK_RELEASE_DATE), DAY))          AS REM_PICK_RELEASE_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(TMS_LOAD_CREATION_DATE), DAY))     AS REM_LOAD_CREATION_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(TMS_WH_RELEASE_DATE), DAY))        AS REM_WH_RELEASE_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(WMS_SHIPPING_CONFIRM_DATE), DAY))  AS REM_SHIPPING_CONFIRM_DAYS
+    , AVG(DATE_DIFF( DATE(TMS_IOD_DATE)                  , DATE(WMS_SHIPPED_DATE), DAY))           AS REM_SHIPPED_DAYS 
+FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE T
+WHERE 1=1
+--SALES_DATE BETWEEN '2025-01-01' AND '2025-12-31 23:59:59'
+AND LINE_CATEGORY_CODE IN ('ORDER' , 'Order', 'ZOR:Regular Order', 'Regular Order')
+AND LINE_STATUS_CODE IN ('Completed','CLOSED')
+GROUP BY T.SUBSDR_NAME"	{}		true		2026-08-12 09:44:43.655	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	0	1
+liw.M_EUTMS_ORDER_HIST_GERP	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_EUTMS_ORDER_HIST_GERP()	{}	EDL에 60일간만 보관중인, EUTMS를 Historically 적재하기 위한 Procedure	true			{dongkun.kim@lge.com}	{}	0	1
+spw.job_m_promo_spms_result_ana	replicate_bq_to_ptg2	"SELECT SUBSDR_NM, P_PTT, PROMO_HEADER_ID, PROMO_TYPE, HEAD_STATUS_CODE,
+       PROMOTION_NO, SALES_PGM_NO, PROMOTION_NAME, REQUESTOR_ID,
+       CURRENCY_CODE, INPUT_SOURCE, LINE_NO, PROMO_LINE_ID,
+       FORMAT_DATE('%Y-%m-%d', PROMOTION_START_DATE) AS PROMOTION_START_DATE,
+       FORMAT_DATE('%Y-%m-%d', PROMOTION_END_DATE)   AS PROMOTION_END_DATE,
+       APPLY_YYYYMM,
+       EXPECTED_QTY, EXPECTED_GROSS_SALES, EXPECTED_COST, DC_OPERAND_AMT,
+       SALES_PGM_NAME, AU_CODE, CUSTOMER_TYPE, CUSTOMER_CODE, CUSTOMER_NAME,
+       PRODUCT_TYPE, PRODUCT_CODE, DIVISION_CD, LINE_STATUS_CODE,
+       CANCEL_FLAG, UNFOLD_FLAG, QP_LIST_HEADER_ID, REASON_CD,
+       EFFECTIVE_PERIOD_FROM, EFFECTIVE_PERIOD_TO, OFFER_ID, ORG_ID,
+       LINE_REMARK, CREATION_YMD, LAST_UPDATE_YMD,
+       LAST_EXPECTED_COST, LAST_EXPECTED_QTY, LAST_DC_OPERAND_AMT,
+       LUMPSUM_LINE_CNT, SALES_PGM_STATUS_CODE
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.M_PROMO_SPMS_RESULT_ANA
+ WHERE SUBSDR_NM IN ('LGEFS','LGEUK','LGETH','LGEIS','LGEBN','LGEAP')
+   AND LINE_STATUS_CODE IN (
+       'CANCEL','REJECTED','SP_CREATE','APPROVED',
+       'CANCEL_REQUESTED','REQUESTED','SELF_REJECT'
+   )
+   AND PROMOTION_START_DATE >= '2000-01-01'"	{"if_table": "spms.m_promo_spms_result_ana_if", "dst_table": "spms.m_promo_spms_result_ana"}	M_PROMO_SPMS_RESULT_ANA BQ → PG	true	2026-05-29 17:25:36.532	2026-08-27 14:04:57.496	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+liw.job_M_CURINV_SNAPSHOT_S	execute_sql_bq	"/**************************************************************************************
+* 기능 : M_CURINV_SNAPSHOT 내역 데이터 적재
+* 소스 : GERP재고 : `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__CURINV_SNAPSHOT_S
+*       NERP재고 : `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__NERP_CURINV_SNAPSHOT_S
+*       NERP OPEN 법인 : `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST
+*                        - DATA_AGG_YN = 'Y' 판매법인
+*                        - NERP_OPEN_YMD 날짜가 있는 법인만 해당
+* 타겟 : SCM_OLAP.M_CURINV_SNAPSHOT_S
+* 특이사항 : 1. 일주일 범위 내에서 법인 + ETL_LOAD_TS + EDL_LOAD_TS 의 MAX(P_PTT) 일자만 선택
+* 개정이력 : 1. 2026.06.18 - Initial
+*          2. 2026.07.15 - 가장 최근의 법인 + ETL_LOAD_TS + EDL_LOAD_TS 의 MAX(P_PTT) 일자만 선택
+*          3. 2026.07.28 - NERP Open법인 Current Date 기준으로 변경함 (GERP와 중복되는 법인 있음)
+***************************************************************************************/
+CREATE OR REPLACE  TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_CURINV_SNAPSHOT_S
+PARTITION BY P_PTT
+CLUSTER BY LEGAL_ENTITY_NAME
+AS
+SELECT  m.P_PTT
+     ,  m.ETL_LOAD_TS
+     ,  m.EDL_LOAD_TS
+     ,  m.CREATION_DATE
+     ,  m.LEGAL_ENTITY_NAME
+     ,  m.INVENTORY_ORGANIZATION_CODE
+     ,  m.SUBINVENTORY_CODE
+     ,  CAST(NULL AS STRING) AS SUBINVENTORY_NAME
+     ,  m.MODEL_CATEGORY_CODE
+     ,  m.MODEL_CATEGORY_NAME
+     ,  m.MODEL_CODE
+     ,  m.GRADE_CODE
+     ,  m.ITEM_TYPE
+     ,  m.MARKET_CODE
+     ,  m.ITEM_STATUS_CODE
+     ,  m.MAN_RESV_FLAG
+     ,  m.INV_ASSIGN_FLAG
+     ,  m.CUSTOMER_ORDER_ENABLED
+     ,  m.PRODUCT1_CODE
+     ,  m.PRODUCT2_CODE
+     ,  m.PRODUCT3_CODE
+     ,  m.PRODUCT4_CODE
+     ,  m.AVAILABLE_QTY
+     ,  m.ONHAND_QTY
+     ,  m.DELIVERY
+     ,  m.BOOKED_QTY
+     ,  m.BOOKED_RESV_QTY
+     ,  m.READY_TO_RELEASE_QTY
+     ,  m.PICK_RELEASED_QTY
+     ,  m.PICK_CONFIRMED_QTY
+     ,  m.SHIP_CONFIRMED_MM_QTY
+     ,  m.PO_RECEIVED_QTY
+     ,  m.RMA_RECEIVED_QTY
+     ,  m.OTHER_BOOKED_QTY
+     ,  m.OTHER_BOOKED_RESV_QTY
+     ,  m.OTHER_READY_TO_RELEASE_QTY
+     ,  m.OTHER_PICK_RELEASED_QTY
+     ,  m.OTHER_PICK_CONFIRMED_QTY
+     ,  m.OTHER_SHIP_CONFIRMED_MM_QTY
+     ,  m.UNSHIPPED_QTY
+     ,  m.OTHER_UNSHIPPED_QTY
+     ,  m.TOTAL_HOLD_QTY
+     ,  m.RESERVE_HOLD_QTY
+     ,  m.FUTURE_HOLD_QTY
+     ,  m.MINIMUM_HOLD_QTY
+     ,  m.PAYMENT_HOLD_QTY
+     ,  m.CUSTOMER_HOLD_QTY
+     ,  m.OVERDUE_HOLD_QTY
+     ,  m.CREDIT_HOLD_QTY
+     ,  m.BACK_HOLD_QTY
+     ,  m.OTHERS_HOLD_QTY
+     ,  m.LINKED_BACK_HOLD_QTY
+     ,  m.RESERVED_STOCK_QTY
+     ,  m.RESERVED_STOCK_BACK_QTY
+     ,  m.DIRECTED_SO_QTY
+     ,  m.INTRANSIT_OUT_QTY
+     ,  m.INTRANSIT_CDC_QTY
+     ,  m.INTRANSIT_RDC_QTY
+     ,  m.CY_STOCK_QTY
+     ,  m.SEA_STOCK_QTY
+     ,  m.SEA_STOCK_QTY_W1
+     ,  m.SEA_STOCK_QTY_W2
+     ,  m.SEA_STOCK_QTY_W3
+     ,  m.SEA_STOCK_QTY_W4
+     ,  m.SEA_STOCK_QTY_W5
+     ,  m.SEA_STOCK_QTY_NO_ETA
+     ,  m.PO_ORDERED_QTY
+     ,  m.ONHAND_CBM
+     ,  CAST(NULL AS STRING)  AS PROJECT_CODE
+     ,  CAST(NULL AS INTEGER) AS REVENUE_QTY
+     ,  CAST(NULL AS INTEGER) AS UNRELATED_BACK_QTY
+     ,  CAST(NULL AS INTEGER) AS DELIVERY_SIT_QTY
+     , 'GERP'                 AS DATA_SOURCE
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__CURINV_SNAPSHOT_S m
+  JOIN  (
+          SELECT  g.LEGAL_ENTITY_NAME
+               ,  g.P_PTT
+               ,  g.ETL_LOAD_TS
+               ,  g.EDL_LOAD_TS
+            FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__CURINV_SNAPSHOT_S g
+            JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST s
+              ON  g.LEGAL_ENTITY_NAME        =  s.SUBSDR_NM
+             AND  CURRENT_DATE("Asia/Seoul") <  PARSE_DATE('%Y%m%d', IFNULL(s.NERP_OPEN_YMD,'99991231')  )
+           /* 2026-07-15 : 가장 최근의 범위로 수정함 */
+           --WHERE  DATE(n.EDL_LOAD_TS,"Asia/Seoul") BETWEEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 6 DAY)
+           --                                            AND CURRENT_DATE("Asia/Seoul")
+          QUALIFY ROW_NUMBER() OVER (
+                                      PARTITION BY g.LEGAL_ENTITY_NAME
+                                          ORDER BY g.P_PTT       DESC
+                                                 , g.ETL_LOAD_TS DESC
+                                                 , g.EDL_LOAD_TS DESC
+                                    ) = 1
+        ) d
+    ON  m.LEGAL_ENTITY_NAME = d.LEGAL_ENTITY_NAME
+   AND  m.P_PTT             = d.P_PTT
+   AND  m.ETL_LOAD_TS       = d.ETL_LOAD_TS
+   AND  m.EDL_LOAD_TS       = d.EDL_LOAD_TS
+/*-----------------------------------------------------------------------------------*/
+ UNION  ALL
+/*-----------------------------------------------------------------------------------*/
+SELECT  n.P_PTT
+     ,  n.ETL_LOAD_TS
+     ,  n.EDL_LOAD_TS
+     ,  n.CREATION_DATE
+     ,  n.LEGAL_ENTITY_NAME
+     ,  n.INVENTORY_ORGANIZATION_CODE
+     ,  n.SUBINVENTORY_CODE
+     ,  n.SUBINVENTORY_NAME
+     ,  n.MODEL_CATEGORY_CODE
+     ,  n.MODEL_CATEGORY_NAME
+     ,  n.MODEL_CODE
+     ,  n.GRADE_CODE
+     ,  n.ITEM_TYPE
+     ,  n.MARKET_CODE
+     ,  n.ITEM_STATUS_CODE
+     ,  n.MAN_RESV_FLAG
+     ,  n.INV_ASSIGN_FLAG
+     ,  n.CUSTOMER_ORDER_ENABLED
+     ,  n.PRODUCT1_CODE
+     ,  n.PRODUCT2_CODE
+     ,  n.PRODUCT3_CODE
+     ,  n.PRODUCT4_CODE
+     ,  n.AVAILABLE_QTY
+     ,  n.ONHAND_QTY
+     ,  n.DELIVERY
+     ,  n.BOOKED_QTY
+     ,  n.BOOKED_RESV_QTY
+     ,  n.READY_TO_RELEASE_QTY
+     ,  n.PICK_RELEASED_QTY
+     ,  n.PICK_CONFIRMED_QTY
+     ,  n.SHIP_CONFIRMED_MM_QTY
+     ,  n.PO_RECEIVED_QTY
+     ,  n.RMA_RECEIVED_QTY
+     ,  n.OTHER_BOOKED_QTY
+     ,  n.OTHER_BOOKED_RESV_QTY
+     ,  n.OTHER_READY_TO_RELEASE_QTY
+     ,  n.OTHER_PICK_RELEASED_QTY
+     ,  n.OTHER_PICK_CONFIRMED_QTY
+     ,  n.OTHER_SHIP_CONFIRMED_MM_QTY
+     ,  n.UNSHIPPED_QTY
+     ,  n.OTHER_UNSHIPPED_QTY
+     ,  n.TOTAL_HOLD_QTY
+     ,  n.RESERVE_HOLD_QTY
+     ,  n.FUTURE_HOLD_QTY
+     ,  n.MINIMUM_HOLD_QTY
+     ,  n.PAYMENT_HOLD_QTY
+     ,  n.CUSTOMER_HOLD_QTY
+     ,  n.OVERDUE_HOLD_QTY
+     ,  n.CREDIT_HOLD_QTY
+     ,  n.BACK_HOLD_QTY
+     ,  n.OTHERS_HOLD_QTY
+     ,  n.LINKED_BACK_HOLD_QTY
+     ,  n.RESERVED_STOCK_QTY
+     ,  n.RESERVED_STOCK_BACK_QTY
+     ,  n.DIRECTED_SO_QTY
+     ,  n.INTRANSIT_OUT_QTY
+     ,  n.INTRANSIT_CDC_QTY
+     ,  n.INTRANSIT_RDC_QTY
+     ,  n.CY_STOCK_QTY
+     ,  n.SEA_STOCK_QTY
+     ,  n.SEA_STOCK_QTY_W1
+     ,  n.SEA_STOCK_QTY_W2
+     ,  n.SEA_STOCK_QTY_W3
+     ,  n.SEA_STOCK_QTY_W4
+     ,  n.SEA_STOCK_QTY_W5
+     ,  n.SEA_STOCK_QTY_NO_ETA
+     ,  n.PO_ORDERED_QTY
+     ,  n.ONHAND_CBM
+     ,  n.PROJECT_CODE
+     ,  n.REVENUE_QTY
+     ,  n.UNRELATED_BACK_QTY
+     ,  n.DELIVERY_SIT_QTY
+     , 'NERP' AS DATA_SOURCE
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__NERP_CURINV_SNAPSHOT_S n
+  JOIN  (
+          SELECT  n.LEGAL_ENTITY_NAME
+               ,  n.P_PTT
+               ,  n.ETL_LOAD_TS
+               ,  n.EDL_LOAD_TS
+            FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__NERP_CURINV_SNAPSHOT_S n
+            JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST s
+              ON  n.LEGAL_ENTITY_NAME         =  s.SUBSDR_NM
+             AND  CURRENT_DATE("Asia/Seoul") >=  PARSE_DATE('%Y%m%d', IFNULL(s.NERP_OPEN_YMD,'99991231')  )
+             AND  n.p_PTT            >=  PARSE_DATE('%Y%m%d', IFNULL(s.NERP_OPEN_YMD,'99991231'))
+           /* 2026-07-15 : 가장 최근의 범위로 수정함 */
+           --WHERE  DATE(n.EDL_LOAD_TS,"Asia/Seoul") BETWEEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 6 DAY)
+           --                                            AND CURRENT_DATE("Asia/Seoul")
+          QUALIFY ROW_NUMBER() OVER (
+                                      PARTITION BY LEGAL_ENTITY_NAME
+                                          ORDER BY n.P_PTT DESC
+                                                 , n.EDL_LOAD_TS DESC
+                                                 , n.ETL_LOAD_TS DESC
+                                    ) = 1
+        ) d
+    ON  n.LEGAL_ENTITY_NAME = d.LEGAL_ENTITY_NAME
+   AND  n.P_PTT             = d.P_PTT
+   AND  n.ETL_LOAD_TS       = d.ETL_LOAD_TS
+   AND  n.EDL_LOAD_TS       = d.EDL_LOAD_TS
+;"	{}	재고 Snapshot (NERP+GERP)	true		2026-08-14 10:53:32.103	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job_sp_gdmi_channel_psi_result	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_GDMI_CHANNEL_PSI_RESULT();	{}		true		2026-08-27 08:50:05.995	{}	{}	0	1
+spw.job_d_rrp_lgeus_mst	replicate_bq_to_ptg2	"SELECT SUBSDR_NM, MDL_SFFX_CD, DIVISION_NM, DIVISION_CD, MDL_LV1_CD, MDL_LV2_CD, ITEM_CD
+     , RRP, CURRENCY_CD, START_DATE, APPLY_END_YMD, MONDAY_YMD, REQUEST_KEY, INPUT_DATE
+FROM   `pjt-lge-oversea-sales-olap`.SPW_OLAP.D_RRP_MASTER_SET_LGEUS"	{"if_table": "spms.d_rrp_master_set_lgeus_if", "dst_table": "spms.d_rrp_master_set_lgeus"}	GERP의 RRP중 LGEUS법인의 Data를 SPW의 RRP_Mst에 Bulk로 Insert	true		2026-08-27 14:05:40.766	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+spw.job_v_l0mdm3_v_edl_mdms_bp_cust_mst_snd_inf	replicate_bq_to_ptg	"SELECT KUNNR, BUKRS, KUNNR_OLD, ZZ_LEGAL_ENTITY_D, ZZ_BIZ_SITE_D
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L0MDM3_V_EDL_MDMS_BP_CUST_MST_SND_INF
+ WHERE BUKRS IN ( SELECT SUBSDR_CD
+                    FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST 
+                   WHERE SHRT_REGION_NM = 'MEA'
+                     AND DATA_AGG_YN = 'Y' )"	{"if_table": "spms.v_l0mdm3_v_edl_mdms_bp_cust_mst_snd_inf_if", "dst_table": "spms.v_l0mdm3_v_edl_mdms_bp_cust_mst_snd_inf"}		true			{}	{}	0	1
+liw.eta_digest_email	execute_python_module		{"entry_func": "run", "module_name": "liw_jobs/eta_digest_email"}		true			{yunchu.jo@lgepartner.com}	{}	0	1
+liw_dev.M_SO_LINE_T01	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_SO_LINE_T01();	{}	New M_SO_LINE_T01 생성용 SP Call	true			{dongkun.kim@lge.com}	{}	2	5
+liw_dev.M_SO_LINE_BACK_PO_MAP	execute_sql_bq	-- =====================================================================================
+-- M_SO_LINE_BACK_PO_MAP : 백오더 "주문라인 ↔ 공급원(현재고/PO)" 할당 매핑 테이블
+-- -------------------------------------------------------------------------------------
+--  ▷ 목적   : M_SO_LINE_BACK 생성 "전 단계" 선행 테이블.
+--             각 백오더 주문라인이 "어느 공급원(현재고 / 어느 PO·컨테이너)에서 몇 개를
+--             가져왔는지"를 수량(ALLOC_QTY)까지 매핑한다.
+--             → 오더키(SALES_ORDER_NO + LINE) 기준으로 PO키(PO_NO + PO_LINE_NO + CONTAINER_NO)별
+--                할당수량(ALLOC_QTY)을 바로 조회 가능.
+--  ▷ 그레인 : 법인 + 모델 + 주문라인 + 공급원(현재고 / 개별 PO키) = 1행
+--  ▷ 할당   : 모델별 "가까운 공급원부터(현재고→PO단계)" 정렬한 누적공급 구간과
+--             주문일자 우선순위로 정렬한 누적수요 구간을 교차(overlap)시켜 겹치는 수량을 할당.
+--             ALLOC_QTY = LEAST(수요끝, 공급끝) − GREATEST(수요시작, 공급시작)
+--  ▷ PO키   : PO_NO + PO_LINE_NO + CONTAINER_NO (현재고 공급원은 셋 다 NULL)
+--  ▷ 정렬   : PRIORITY(현재고1 → POD~FDEST2 → POL~POD3 → 출하4 → 공장5)
+--             → UNIT_ETA(빠른 도착 우선) → CONTAINER_NO → PO_NO → PO_LINE_NO
+--  ▷ 모수   : 백오더가 존재하는 주문라인만 (BACK_ORDER_HOLD='Y' 오픈오더)
+--  ▷ 공급 원천 : ① 현재고(`pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S.AVAILABLE_QTY)
+--                ② 인커밍 PO(M_PO_TRACKING) — 4개 진행단계 PO·컨테이너 물량
+--  ▷ 비고   : 공급 부족(PO Required) 잔량은 매핑되는 공급원이 없으므로 행이 생성되지 않음.
+-- =====================================================================================
+-- ※ 파티셔닝 스펙(ORDERED_DATE) 추가로 기존 테이블과 스펙이 달라 REPLACE 불가 → 선 DROP 후 재생성
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE_BACK_PO_MAP
+    PARTITION BY ORDERED_DATE
+    CLUSTER BY SUBSDR_NAME, MODEL_CODE
+    OPTIONS (
+      require_partition_filter = FALSE
+    )
+    AS
+WITH
+-- ① 백오더 주문라인 모수 (라인별 백오더 수량)
+back_orders AS (
+    SELECT
+          T.SUBSDR_NAME
+        , T.MODEL_CODE
+        , T.SALES_ORDER_NO
+        , T.SALES_ORDER_LINE_NO
+        , T.ORDERED_DATE
+        , DATE(T.RAD_DATE) AS RAD_DATE
+        , T.ORDER_QTY      AS BACK_QTY
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE T
+     WHERE T.OPEN_FLAG       = 'Y'
+       AND T.LINE_CATEGORY_CODE NOT IN ('RETURN','Returns')
+       AND T.LINE_STATUS_CODE   NOT IN ('CANCELLED','CLOSED','Fully Cancelled','Completed')
+       AND T.BACK_ORDER_HOLD       = 'Y'
+),
+-- ①-2 점검 대상 법인+모델 (공급단위 적재 범위 한정)
+back_models AS (
+    SELECT DISTINCT SUBSDR_NAME, MODEL_CODE FROM back_orders
+),
+-- ② 현재고 공급 (법인+모델 단위 가용수량, 음수는 0으로 처리)
+stock AS (
+    SELECT
+          I.LEGAL_ENTITY_NAME                                          AS SUBSDR_NAME
+        , I.MODEL_CODE
+        , GREATEST(IFNULL(SUM(CAST(I.AVAILABLE_QTY AS FLOAT64)), 0), 0) AS STOCK_QTY
+        , MAX(I.P_PTT)                                                  AS STOCK_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S I
+      JOIN (SELECT LEGAL_ENTITY_NAME, MAX(P_PTT) AS MX_PTT
+              FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S GROUP BY 1) F
+        ON I.LEGAL_ENTITY_NAME = F.LEGAL_ENTITY_NAME AND I.P_PTT = F.MX_PTT
+     WHERE I.LEGAL_ENTITY_NAME <> 'LGEPH' OR I.SUBINVENTORY_CODE = '5000'
+     GROUP BY 1, 2
+),
+-- ③ 개별 공급단위 (현재고 1건 + 인커밍 PO 컨테이너 N건)
+--    현재고는 PO·컨테이너 없음(즉시 출고 가능, 우선순위 1), PO는 PO라인·컨테이너 단위 개별 물량(우선순위 2~5)
+supply_units AS (
+    -- 현재고: PO·컨테이너 없음(즉시 출고 가능), 우선순위 1
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , 1                      AS PRIORITY
+        , 'STOCK'                AS SUPPLY_TYPE
+        , 'From Stock'           AS BACK_STATUS
+        , CAST(NULL AS STRING)   AS PO_NO
+        , CAST(NULL AS STRING)   AS PO_LINE_NO
+        , CAST(NULL AS STRING)   AS CONTAINER_NO
+        , IFNULL(s.STOCK_QTY, 0) AS UNIT_QTY
+        , s.STOCK_ETA            AS UNIT_ETA
+      FROM back_models m
+      LEFT JOIN stock s
+        ON s.SUBSDR_NAME = m.SUBSDR_NAME
+       AND s.MODEL_CODE = m.MODEL_CODE
+    UNION ALL
+    -- 인커밍 PO: PO라인·컨테이너 단위 개별 물량 (진행단계 → 우선순위 2~5)
+    SELECT
+          P.subsdr_nm   AS SUBSDR_NAME
+        , P.mdl_sffx_cd AS MODEL_CODE
+        , CASE TRIM(P.po_status)
+            WHEN 'Intransit (POD~FDEST)' THEN 2
+            WHEN 'Intransit (POL~POD)'   THEN 3
+            WHEN 'Factory Ship Out'      THEN 4
+            WHEN 'On factory Processing' THEN 5
+          END                              AS PRIORITY
+        , 'PO'                             AS SUPPLY_TYPE
+        , CASE TRIM(P.po_status)
+            WHEN 'Intransit (POD~FDEST)' THEN 'POD → FDEST'
+            WHEN 'Intransit (POL~POD)'   THEN 'POL → POD'
+            WHEN 'Factory Ship Out'      THEN 'Ship Out'
+            WHEN 'On factory Processing' THEN 'On Factory'
+          END                              AS BACK_STATUS
+        , CAST(P.po_no AS STRING)          AS PO_NO
+        , CAST(P.po_line_no AS STRING)     AS PO_LINE_NO
+        , NULLIF(TRIM(P.cntr_no), '')      AS CONTAINER_NO
+        , SUM(CAST(P.qty AS FLOAT64))           AS UNIT_QTY
+        , max(P.FDEST_ETA_DATE)         AS UNIT_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_PO_TRACKING P
+      JOIN back_models m
+        ON m.SUBSDR_NAME = P.subsdr_nm
+       AND m.MODEL_CODE = P.mdl_sffx_cd
+     WHERE TRIM(P.po_status) IN ('Intransit (POD~FDEST)','Intransit (POL~POD)','Factory Ship Out','On factory Processing')
+     GROUP BY P.subsdr_nm , P.mdl_sffx_cd, P.po_status , P.po_no, P.po_line_no, P.cntr_no
+),
+-- ④ 공급단위 누적 경계 (가까운 공급원부터: 우선순위 → ETA → 컨테이너 → PO)
+--    SUP_START ~ SUP_END = 해당 공급단위가 점유하는 누적공급 물량 구간
+supply_cum AS (
+    SELECT
+          SUBSDR_NAME
+        , MODEL_CODE
+        , PRIORITY
+        , SUPPLY_TYPE
+        , BACK_STATUS
+        , PO_NO
+        , PO_LINE_NO
+        , CONTAINER_NO
+        , UNIT_ETA
+        , SUM(UNIT_QTY) OVER w            AS SUP_END
+        , SUM(UNIT_QTY) OVER w - UNIT_QTY AS SUP_START
+      FROM supply_units
+      WINDOW w AS (
+          PARTITION BY SUBSDR_NAME, MODEL_CODE
+          ORDER BY PRIORITY ASC,
+                   UNIT_ETA ASC NULLS LAST,
+                   CONTAINER_NO ASC NULLS LAST,
+                   PO_NO ASC NULLS LAST,
+                   PO_LINE_NO ASC NULLS LAST
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+),
+-- ⑤ 주문라인별 누적 수요 (주문일자 우선순위: 먼저 주문한 건부터 가까운 공급원 점유)
+ranked AS (
+    SELECT
+          b.*
+        , SUM(b.BACK_QTY) OVER (
+              PARTITION BY b.SUBSDR_NAME, b.MODEL_CODE
+              ORDER BY b.ORDERED_DATE ASC NULLS LAST,
+                       b.RAD_DATE ASC NULLS LAST,
+                       b.SALES_ORDER_NO,
+                       b.SALES_ORDER_LINE_NO
+              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS CUM_BACK_QTY
+      FROM back_orders b
+),
+-- ⑥ 라인 수요구간 ∩ 공급단위 구간 교차 → 겹치는 수량(ALLOC_QTY) 할당
+--    수요구간 (CUM_BACK_QTY - BACK_QTY, CUM_BACK_QTY] , 공급구간 (SUP_START, SUP_END]
+allocation AS (
+    SELECT
+          r.SUBSDR_NAME
+        , r.MODEL_CODE
+        , r.ORDERED_DATE
+        , r.SALES_ORDER_NO
+        , r.SALES_ORDER_LINE_NO
+        , r.BACK_QTY
+        , r.CUM_BACK_QTY
+        , su.PRIORITY
+        , su.SUPPLY_TYPE
+        , su.BACK_STATUS
+        , su.PO_NO
+        , su.PO_LINE_NO
+        , su.CONTAINER_NO
+        , su.UNIT_ETA
+        , LEAST(r.CUM_BACK_QTY, su.SUP_END)
+            - GREATEST(r.CUM_BACK_QTY - r.BACK_QTY, su.SUP_START) AS ALLOC_QTY
+      FROM ranked r
+      JOIN supply_cum su
+        ON su.SUBSDR_NAME = r.SUBSDR_NAME
+       AND su.MODEL_CODE  = r.MODEL_CODE
+       AND su.SUP_START < r.CUM_BACK_QTY                    -- 공급시작 < 수요끝
+       AND su.SUP_END   > (r.CUM_BACK_QTY - r.BACK_QTY)     -- 공급끝   > 수요시작
+)
+-- ⑦ 오더키 ↔ PO키 최종 매핑 (동일 PO키에 다중 공급단위가 걸리면 수량 합산)
+SELECT
+      SUBSDR_NAME
+    , MODEL_CODE
+    , ORDERED_DATE
+    , SALES_ORDER_NO
+    , SALES_ORDER_LINE_NO
+    , PRIORITY
+    , BACK_STATUS
+    , SUPPLY_TYPE
+    , PO_NO
+    , PO_LINE_NO
+    , CONTAINER_NO
+    , MAX(UNIT_ETA)           AS UNIT_ETA
+    , ANY_VALUE(BACK_QTY)     AS BACK_QTY
+    , ANY_VALUE(CUM_BACK_QTY) AS CUM_BACK_QTY
+    , SUM(ALLOC_QTY)          AS ALLOC_QTY
+  FROM allocation
+ WHERE ALLOC_QTY > 0
+ GROUP BY
+       SUBSDR_NAME
+     , MODEL_CODE
+     , ORDERED_DATE
+     , SALES_ORDER_NO
+     , SALES_ORDER_LINE_NO
+     , PRIORITY
+     , BACK_STATUS
+     , SUPPLY_TYPE
+     , PO_NO
+     , PO_LINE_NO
+     , CONTAINER_NO
+;
+
+
+-- =====================================================================================
+-- M_SO_LINE_BACK : 백오더(Back Order) 라인 공급 할당/도착예상 분석 테이블
+-- -------------------------------------------------------------------------------------
+--  ▷ 모수      : 백오더 걸린 오픈 오더만 (BACK_ORDER_HOLD = 'Y')
+--  ▷ 점검 기준 : 모델(MODEL_CODE) + 법인(SUBSDR_NAME) 단위
+--  ▷ 공급 원천 : ① 현재고(`pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S.AVAILABLE_QTY)
+--                ② 인커밍 PO(M_PO_TRACKING) — 4개 진행단계 물량
+--  ▷ 선행 테이블 : `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE_BACK_PO_MAP (주문라인↔PO/컨테이너 할당 매핑)
+--                 → 라인별 컨테이너 집계에 사용. M_SO_LINE_BACK 생성 전 반드시 먼저 적재.
+--  ▷ 할당 방식 : 모델별 수요를 주문일자(ORDERED_DATE) 우선순위로 정렬 → 누적수요(CUM_BACK_QTY)를
+--                공급 누적 임계값과 비교하여 가장 가까운(=빠른) 공급원부터 워터폴 할당
+--                (먼저 주문한 건이 가까운 공급원을 먼저 점유 / 동일 주문일은 RAD 빠른 순)
+--  ▷ 상태값(우선순위 순):
+--        From Stock  →  POD → FDEST  →  POL → POD  →  Ship Out  →  On Factory  →  PO Required
+--        (현재고)       (POD~FDEST)     (POL~POD)     (공장출하)    (공장처리중)   (공급없음·신규PO필요)
+--  ▷ EST_ARRIVAL_DATE : 할당된 공급원의 도착예상일
+--        - From Stock : NULL (이미 창고 보유분·즉시 출고 가능 → 도착예정 개념 없음)
+--        - PO 단계    : 해당 단계 PO의 est_fdest_arrival_date 중 MAX (전량 도착 기준·보수적)
+--        - PO Required: NULL (아직 발주 전이라 ETA 없음)
+-- =====================================================================================
+CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE_BACK
+    PARTITION BY ORDERED_DATE
+    CLUSTER BY SUBSDR_NAME
+    OPTIONS (
+      require_partition_filter = FALSE
+    )
+    AS
+WITH
+-- ① 백오더 모수 (모델 단위 점검을 위해 라인별 백오더 수량 산출)
+back_orders AS (
+    SELECT
+          T.P_PTT
+        , T.SUBSDR_NAME
+        , T.DIV_NM
+        , T.MODEL_CODE
+        , T.MODEL_CATEGORY
+        , T.SALES_ORDER_NO
+        , T.SALES_ORDER_LINE_NO
+        , T.ORDER_TYPE_NAME
+        , T.BILL_TO_CUSTOMER_CODE
+        , T.BILL_TO_CUSTOMER_NAME
+        , T.SHIP_TO_CUSTOMER_CODE
+        , T.SHIP_TO_CUSTOMER_NAME
+        , T.ORDERED_DATE
+        , T.BOOKED_DATE
+        , DATE(T.RAD_DATE)   AS RAD_DATE
+        , DATE(T.HOLD_DATE)  AS HOLD_DATE
+        , T.HOLD_NAME
+        , T.HOLD_IN_DAYS
+        , T.CURRENCY_CODE
+        , T.ORDER_AMOUNT
+        , T.USD_ORDER_AMOUNT
+        , T.ORDER_QTY
+        , T.CANCEL_QTY
+        , T.ORDER_QTY AS BACK_QTY
+        , T.PRDT_GRP_CD
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE T
+     WHERE T.OPEN_FLAG       = 'Y'
+       AND T.LINE_CATEGORY_CODE NOT IN ('RETURN','Returns')
+       AND T.LINE_STATUS_CODE   NOT IN ('CANCELLED','CLOSED','Fully Cancelled','Completed')
+       AND T.BACK_ORDER_HOLD       = 'Y'
+),
+zplant AS (
+    SELECT CAST(SAFE_CAST(DOC_NUMBER AS INT64) AS STRING) SO
+         , CAST(SAFE_CAST(S_ORD_ITEM AS INT64) AS STRING) LI
+         , PLANT
+      FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZSSDA0226
+     WHERE SALESORG LIKE '%00'
+    QUALIFY ROW_NUMBER() OVER(PARTITION BY DOC_NUMBER, S_ORD_ITEM ORDER BY ZLOGSTMP DESC) = 1
+),
+open_plants AS (
+    SELECT DISTINCT T.SUBSDR_NAME, T.MODEL_CODE, COALESCE(z.PLANT, T.WAREHOUSE_CODE) AS PLANT
+      FROM pjt-lge-oversea-sales-olap.SCM_DEV.M_SO_LINE T
+      LEFT JOIN zplant z
+        ON CAST(SAFE_CAST(T.SALES_ORDER_NO AS INT64) AS STRING) = z.SO
+       AND CAST(SAFE_CAST(T.SALES_ORDER_LINE_NO AS INT64) AS STRING) = z.LI
+     WHERE T.OPEN_FLAG = 'Y'
+       AND COALESCE(z.PLANT, T.WAREHOUSE_CODE) IS NOT NULL
+),
+-- ③ 현재고 공급 (법인+모델 단위 가용수량, 음수는 0으로 처리)
+stock AS (
+    SELECT
+          I.LEGAL_ENTITY_NAME                AS SUBSDR_NAME
+        , I.MODEL_CODE
+        , I.INVENTORY_ORGANIZATION_CODE      AS PLANT
+        , GREATEST(IFNULL(SUM(CAST(I.AVAILABLE_QTY AS FLOAT64)), 0), 0) AS STOCK_QTY
+        , MAX(I.P_PTT)                       AS STOCK_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S I
+      JOIN (SELECT LEGAL_ENTITY_NAME, MAX(P_PTT) AS MX_PTT
+              FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_CURINV_SNAPSHOT_S GROUP BY 1) F
+        ON I.LEGAL_ENTITY_NAME = F.LEGAL_ENTITY_NAME AND I.P_PTT = F.MX_PTT
+     WHERE I.LEGAL_ENTITY_NAME <> 'LGEPH' OR I.SUBINVENTORY_CODE = '5000'
+     GROUP BY 1, 2, 3
+),
+-- ④ 인커밍 PO 공급 (법인+모델 단위, 4개 진행단계별 물량 / 단계별 도착예상 MAX)
+po AS (
+    SELECT
+          P.subsdr_nm   AS SUBSDR_NAME
+        , P.mdl_sffx_cd AS MODEL_CODE
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Intransit (POD~FDEST)', P.qty, 0)) AS FLOAT64) AS POD_FDEST_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Intransit (POL~POD)',  P.qty, 0)) AS FLOAT64) AS POL_POD_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'Factory Ship Out',      P.qty, 0)) AS FLOAT64) AS SHIPOUT_QTY
+        , CAST(SUM(IF(TRIM(P.po_status) = 'On factory Processing', P.qty, 0)) AS FLOAT64) AS ONFACTORY_QTY
+        , MAX(IF(TRIM(P.po_status) = 'Intransit (POD~FDEST)', P.FDEST_ETA_DATE, NULL)) AS POD_FDEST_ETA
+        , MAX(IF(TRIM(P.po_status) = 'Intransit (POL~POD)',  P.FDEST_ETA_DATE, NULL)) AS POL_POD_ETA
+        , MAX(IF(TRIM(P.po_status) = 'Factory Ship Out',      P.FDEST_ETA_DATE, NULL)) AS SHIPOUT_ETA
+        , MAX(IF(TRIM(P.po_status) = 'On factory Processing', P.FDEST_ETA_DATE, NULL)) AS ONFACTORY_ETA
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_PO_TRACKING P
+     WHERE TRIM(P.po_status) IN ('Intransit (POD~FDEST)','Intransit (POL~POD)','Factory Ship Out','On factory Processing')
+     GROUP BY 1, 2
+),
+-- ⑤ 모델별 공급 통합 (백오더가 존재하는 법인+모델 기준)
+supply AS (
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , IFNULL(s.STOCK_QTY,     0) AS STOCK_QTY
+        , s.STOCK_ETA
+        , IFNULL(p.POD_FDEST_QTY, 0) AS POD_FDEST_QTY
+        , IFNULL(p.POL_POD_QTY,   0) AS POL_POD_QTY
+        , IFNULL(p.SHIPOUT_QTY,   0) AS SHIPOUT_QTY
+        , IFNULL(p.ONFACTORY_QTY, 0) AS ONFACTORY_QTY
+        , p.POD_FDEST_ETA
+        , p.POL_POD_ETA
+        , p.SHIPOUT_ETA
+        , p.ONFACTORY_ETA
+      FROM (SELECT DISTINCT SUBSDR_NAME, MODEL_CODE FROM back_orders) m
+      LEFT JOIN (SELECT op.SUBSDR_NAME, op.MODEL_CODE, SUM(COALESCE(stk.STOCK_QTY,0)) AS STOCK_QTY, MAX(stk.STOCK_ETA) AS STOCK_ETA
+                   FROM open_plants op
+                   LEFT JOIN stock stk ON stk.SUBSDR_NAME=op.SUBSDR_NAME AND stk.MODEL_CODE=op.MODEL_CODE AND stk.PLANT=op.PLANT
+                  GROUP BY 1,2) s
+        ON s.SUBSDR_NAME = m.SUBSDR_NAME AND s.MODEL_CODE = m.MODEL_CODE
+      LEFT JOIN po    p ON p.SUBSDR_NAME = m.SUBSDR_NAME AND p.MODEL_CODE = m.MODEL_CODE
+),
+model_back AS (
+    SELECT SUBSDR_NAME, MODEL_CODE, SUM(BACK_QTY) AS MBACK FROM back_orders GROUP BY 1, 2
+),
+tier_qty AS (
+    SELECT
+          mb.SUBSDR_NAME, mb.MODEL_CODE, mb.MBACK
+        , sup.STOCK_QTY, sup.POD_FDEST_QTY, sup.POL_POD_QTY, sup.SHIPOUT_QTY, sup.ONFACTORY_QTY
+        , sup.POD_FDEST_ETA, sup.POL_POD_ETA, sup.SHIPOUT_ETA, sup.ONFACTORY_ETA
+        , LEAST(mb.MBACK, sup.STOCK_QTY) AS FS
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY,0), sup.POD_FDEST_QTY) AS PODF
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY,0), sup.POL_POD_QTY) AS POL
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY,0), sup.SHIPOUT_QTY) AS SHIP
+        , LEAST(GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY-sup.SHIPOUT_QTY,0), sup.ONFACTORY_QTY) AS FAC
+        , GREATEST(mb.MBACK-sup.STOCK_QTY-sup.POD_FDEST_QTY-sup.POL_POD_QTY-sup.SHIPOUT_QTY-sup.ONFACTORY_QTY,0) AS POREQ
+      FROM model_back mb
+      JOIN supply sup ON sup.SUBSDR_NAME=mb.SUBSDR_NAME AND sup.MODEL_CODE=mb.MODEL_CODE
+),
+-- ⑦ 라인별 컨테이너 할당 (해당 라인이 실제 걸려있는 컨테이너만)
+--    선행 테이블 M_SO_LINE_BACK_PO_MAP 가 이미 "라인 ↔ 공급원(PO/컨테이너)" 할당을
+--    수량까지 산출해 두었으므로, 여기서는 라인별 컨테이너만 콤마 결합한다.
+--    → 같은 단계라도 라인마다 실제 할당된 컨테이너만 표시 (누적 표시 X)
+line_containers AS (
+    SELECT
+          m.SUBSDR_NAME
+        , m.MODEL_CODE
+        , m.SALES_ORDER_NO
+        , m.SALES_ORDER_LINE_NO
+        , STRING_AGG(DISTINCT m.CONTAINER_NO, ', ' ORDER BY m.CONTAINER_NO) AS CONTAINER_NO
+      FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_SO_LINE_BACK_PO_MAP m
+     WHERE m.CONTAINER_NO IS NOT NULL
+     GROUP BY 1, 2, 3, 4
+)
+SELECT
+      r.P_PTT
+    , r.SUBSDR_NAME
+    , r.DIV_NM
+    , r.MODEL_CODE
+    , r.MODEL_CATEGORY
+    , r.SALES_ORDER_NO
+    , r.SALES_ORDER_LINE_NO
+    , r.ORDER_TYPE_NAME
+    , r.BILL_TO_CUSTOMER_CODE
+    , r.BILL_TO_CUSTOMER_NAME
+    , r.SHIP_TO_CUSTOMER_CODE
+    , r.SHIP_TO_CUSTOMER_NAME
+    , r.ORDERED_DATE
+    , r.BOOKED_DATE
+    , r.RAD_DATE
+    , r.HOLD_DATE
+    , r.HOLD_NAME
+    , r.HOLD_IN_DAYS
+    , r.CURRENCY_CODE
+    , r.PRDT_GRP_CD
+    , B.BILLTO_BIZ_NAME
+    , B.TEAM_NAME
+    , CAST(ROUND(r.ORDER_AMOUNT     * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 2) AS NUMERIC) AS ORDER_AMOUNT
+    , CAST(ROUND(r.USD_ORDER_AMOUNT * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 2) AS NUMERIC) AS USD_ORDER_AMOUNT
+    , r.ORDER_QTY
+    , r.CANCEL_QTY
+    , CAST(ROUND(r.BACK_QTY * SAFE_DIVIDE(tt.TIER_QTY, t.MBACK), 3) AS NUMERIC)         AS BACK_QTY
+    , CAST(r.BACK_QTY AS NUMERIC)                                                       AS CUM_BACK_QTY
+    , t.STOCK_QTY
+    , t.POD_FDEST_QTY
+    , t.POL_POD_QTY
+    , t.SHIPOUT_QTY
+    , t.ONFACTORY_QTY
+    , tt.BACK_STATUS
+    , tt.ETA AS EST_ARRIVAL_DATE
+    , IF(tt.BACK_STATUS IN ('POD → FDEST','POL → POD','Ship Out','On Factory'), lc.CONTAINER_NO, NULL) AS CONTAINER_NO
+    , CASE
+        WHEN me.ENABLED_FLAG = 'N' THEN 'Y'
+        WHEN me.ENABLED_FLAG = 'Y' THEN 'N'
+        ELSE NULL
+      END AS EOL_YN
+  FROM back_orders r
+  JOIN tier_qty t
+    ON t.SUBSDR_NAME = r.SUBSDR_NAME AND t.MODEL_CODE = r.MODEL_CODE
+  CROSS JOIN UNNEST([
+         STRUCT('From Stock'  AS BACK_STATUS, t.FS   AS TIER_QTY, CAST(NULL AS DATE) AS ETA),
+         STRUCT('POD → FDEST', t.PODF, t.POD_FDEST_ETA),
+         STRUCT('POL → POD',   t.POL,  t.POL_POD_ETA),
+         STRUCT('Ship Out',    t.SHIP, t.SHIPOUT_ETA),
+         STRUCT('On Factory',  t.FAC,  t.ONFACTORY_ETA),
+         STRUCT('PO Required', t.POREQ, CAST(NULL AS DATE))
+       ]) tt
+  LEFT JOIN line_containers lc
+    ON lc.SUBSDR_NAME         = r.SUBSDR_NAME
+   AND lc.MODEL_CODE          = r.MODEL_CODE
+   AND lc.SALES_ORDER_NO      = r.SALES_ORDER_NO
+   AND lc.SALES_ORDER_LINE_NO = r.SALES_ORDER_LINE_NO
+  LEFT OUTER JOIN 
+         `pjt-lge-oversea-sales-olap`.SCM_DEV.REF_D_BILLTO_BIZ_MST B
+    ON  r.SUBSDR_NAME            = B.SUBSDR_NAME
+   AND  r.BILL_TO_CUSTOMER_CODE  = B.BILLTO_CODE
+   AND  r.PRDT_GRP_CD            = B.PRODUCT_GROUP_CODE
+  LEFT JOIN (
+      SELECT s.SUBSDR_NM AS SUBSDR_NAME, m.MODEL_CODE, m.SUFFIX_CODE,
+             MIN(m.ENABLED_FLAG) AS ENABLED_FLAG
+        FROM `pjt-lge-edl-ob`.OB_00030.V_L0MDM3_V_EDL_MDMS3_MODEL_MASTER m
+        JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST s
+          ON s.SUBSDR_CD = m.COMPANY_CODE
+        GROUP BY 1, 2, 3
+      ) me
+    ON me.SUBSDR_NAME = r.SUBSDR_NAME
+   AND CONCAT(me.MODEL_CODE, '.', me.SUFFIX_CODE) = r.MODEL_CODE
+ WHERE tt.TIER_QTY > 0
+;	{}		true		2026-09-29 10:38:11.017	{}	{}	2	5
+liw.check_OBS_SO_LINE	execute_sql_bq	SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+FROM   `pjt-lge-edl-ob`.OB_00030.V_L0LMDS_TB_LI_ORDERLIST_ONEVIEW_S_IF
+WHERE  ETL_LOAD_TS BETWEEN timestamp('{PREV_BATCH_DT}') - INTERVAL 15 minute AND timestamp('{BATCH_DT}') - INTERVAL 15 minute	{}	check_OBS_SO_LINE	true		2026-09-22 10:09:37.267	{hjun.lim@lge.com}	{PREV_BATCH_DT,BATCH_DT}	2	5
+spw.edl_log_check	execute_sql_bq	"SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+  FROM `pjt-lge-edl-ob`.OB_00030.META_INFA_JOB
+ WHERE SESSION_NAME NOT LIKE '%bq_to_ora%'
+   AND OB_VIEW_NAME IN ('{TBL_NM}')
+   AND END_TIME BETWEEN DATETIME('{BATCH_DT}') - INTERVAL 45 MINUTE   
+                    AND DATETIME('{BATCH_DT}') - INTERVAL 15 MINUTE   /* EDL 로그가 15분 이후에 LOAD되기 때문에 -15분 함 */
+   AND SUCCESSFUL_ROWS > 0"	{}		true		2026-08-27 08:17:54.594	{wondo24.shin@lgepartner.com}	{TBL_NM,BATCH_DT}	0	1
+spw.job_sp_scm_order_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_SCM_ORDER_ANA();	{}		true		2026-08-27 08:52:34.955	{}	{}	0	1
+spw.job_sp_promotion_aar_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_PROMOTION_AAR_ANA();	{}		true		2026-08-27 08:55:03.783	{}	{}	0	1
+spw.job.sp_promo_rrp_lgeus_proc	execute_sql_ptg	call spms.sp_promo_rrp_lgeus_proc()	{}	LGEUS RRP Creation for Last Job Procedure	true		2026-08-27 14:05:12.091	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+liw.M_OBS_SO_LINE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_OBS_SO_LINE();	{}		true		2026-09-22 10:09:57.841	{hjun.lim@lge.com}	{}	2	5
+nerp_rpa	execute_python_module		{"module_name": "nerp_rpa/nerp_rpa"}	NERP_RPA_자동화	true		2026-09-04 16:32:02.143	{}	{}	0	1
+spw.job_m_gdmi_fr_europe_ana	replicate_bq_to_ptg2	"SELECT PLAN_YMD, NORMAL_WK, PARTIAL_YMD, REGION_NM, SUBSDR_NM, SO_FCST_YN,
+       P_UNIT_ID, P_UNIT_NM, DIVISION_CD, DIVISION_NM,
+       PRODUCT_GR1_NM, PRODUCT_GR2_NM, PRODUCT_CAT, MDL_SFFX_CD,
+       SI_RSLT_QTY, SO_RSLT_QTY, SI_FCST_QTY, SO_FCST_QTY,
+       SI_RSLT_G_AMT, SO_RSLT_G_AMT, SI_FCST_G_AMT, SO_FCST_G_AMT,
+       SI_RSLT_N_AMT, SO_RSLT_N_AMT, SI_FCST_N_AMT, SO_FCST_N_AMT,
+       CH_INV_RSLT_QTY, CH_INV_FCST_QTY,
+       SO_RSLT_KAM_W1, SO_FCST_KAM_W1, SO_RSLT_KAM_W4, SO_FCST_KAM_W4,
+       SO_RSLT_KAM_W8, SO_FCST_KAM_W8, BATCH_YMD
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.V_GDMI_FR_EUROPE_ANA"	{"if_table": "spms.m_gdmi_fr_europe_ana_if", "dst_table": "spms.m_gdmi_fr_europe_ana"}	V_GDMI_FR_EUROPE_ANA BQ → PG	true	2026-05-29 17:25:36.532	2026-08-25 16:37:01.179	{dongkun.kim@lgepartner.com,wondo24.shin@lgepartner.com}	{}	1	10
+liw_dev.M_SO_LINE_T11	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_SO_LINE_T11();	{}	New M_SO_LINE_T11 생성용 SP Call	true		2026-09-07 15:00:56.254	{dongkun.kim@lge.com}	{}	2	5
+liw.check_EUTMS	execute_sql_bq	"SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+FROM   `pjt-lge-edl-ob`.OB_00030.V_MNMETA_V_OB_ETL_JOB_L
+--FROM   `pjt-lge-edl-ob`.OB_00030.META_INFA_JOB
+WHERE  OB_VIEW_NAME  LIKE  '%EUTMS_ORDERS%'
+  AND  SUCCESSFUL_ROWS  >  0
+  AND  END_TIME  BETWEEN   DATETIME('{PREV_BATCH_DT}') - INTERVAL 10 MINUTE AND DATETIME('{BATCH_DT}')"	{}	EDL의 EUTMS Data 적재 확인용	true		2026-08-19 10:48:58.193	{dongkun.kim@lge.com}	{PREV_BATCH_DT,BATCH_DT}	0	1
+liw.job_D_USD_CONVERSION_RATE_MST	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.D_USD_CONVERSION_RATE_MST
+        AS
+        WITH T_PTT AS (
+            SELECT DISTINCT P_PTT
+            FROM (
+              SELECT P_PTT
+              FROM UNNEST(GENERATE_DATE_ARRAY(
+                    DATE('2019-01-01'),
+                    CURRENT_DATE('Asia/Seoul') + 30,
+                    INTERVAL 1 DAY )
+                  ) AS P_PTT  
+            )
+        )
+        , T_CONVERSION_RATE AS (
+             select 
+                   P_PTT
+                 , FROM_CURRENCY_CODE
+                 , TO_CURRENCY_CODE
+                 , CONVERSION_RATE
+              from (
+                    SELECT P_PTT
+                         , FROM_CURRENCY_CODE
+                         , TO_CURRENCY_CODE
+                         , CONVERSION_RATE
+                         , row_number() over(partition by P_PTT , FROM_CURRENCY_CODE , TO_CURRENCY_CODE order by BAM_SEQUENCE_ID desc ) as idx
+                      FROM `pjt-lge-edl-ob`.OB_00030.V_L0GERP_XXGLF_DAILY_RATES_S_IF_X2090090_55937 a
+                     where TO_CURRENCY_CODE = 'USD' 
+                       AND USER_CONVERSION_TYPE_CODE = 'TTM'  -- TTM (Telegraphic Transfer Middle rate, 전신환 중간 환율) 은 외환 거래의 기준 환율로 사용되는 환율입니다.
+                 )
+              where idx = 1
+         )
+         , T_PTT_CURRENCY AS (
+             select a.P_PTT
+                  , b.FROM_CURRENCY_CODE
+               from T_PTT a
+               cross join (select distinct FROM_CURRENCY_CODE from T_CONVERSION_RATE) b 
+         )
+        SELECT DISTINCT
+               P_PTT
+             , FROM_CURRENCY_CODE
+             , CONVERSION_RATE   AS USD_CONVERSION_RATE
+          FROM  (
+                select A.P_PTT
+                     , A.FROM_CURRENCY_CODE 
+                     --, COALESCE(B.CONVERSION_RATE, LAG(B.CONVERSION_RATE) OVER ( PARTITION BY A.FROM_CURRENCY_CODE ORDER BY A.P_PTT )) AS CONVERSION_RATE
+                     ,LAST_VALUE(B.CONVERSION_RATE IGNORE NULLS) OVER (
+                      PARTITION BY A.FROM_CURRENCY_CODE
+                      ORDER BY A.P_PTT
+                      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                    ) as CONVERSION_RATE
+                     --, B.CONVERSION_RATE as O
+                  from T_PTT_CURRENCY A
+                LEFT JOIN T_CONVERSION_RATE B
+                   ON A.P_PTT = B.P_PTT
+                  and A.FROM_CURRENCY_CODE = b.FROM_CURRENCY_CODE
+                UNION ALL
+                select A.P_PTT
+                     , 'USD'  AS FROM_CURRENCY_CODE
+                     , 1      AS CONVERSION_RATE
+                  from T_PTT A
+             ) A
+         WHERE A.P_PTT >= '2020-01-01'
+        order by A.FROM_CURRENCY_CODE ,A.P_PTT
+        ;"	{}	변환 환율, D_USD_CONVERSION_RATE_MST	true	2026-06-08 07:00:58.415	2026-07-22 08:48:06.772	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job_sp_gs_product	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_GS_PRODUCT();	{}		true		2026-08-27 08:50:37.220	{}	{}	0	1
+spw.job_sp_m_spms_selling_price_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_M_SPMS_SELLING_PRICE_ANA();	{}		true		2026-08-27 08:53:07.729	{}	{}	0	1
+spw.job_sp_spms_npt_total_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_SPMS_NPT_TOTAL_ANA();	{}		true		2026-08-27 08:55:22.939	{}	{}	0	1
+liw_dev.M_SO_LINE_TMS_INFO	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_SO_LINE_TMS_INFO();	{}	OTMS + EUTMS + OBS 결합 테이블	true			{dongkun.kim@lge.com}	{}	2	5
+spw.job_v_l0nedw_zpcma0060	replicate_bq_to_ptg	"SELECT CODEGRP
+     , KFIELD01
+     , KFIELD02
+     , KFIELD03
+     , KFIELD04
+     , SDATE
+     , EDATE
+ FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZPCMA0060
+WHERE CODEGRP  = 'ZPR_MIG_REASON_MAPPING'"	{"if_table": "spms.v_l0nedw_zpcma0060_if", "dst_table": "spms.v_l0nedw_zpcma0060"}		true		2026-09-22 09:14:56.302	{}	{}	0	1
+spw.job_sp_gs_shop_info	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_GS_SHOP_INFO();	{}		true		2026-08-27 08:51:06.514	{}	{}	0	1
+spw.job_sp_spms_deduct_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_SPMS_DEDUCT_ANA();	{}		true		2026-08-27 08:51:44.802	{}	{}	0	1
+liw_dev.M_SO_LINE	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_SO_LINE();	{}	New M_SO_LINE 생성용 SP Call	true			{dongkun.kim@lge.com}	{}	2	5
+liw_dev.M_RPA_GET_CUR_INVENTORY	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_RPA_GET_CUR_INVENTORY()	{}		true			{}	{}	0	1
+spw.job_v_l0nedw_zpcma0063	replicate_bq_to_ptg2	"select p_ptt
+     , etl_load_ts
+     , zorgid
+     , zorgname
+     , zorgnamee
+     , zplocaid
+     , zplocanm
+     , zleaderno
+     , zofftel
+     , zmobtel
+     , zresgnflg
+     , zresgndat
+     , zspvsrno
+     , zfseyn
+     , zfseno
+     , person
+     , zgender
+     , zassmtyp
+     , comp_code
+     , zjobtid
+     , zjobtnm
+     , zjobtnme
+     , zposiid
+     , zposiname
+     , zjobgrpcd
+     , zjobgrpnm
+     , zjobsrscd
+     , zjobsrsnm
+     , zjobcd
+     , zjobname
+     , zhomeaddr
+     , zhiredt
+     , zposnm
+     , zgrade
+     , zempcacd
+     , zempcanm
+     , zhiretp
+     , zhiretpnm
+     , zsfuserid
+     , zcudkey
+     , tctusrgrp
+     , zerdat
+     , user_fg
+     , user_auth_fg
+     , zerzet
+     , zaedat
+     , zaezet
+     , zloadtmp0
+     , zloadtmp9
+from `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZPCMA0063 
+where comp_code in ( select subsdr_cd 
+                       from `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST 
+                      WHERE NERP_OPEN_YMD IS NOT NULL )"	{"if_table": "spms.v_l0nedw_zpcma0063_if", "dst_table": "spms.v_l0nedw_zpcma0063"}	NERP 사원정보	true		2026-08-25 17:01:33.164	{}	{}	1	1
+spw.job_sp_promo_nerp_result_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_PROMO_NERP_RESULT_ANA();	{}		true		2026-08-27 08:53:24.742	{}	{}	0	1
+liw.check_SO	execute_sql_bq	"select case when t1.CNT = '1' OR t2.CNT = '1' then '1' else '0' end as cnt
+  from (
+SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__SO_LINE_DW_S
+ WHERE ETL_LOAD_TS BETWEEN timestamp('{PREV_BATCH_DT}') - INTERVAL 15 minute AND timestamp('{BATCH_DT}') - INTERVAL 15 minute
+) t1
+,(
+SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+  FROM `pjt-lge-edl-ob`.OB_00030.META_INFA_JOB
+ WHERE OB_VIEW_NAME IN ('ZSSDA0226','ZSSDI1018')    -- 'ZSSDS0226'
+   AND END_TIME BETWEEN datetime('{PREV_BATCH_DT}')  - INTERVAL 15 minute AND datetime('{BATCH_DT}') - INTERVAL 15 minute
+   AND SUCCESSFUL_ROWS > 0
+) t2"	{}		true		2026-08-26 08:42:07.161	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{PREV_BATCH_DT,BATCH_DT}	5	10
+spw.job_d_edl_mdms3_model_master	replicate_bq_to_ptg2	"SELECT SUBSDR_CD
+     , SUBSDR_NM
+     , MODEL_CD
+     , DIVISION_CD
+     , PRDT_CD
+     , PROD_LEVEL1_CODE
+     , PROD_LEVEL2_CODE
+     , PROD_LEVEL3_CODE
+     , PROD_LEVEL4_CODE
+     , RELEASE_YM
+     , COMPANY_CD
+     , DISABLED_DATE
+     , PR_CONFIRM_FLAG
+     , ENABLED_FLAG
+     , DISABLED_REASON
+     , CREATE_DATE
+     , EAN_CD
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_EDL_MDMS3_MODEL_MASTER 
+;"	{"if_table": "spms.d_edl_mdms3_model_master_if", "dst_table": "spms.d_edl_mdms3_model_master"}		true		2026-08-25 18:24:04.940	{}	{}	0	1
+spw.job_d_rrp_master	replicate_bq_to_ptg2	"SELECT SUBSDR_NM
+     , MDL_SFFX_CD
+     , DIVISION_CD
+     , DIVISION_NM
+     , CURRENCY_CD
+     , RRP
+     , START_DATE
+     , APPLY_END_YMD
+     , MONDAY_YMD
+     , CREATE_DATE
+     , ERP_SYSTEM_CD
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_RRP_MASTER
+;"	{"if_table": "spms.d_rrp_master_if", "dst_table": "spms.d_rrp_master"}		true		2026-08-25 17:00:11.772	{}	{}	0	1
+spw.job_d_edl_mdms3_ship_to_party_rcv_inf	replicate_bq_to_ptg2	"SELECT M1.SUBSDR_NM
+     , T1.BUKRS
+     , T1.KUNNR
+     , T1.ZZ_BIZ_SITE_D
+     , T1.ZZ_LEGAL_ENTITY_D
+     , T1.ZZ_SOLD_TO
+     , T1.ZZ_SHORT_NAME_LOCAL
+     , T1.ZZ_SHIP_TO_TYPE
+     , T1.WAERS
+     , T1.KUNNR_OLD
+     , T1.MDM_IF_DTIME
+     , CURRENT_TIMESTAMP()    AS CREATE_DATE
+  FROM `pjt-lge-edl-ob`.OB_00030.V_L0MDM3_MDMS_BP_SHIP_TO_PARTY_RCV_INF T1
+       INNER JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST      M1
+       ON T1.BUKRS = M1.SUBSDR_CD
+       AND M1.DATA_AGG_YN = 'Y'
+ WHERE T1.IF_MSG = 'Success'
+ QUALIFY ROW_NUMBER() OVER (PARTITION BY BUKRS, KUNNR ORDER BY IF_ID  DESC ) = 1"	{"if_table": "spms.d_edl_mdms3_ship_to_party_rcv_inf_if", "dst_table": "spms.d_edl_mdms3_ship_to_party_rcv_inf"}		true		2026-08-25 17:01:03.733	{}	{}	0	1
+liw.job_m_po_tracking	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_PO_TRACKING
+AS
+WITH    PO_TRACKING AS
+        (
+           SELECT  a.DIV_CD
+                ,  c.DIVISION_NAME
+                ,  a.FROM_SITE_NAME
+                ,  a.TO_SITE_NAME
+                ,  a.TO_SUBSDR_CD
+                ,  b.SUBSDR_NM
+                ,  a.TO_INV_ORG
+                ,  a.SHIP_TO_CUSTOMER
+                ,  a.BIZ_TYPE
+                ,  a.OTD_BIZ_TYPE
+                ,  a.MDL_SFFX_CD
+                ,  a.RSD_DATE
+                ,  a.BL_NO
+                ,  a.INVOICE_NO
+                ,  a.CNTR_NO
+                ,  a.CNTR_TYPE
+                ,  a.SHIPPING_METHOD
+                ,  a.PO_NO
+                ,  a.PO_LINE_NO
+                ,  TRIM(A.PO_STATUS) AS PO_STATUS
+                ,  a.PO_CREATION_DATE
+                ,  a.QTY
+                ,  a.STUFFING_DATE                -- 컨테이너적재일자
+                ,  a.CC_DATE                      -- 공항(항만)창고반입일자
+                ,  a.FACTORY_SHIP_OUT_DATE        -- 선적일자
+                ,  a.ATD                          -- 실제출발시간
+                ,  a.POD_ATA                      -- 도착항 실제도착시간
+                ,  a.FDEST_ARRIVAL_DATE           -- 최종목적지도착일자
+                ,  a.INITIAL_ETD                  -- 최초예상출발일자
+                ,  a.UPDATED_ETD                  -- 변경예상출발일자
+                ,  a.DOC_CLOSING_TIME             -- 문서종료시간
+                ,  a.SHIP_WH_IN_LT
+                ,  a.POD_LT
+                ,  a.FDEST_POD_LT
+                ,  CASE
+                        WHEN TRIM(a.PO_STATUS) = 'On factory Processing'
+                          THEN DATE_ADD(DATE(a.PO_CREATION_DATE), INTERVAL CAST(d.LT_FROM_CREATION AS INT64) DAY)
+                        WHEN TRIM(a.PO_STATUS) = 'Factory Ship Out'
+                          THEN DATE_ADD(DATE(a.FACTORY_SHIP_OUT_DATE), INTERVAL CAST(d.LT_FROM_FACTORY_SHIP AS INT64) DAY)
+                        WHEN TRIM(a.PO_STATUS) = 'Intransit (POL~POD)'
+                          THEN DATE_ADD(DATE(a.atd), INTERVAL CAST(d.LT_FROM_ATD AS INT64) DAY)
+                        WHEN TRIM(a.PO_STATUS) = 'Intransit (POD~FDEST)'
+                          THEN DATE_ADD(DATE(a.POD_ATA), INTERVAL CAST(d.LT_FROM_POD AS INT64) DAY)
+                    END  AS EST_FDEST_ARRIVAL_DATE
+                ,  a.ETL_LOAD_TS
+             FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__VD_PO_TRACKING_L a
+             LEFT JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST b
+                    ON  A.TO_SUBSDR_CD = B.SUBSDR_CD
+             LEFT JOIN (
+                          SELECT  d.DIVISION_CODE
+                               ,  d.DIVISION_NAME
+                            FROM `pjt-lge-edl-ob`.OB_00030.V_L0GSCP_IFS_VD_DIVISION d
+                           WHERE  d.VALID_YN = 'Y'
+                                  QUALIFY ROW_NUMBER() OVER (
+                                                               PARTITION BY  d.DIVISION_CODE
+                                                                   ORDER BY  d.INTERFACE_NO DESC
+                                                            )  =  1
+                       ) c
+                    ON  A.DIV_CD = C.DIVISION_CODE
+              LEFT JOIN (
+                           SELECT  TO_SUBSDR_CD
+                                ,  FROM_SITE_NAME
+                                ,  TO_SITE_NAME
+                                ,  ROUND(AVG(DATE_DIFF(DATE(FDEST_ARRIVAL_DATE), DATE(PO_CREATION_DATE),      DAY)), 0) AS LT_FROM_CREATION
+                                ,  ROUND(AVG(DATE_DIFF(DATE(FDEST_ARRIVAL_DATE), DATE(FACTORY_SHIP_OUT_DATE), DAY)), 0) AS LT_FROM_FACTORY_SHIP
+                                ,  ROUND(AVG(DATE_DIFF(DATE(FDEST_ARRIVAL_DATE), DATE(ATD),                   DAY)), 0) AS LT_FROM_ATD
+                                ,  ROUND(AVG(DATE_DIFF(DATE(FDEST_ARRIVAL_DATE), DATE(POD_ATA),               DAY)), 0) AS LT_FROM_POD
+                             FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__TRSCM__VD_PO_TRACKING_L a
+                            WHERE  PO_STATUS = 'F Dest Arrival'
+                            GROUP  BY  TO_SUBSDR_CD
+                                    ,  FROM_SITE_NAME
+                                    ,  TO_SITE_NAME
+                        ) d
+                    ON  A.TO_SUBSDR_CD   = D.TO_SUBSDR_CD
+                   AND  A.FROM_SITE_NAME = D.FROM_SITE_NAME
+                   AND  A.TO_SITE_NAME   = D.TO_SITE_NAME
+            WHERE  1=1
+              AND  a.PO_RAD    >= '2025-01'
+              AND  a.PO_STATUS != 'Cancelled'
+              AND  a.QTY       >   0
+        )
+     ,  PANTOS_SHIPMENT AS
+        (
+           /* NERP + GERP 법인 모두 있음 */
+           SELECT  PURCHASING_COMP_CD
+                ,  HOUSE_BL_NO
+                ,  BL_DATE
+                ,  CONTAINER_NO
+                ,  CONTAINER_SIZE
+                ,  MASTER_BL_NO
+                ,  INVOICE_NO
+                ,  INVOICE_DATE
+                ,  POL_ETD_DATE      -- 선적항출발예정일자   (POL Depature)
+                ,  POL_ATD_DATE      -- 선적항출발실제일자   (POL Depature)
+                ,  POD_ETA_DATE      -- 양하항도착예정일자   (POD Arrival)
+                ,  POD_ATA_DATE      -- 양하항도착실제일자   (POD Arrival)
+                ,  CY1_ETA_DATE      -- CY도착예정일자     (CY Arrival)
+                ,  CY1_ATA_DATE      -- CY도착실제일자     (CY Arrival)
+                ,  CY1_ETD_DATE      -- CY출발예정일자     (CY Depature)
+                ,  CY1_ATD_DATE      -- CY출발실제일자     (CY Depature)
+                ,  FDEST_ETA_DATE    -- 최종목적지도착예정일자(F.Destination Arrival)
+                ,  FDEST_ATA_DATE    -- 최종목적지도착실제일자(F.Destination Arrival)
+                ,  ZLOADTMP9
+             FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZSLEI1021
+            WHERE  1=1
+              and  PURCHASING_COMP_CD  != '*'
+                   QUALIFY ROW_NUMBER() OVER (
+                                                PARTITION BY  PURCHASING_COMP_CD
+                                                           ,  HOUSE_BL_NO
+                                                           ,  CONTAINER_NO
+                                                    ORDER BY  P_PTT       DESC
+                                                           ,  ETL_LOAD_TS DESC
+                                                           ,  ZLOADTMP9   DESC
+                                             )  =  1
+        )
+     ,  POD_CLEARANCE AS
+        (
+           -- NERP
+           SELECT  U1.COMP_CODE
+                ,  U1.ZHOUSE_BL
+                ,  U1.ZCONTA_NO
+                ,  U1.ZINVOI_NO
+                ,  U1.ZIMDECNO    -- 수입신고번호
+                ,  U1.ZCCREQDAT   -- 통관요청일자
+                ,  U1.ZIMDEC      -- 수입신고일자
+                ,  U1.ZCCCOMPT    -- 통관완료처리일자
+                ,  U1.ZCCSTCD     -- 통관상태코드
+                ,  CASE
+                       WHEN  U1.ZCCSTCD = 'C' THEN 'Completed'
+                       WHEN  U1.ZCCSTCD = 'L' THEN 'Declaration Filed'
+                       WHEN  U1.ZCCSTCD = 'E' THEN 'In Progress'
+                       WHEN  U1.ZCCSTCD = 'R' THEN 'Requested'
+                       ELSE  CAST(NULL AS STRING)
+                   END ZCCSTCD_TX
+             FROM `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZMIMA0016 U1
+            WHERE  1=1
+           QUALIFY ROW_NUMBER() OVER (
+                                        PARTITION BY  U1.COMP_CODE
+                                                   ,  U1.ZHOUSE_BL
+                                                   ,  U1.ZCONTA_NO
+                                            ORDER BY  U1.ZLOADTMP9   DESC
+                                                   ,  U1.ETL_LOAD_TS DESC
+                                     )  =  1
+           /*----------------------------------------------------------------------*/
+            UNION  ALL
+           /*----------------------------------------------------------------------*/
+           -- GERP
+           SELECT  S2.SUBSDR_CD                                       AS  COMP_CODE
+                ,  U2.HOUSE_BL_NO                                     AS  ZHOUSE_BL
+                ,  U2.CONTAINER_NO                                    AS  ZCONTA_NO
+                ,  U2.INVOICE_NUM                                     AS  ZINVOI_NO
+                ,  NULLIF(RTRIM(U2.IMPORT_DECLARATINO_NO, "'"), '')   AS  ZIMDECNO    -- 수입신고번호
+                ,  CAST(U2.CC_REQUEST_DATE         AS DATE)           AS  ZCCREQDAT   -- 통관요청일자
+                ,  CAST(U2.IMPORT_DECLARATION_DATE AS DATE)           AS  ZIMDEC      -- 수입신고일자
+                ,  CAST(U2.CC_COMPLETION_DATE      AS DATE)           AS  ZCCCOMPT    -- 통관완료처리일자
+                   /* 통관상태코드 : GERP에 없어 NERP기준으로 생성함 */
+                ,  CASE
+                       WHEN  U2.CC_COMPLETION_DATE      IS NOT NULL   THEN 'C'
+                       WHEN  U2.IMPORT_DECLARATION_DATE IS NOT NULL   THEN 'L'
+                       WHEN  U2.CC_REQUEST_DATE         IS NOT NULL
+                        AND  U2.IMPORT_DECLARATION_DATE IS     NULL   THEN 'E'
+                       WHEN  U2.CC_REQUEST_DATE         IS NOT NULL   THEN 'R'
+                       ELSE  CAST(NULL AS STRING)
+                   END                                                AS  ZCCSTCD     -- 통관상태코드
+                ,  CASE
+                       WHEN  U2.CC_COMPLETION_DATE      IS NOT NULL   THEN 'Completed'
+                       WHEN  U2.IMPORT_DECLARATION_DATE IS NOT NULL   THEN 'Declaration Filed'
+                       WHEN  U2.CC_REQUEST_DATE         IS NOT NULL
+                        AND  U2.IMPORT_DECLARATION_DATE IS     NULL   THEN 'In Progress'
+                       WHEN  U2.CC_REQUEST_DATE         IS NOT NULL   THEN 'Requested'
+                       ELSE  CAST(NULL AS STRING)
+                   END                                                AS  ZCCSTCD_TX
+             FROM  (
+                      SELECT  *
+                        FROM `pjt-lge-edl-ob`.OB_00030.V_L0GERP_XXIMPM_IMPORT_STATUS_S_IF X2
+                       WHERE  X2.P_PTT >= '2025-01-01'
+                      QUALIFY ROW_NUMBER() OVER (
+                                                   PARTITION BY  X2.IMPORTER_CODE
+                                                              ,  X2.HOUSE_BL_NO
+                                                              ,  X2.CONTAINER_NO
+                                                       ORDER BY  X2.INTERFACE_ID DESC
+                                                              ,  X2.ETL_LOAD_TS  DESC
+                                                  ) = 1
+                   )  U2
+             JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_SUBSDR_MST S2
+               ON  S2.SUBSDR_NM               =  U2.IMPORTER_CODE
+              AND  CURRENT_DATE("Asia/Seoul") <  PARSE_DATE('%Y%m%d', IFNULL(S2.NERP_OPEN_YMD,'99991231'))
+        )
+SELECT  p.DIV_CD
+     ,  p.DIVISION_NAME
+     ,  p.FROM_SITE_NAME
+     ,  p.TO_SITE_NAME
+     ,  p.TO_SUBSDR_CD
+     ,  p.SUBSDR_NM
+     ,  p.TO_INV_ORG
+     ,  p.SHIP_TO_CUSTOMER
+     ,  p.BIZ_TYPE
+     ,  p.OTD_BIZ_TYPE
+     ,  p.MDL_SFFX_CD
+     ,  p.RSD_DATE
+     ,  p.BL_NO
+     ,  MAX(s.BL_DATE)  AS BL_DATE
+     ,  s.MASTER_BL_NO
+     ,  p.INVOICE_NO
+     ,  s.INVOICE_DATE
+     ,  p.CNTR_NO
+     ,  p.CNTR_TYPE
+     ,  p.SHIPPING_METHOD
+     ,  p.PO_NO
+     ,  p.PO_LINE_NO
+     ,  CASE WHEN COALESCE(s.FDEST_ATA_DATE, DATE(p.FDEST_ARRIVAL_DATE)) IS NOT NULL THEN 'F Dest Arrival' ELSE p.PO_STATUS   END  PO_STATUS
+     ,  p.PO_CREATION_DATE
+     ,  SUM(p.QTY) AS QTY
+     ,  MAX(p.STUFFING_DATE) AS STUFFING_DATE      -- 컨테이너적재일자
+     ,  MAX(p.CC_DATE)       AS CC_DATE            -- 공항(항만)창고반입일자  쪼개질경우 2row 여서 최대값
+     ,  p.FACTORY_SHIP_OUT_DATE                    -- 선적일자
+     ,  MAX(s.POL_ETD_DATE)  AS POL_ETD_DATE       -- 선적항출발예정일자
+     ,  MAX(s.POL_ATD_DATE)  AS POL_ATD_DATE       -- 선적항출발실제일자
+     ,  MAX(s.POD_ETA_DATE)  AS POD_ETA_DATE       -- 양하항도착예정일자
+     ,  s.POD_ATA_DATE                             -- 양하항도착실제일자
+     ,  MAX(s.CY1_ETA_DATE)  AS CY1_ETA_DATE       -- CY도착예정일자
+     ,  s.CY1_ATA_DATE        -- CY도착실제일자
+     ,  c.ZCCREQDAT           -- 통관요청일자
+     ,  c.ZIMDEC              -- 통관신고일자
+     ,  c.ZCCCOMPT            -- 통관완료처리일자
+     ,  c.ZCCSTCD             -- 통관상태코드
+     ,  c.ZCCSTCD_TX          -- 통관상태내용
+     ,  MAX(s.CY1_ETD_DATE)  AS CY1_ETD_DATE        -- CY반출예정일자
+     ,  s.CY1_ATD_DATE                              -- CY반출실제일자
+     ,  MAX(COALESCE(s.FDEST_ETA_DATE, p.EST_FDEST_ARRIVAL_DATE  )) AS FDEST_ETA_DATE   -- 최종목적지도착예정일자
+     ,  COALESCE(s.FDEST_ATA_DATE, DATE(p.FDEST_ARRIVAL_DATE))      AS FDEST_ATA_DATE   -- 최종목적지도착실제일자
+     ,  CASE
+             WHEN  COALESCE(s.FDEST_ATA_DATE, DATE(p.FDEST_ARRIVAL_DATE)) IS NOT NULL THEN 'Final Destination' -- 최종 목적지 도착
+             WHEN  s.CY1_ATD_DATE   IS NOT NULL THEN 'CY Departure'      -- CY반출완료
+             WHEN  c.ZCCCOMPT       IS NOT NULL THEN 'Customs Cleared'   -- 통관처리완료
+             WHEN  c.ZIMDEC         IS NOT NULL THEN 'Customs Declared'  -- 수입신고완료
+             WHEN  c.ZCCREQDAT      IS NOT NULL THEN 'Customs Requested' -- 통관요청완료
+             WHEN  s.CY1_ATA_DATE   IS NOT NULL THEN 'CY Arrival'        -- CY도착완료
+           --WHEN  s.POD_ATA_DATE   IS NOT NULL THEN 'POD Arrival'       -- 양하항도착
+           --WHEN  s.POL_ATD_DATE   IS NOT NULL THEN 'POL Departure'     -- 선적항출발
+             ELSE  p.PO_STATUS                                           -- PO Status
+         END AS PO_DETAIL_STATUS
+     , NULL  AS CURRENT_STATUS
+     , max(s.ZLOADTMP9)  AS ZLOADTMP9
+  FROM  PO_TRACKING p
+  LEFT  JOIN  PANTOS_SHIPMENT s
+          ON  1=1
+         AND  p.TO_SUBSDR_CD = s.PURCHASING_COMP_CD
+         AND  p.BL_NO        = s.HOUSE_BL_NO
+         AND  p.CNTR_NO      = s.CONTAINER_NO
+  LEFT  JOIN  POD_CLEARANCE c
+          ON  1=1
+         AND  s.PURCHASING_COMP_CD = C.COMP_CODE
+         AND  s.HOUSE_BL_NO        = C.ZHOUSE_BL
+         AND  s.CONTAINER_NO       = c.ZCONTA_NO
+ GROUP BY p.DIV_CD
+     ,  p.DIVISION_NAME
+     ,  p.FROM_SITE_NAME
+     ,  p.TO_SITE_NAME
+     ,  p.TO_SUBSDR_CD
+     ,  p.SUBSDR_NM
+     ,  p.TO_INV_ORG
+     ,  p.SHIP_TO_CUSTOMER
+     ,  p.BIZ_TYPE
+     ,  p.OTD_BIZ_TYPE
+     ,  p.MDL_SFFX_CD
+     ,  p.RSD_DATE
+     ,  p.BL_NO
+     ,  s.MASTER_BL_NO
+     ,  p.INVOICE_NO
+     ,  s.INVOICE_DATE
+     ,  p.CNTR_NO
+     ,  p.CNTR_TYPE
+     ,  p.SHIPPING_METHOD
+     ,  p.PO_NO
+     ,  p.PO_LINE_NO
+     ,  s.FDEST_ATA_DATE
+     ,  p.FDEST_ARRIVAL_DATE
+     ,  p.PO_STATUS
+     ,  p.PO_CREATION_DATE
+     ,  p.FACTORY_SHIP_OUT_DATE    -- 선적일자
+     ,  s.POD_ATA_DATE        -- 양하항도착실제일자
+     ,  s.CY1_ATA_DATE        -- CY도착실제일자
+     ,  c.ZCCREQDAT           -- 통관요청일자
+     ,  c.ZIMDEC              -- 통관신고일자
+     ,  c.ZCCCOMPT            -- 통관완료처리일자
+     ,  c.ZCCSTCD             -- 통관상태코드
+     ,  c.ZCCSTCD_TX          -- 통관상태내용
+     ,  s.CY1_ATD_DATE        -- CY반출실제일자
+;"	{}	Purchase Order Tracking	true		2026-08-21 10:56:20.906	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	0	1
+lgett.biggo_price	execute_python_module		{"module_name": "tt_biggo_price/tt_biggo_price"}	대만 BigGo 가격 데이터 BQ→BQ	true		2026-08-26 16:16:23.104	{}	{}	0	1
+spw.job_tbl_cnt	execute_sql_bq	"SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+  FROM {TBL_NM} 
+ WHERE ETL_LOAD_TS BETWEEN TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 35 minute  
+                       AND TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 5 minute"	{}		true		2026-08-27 08:30:04.214	{}	{TBL_NM,BATCH_DT}	0	1
+spw.job_sp_npt_mdl_new_mst	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_NPT_MDL_NEW_MST();	{}		true		2026-08-27 08:52:00.474	{}	{}	0	1
+liw.M_RPA_GET_CUR_INVENTORY	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_RPA_GET_CUR_INVENTORY();	{}	RPA로 Download한 Inventory Data를 테이블로 생성	true		2026-09-18 14:51:02.026	{dongkun.kim@lge.com}	{}	2	1
+liw_dev.M_RPA_GET_SO_LINE_INVOICE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_RPA_GET_SO_LINE_INVOICE()	{}		true			{}	{}	0	1
+liw.M_SO_LINE_INVOICE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_SO_LINE_INVOICE();	{}		true			{dongkun.kim@lge.com}	{}	0	1
+spw.job.sp_spms_rrp_mst_sync	execute_sql_ptg	call spms.sp_spms_rrp_mst_sync();	{}		true		2026-07-24 15:47:56.599	{}	{}	0	1
+liw_dev.TB_GTM_ORDER_OLAP_S_IF_OS	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_TB_GTM_ORDER_OLAP_S_IF_OS();	{}		true		2026-09-09 16:24:48.289	{dongkun.kim@lge.com}	{}	0	1
+liw.M_RPA_GET_SO_LINE_INVOICE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_OLAP.SP_RPA_GET_SO_LINE_INVOICE();	{}	RPA로 Download한 Invocied Data 테이블 생성	true		2026-09-18 14:51:19.528	{dongkun.kim@lge.com}	{}	2	1
+liw_dev.M_RPA_GET_SO_LINE_T11	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap`.SCM_DEV.SP_RPA_GET_SO_LINE_T11()	{}		true			{}	{}	0	1
+liw_dev.M_OBS_SO_LINE	execute_sql_bq	CALL  `pjt-lge-oversea-sales-olap.SCM_DEV.SP_OBS_SO_LINE`()	{}		true			{dongkun.kim@lge.com}	{}	0	1
+spw.job_close_data_chk	execute_sql_bq	"INSERT INTO pjt-lge-sellout-analytics.DEV_OLAP.D_CLOSE_STATUS
+SELECT CURRENT_TIMESTAMP()   AS DATA_DT
+     , FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))   AS BASE_YM
+     , CASE WHEN T1.A11_CNT > 10000 THEN 'Y' ELSE 'N' END     AS A11_CLOSE_YN 
+     , CASE WHEN T2.NPT_CNT > 10000 THEN 'Y' ELSE 'N' END     AS MDL_PRFT_CLOSE_YN
+FROM ( SELECT COUNT(*)            AS A11_CNT
+         FROM `pjt-lge-edl-ob`.OB_00030.V_L0EDW__OIF_SALES_EDL_SPMS_RISK_MGT_A11_V 
+        WHERE YYYYMM_ID = CAST(FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) AS INT64)
+          AND CORP_STD1_NAME <> 'LGEKR'  ) T1
+   , ( SELECT COUNT(*)             AS  NPT_CNT
+         FROM `pjt-lge-edl-ob`.OB_00030.V_L1SCM__VRSCM__NERP_NPTR_MDL_CUST_PRFT_S 
+        WHERE ACCTG_YYYYMM  = FORMAT_DATE('%Y%m', DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+          AND SCENARIO_TYPE_CD <> 'PB0' ) T2"	{}		true		2026-10-02 08:46:35.693	{}	{}	0	1
+liw.job_M_SO_LINE_INVOICE_NERP	execute_sql_bq	"CREATE OR REPLACE TABLE `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_INVOICE_NERP
+AS
+    /*
+      ─────────────────────────────────────────────────────────────────────────────────────────────────────
+       작성일자      작성자           작성내용                                               
+      ─────────────────────────────────────────────────────────────────────────────────────────────────────
+       2026.07.23  haehyun.baek  `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE 에서 추출하면 Invoice No 없음 
+                                  - Invoice 기준으로 분할 될수 있음
+                                 `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZSSDA0226 에서 추출 해야함
+       2026.08.07                `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T11 테이블로 MAIN 변경
+      ─────────────────────────────────────────────────────────────────────────────────────────────────────
+    */
+    SELECT
+            DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)     AS P_PTT
+         ,  PARSE_DATETIME('%Y%m%d %H%M%S', A.LOGSTAMP)  AS LOGSTAMP
+         ,  CONCAT(A.LOGSTAMP, '000')                    AS LOGKEY                --  임의로 생성
+         ,  A.DIV_CD                                     AS DIV_CD                --  Division Code 
+         ,  A.DIV_NM                                     AS DIV_NM                --  Division Name
+         ,  A.AFFILIATE_CODE                             AS AFFILIATE_CODE        --  Company Code to Be Billed(법인)
+         ,  A.SUBSDR_NAME                                AS SUBSDR_NAME           --  Company Name
+         ,  A.ORDER_CATEGORY                             AS ORDER_CATEGORY        --  Order Category
+         ,  A.ORDER_TYPE_NAME                            AS ORDER_TYPE_NAME       --  Order Category Name
+         ,  A.BILL_TO_CUSTOMER_CODE                      AS BILLTO_CODE           --  Sold-To Party
+         ,  A.BILL_TO_CUSTOMER_NAME                      AS BILLTO_NAME           --  Sold-To Party Name
+         ,  A.SHIP_TO_CUSTOMER_CODE                      AS SHIPTO_CODE           --  Ship-To Party
+         ,  A.SHIP_TO_CUSTOMER_NAME                      AS SHIPTO_NAME           --  Ship-To Party Name
+         ,  A.SALES_ORDER_NO                             AS SALES_ORDER_NO        --  Sales Document
+         ,  A.SALES_ORDER_LINE_NO                        AS SALES_ORDER_LINE_NO   --  Sales Document Item
+         ,  CAST(NULL AS STRING)                         AS SALES_FG              --  Sales Flag (ZSSDA0226에는 있는 컬럼인데 ZSSDA0226에는 없음
+         ,  A.SALES_DATE                                 AS SALES_DATE            --  Billing Date
+         ,  A.ORDER_QTY                                  AS ORDER_QTY             --  Target Quantity in Sales Units
+         ,  A.SALES_QTY                                  AS SALES_QTY             --  Billing Quantity
+         ,  A.CURRENCY_CODE                              AS CURRENCY_CODE         --  SD Document Currency
+         ,  A.ORDER_AMOUNT                               AS ORDER_AMOUNT          --  Target Amount in Sales Units (Exclude Tax)
+         ,  CASE WHEN A.ORDER_TYPE    IN  ('ZRCB', 'ZRSB', 'ZRSC', 'ZRSD', 'ZRSM', 'ZRSX') THEN 0  --Invoice 조회시 Subscribe는 Default가 제외
+                 WHEN IC.IN_CATEGORY  =   'Adjust' THEN 0
+                 ELSE A.SALES_AMOUNT
+            END                                          AS SALES_AMOUNT          --  Billing Quantity
+         ,  A.UNIT_SELLING_PRICE                         AS UNIT_SELLING_PRICE    --  Selling Price
+         ,  A.UNIT_LIST_PRICE                            AS UNIT_LIST_PRICE       --  List Price
+         ,  A.INVOICE_NO                                 AS INVOICE_NO            --  Invoice No
+         ,  A.PRDT_GRP_CD                                AS PRDT_GRP_CD
+	       ,  BZ.BILLTO_BIZ_NAME
+	       ,  BZ.TEAM_NAME
+    FROM    `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_SO_LINE_T11          AS A
+	  LEFT OUTER JOIN
+	          `pjt-lge-oversea-sales-olap`.SCM_OLAP.REF_D_BILLTO_BIZ_MST  AS BZ
+			  ON  A.SUBSDR_NAME            =  BZ.SUBSDR_NAME
+			 AND  A.BILL_TO_CUSTOMER_CODE  =  BZ.BILLTO_CODE
+			 AND  A.PRDT_GRP_CD            =  BZ.PRODUCT_GROUP_CODE
+    LEFT OUTER JOIN
+          ( /* Invoice Category */
+            SELECT KFIELD01
+                 , CFIELD01  AS IN_CATEGORY
+            FROM   `pjt-lge-edl-ob`.OB_00030.V_L0NEDW_ZPCMA0060
+            WHERE  CODEGRP   LIKE  '%ZSD_INV_CATEGORY%'
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY CODEGRP, KFIELD01 ORDER BY SDATE DESC, EDATE DESC, ETL_LOAD_TS DESC) = 1
+          )                                                             AS IC
+         ON  A.ORDER_TYPE    =   IC.KFIELD01
+        AND  IC.IN_CATEGORY  IN  ('Sales', 'Return', 'Adjust')
+    WHERE  1 = 1
+      AND  COALESCE(A.INVOICE_NO, '')  <>  ''
+      AND  MODEL_CATEGORY              <>  'B'
+      AND  USER_ITEM_TYPE              <>  'W'
+;"	{}	NERP SO INVOICE	true		2026-08-12 15:04:08.210	{yunchu.jo@lgepartner.com,haehyun.baek@lgepartner.com,dongkun.kim@lgepartner.com}	{}	1	1
+spw.job.sp_d_edl_mdms3_model_master	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_D_EDL_MDMS3_MODEL_MASTER()	{}		true			{}	{}	0	1
+spw.job.sp_d_rrp_master	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_D_RRP_MASTER()	{}		true			{}	{}	0	1
+spw.job.sp_model_master_sync	execute_sql_ptg	call spms.sp_model_master_sync()	{}		true		2026-07-24 15:37:13.267	{}	{}	0	1
+spw.job_spw_proc_log	execute_sql_bq	"SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END AS CNT
+  FROM `pjt-lge-oversea-sales-olap`.PRD_OLAP.OSO_BATCH_LOG
+ WHERE PROCEDURE_NAME IN ( '{PROC_NM}')
+   AND JOB_STATUS <> 'ERROR'
+   AND JOB_STATUS = 'END'
+   AND BATCH_DATETIME BETWEEN TIMESTAMP('{BATCH_DT}', 'Asia/Seoul') - INTERVAL 30 MINUTE
+                          AND TIMESTAMP('{BATCH_DT}', 'Asia/Seoul')"	{}		true		2026-08-26 10:19:30.074	{}	{PROC_NM,BATCH_DT}	0	1
+spw.job_sp_lumpsum_prdt_type_mst	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.SPW_OLAP.SP_LUMPSUM_PRDT_TYPE_MST();	{}		true		2026-08-27 08:51:25.748	{}	{}	0	1
+spw.job_sp_promo_spms_result_ana	execute_sql_bq	CALL `pjt-lge-oversea-sales-olap`.PRD_OLAP.SP_PROMO_SPMS_RESULT_ANA();	{}		true		2026-08-27 08:53:51.251	{}	{}	0	1

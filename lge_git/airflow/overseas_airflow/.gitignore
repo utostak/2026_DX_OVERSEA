@@ -1,0 +1,24 @@
+# Python 관련 파일 무시
+**/__pycache__/
+*.py[cod]
+**/*.pyc
+**/*.pyo
+**/*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pid
+*.pptx
+.venv/
+/logs/
+/_setup/
+*.bat
+test*
+**/test*
+.*/
+**/logs/
+
+
+# NERP RPA generated files
+job_modules/nerp_rpa/output/
+job_modules/nerp_rpa/__pycache__/

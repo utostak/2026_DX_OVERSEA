@@ -1,0 +1,23 @@
+spw.batch.0930	30 9 * * *	{spw,bq_to_ptg}	BQ → PG 판매가격/프로모	true	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+spw.batch_L2	20,50 * * * *	{}	30분 간격으로 배치 수행	true		{BATCH_DT}	2026-09-23 09:18:47.706	0
+spw.batch_L1	00,30 * * * *	{"spw batch",L1}	30분 간격으로 배치 수행	true		{BATCH_DT}	2026-09-23 09:18:47.706	0
+spw.batch.1430	30 14 * * *	{spw,bq_to_ptg}	BQ → PG GDMI Channel PSI	false	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+spw.batch.1100	00 11 * * *	{spw,bq_to_ptg}	오전 11시 Batch (For LGEUS Masters)	false		{}	2026-09-23 09:18:47.706	0
+lgett.batch.price	*/30 * * * *	{tt,biggo,price}	대만 BigGo 가격 데이터 BQ→BQ 배치	true		{}	2026-09-23 09:18:47.706	0
+spw.batch.0030	30 00 * * *	{spw,bq_to_ptg}		false		{}	2026-09-23 09:18:47.706	0
+spw.model_sync	10,40 * * * *	{}	30분 간격으로 배치 수행	true		{BATCH_DT}	2026-09-23 09:18:47.706	0
+spw.batch.0230	30 2 * * *	{spw,bq_to_ptg}	BQ → PG GDMI FR Europe	true	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+spw.batch.1530	30 15 * * *	{spw,refresh}	뷰 리프레시	false	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+spw.batch.1400	0 14 * * *	{spw,bq_to_ptg}	BQ → PG UK HA 프로모 달력	true	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+spw.batch.1300	00 13 * * *	{spw,bq_to_ptg}		false		{}	2026-09-23 09:18:47.706	0
+liw_dev.batch.1h	0 * * * *	{liw_dev,SO,Invioce}		false		{PREV_BATCH_DT,BATCH_DT}	2026-10-01 13:57:02.104	10
+spw.batch_lumpsum	10,40 * * * *	{"spw batch",lumpsum}	30분 간격으로 배치 수행	true		{BATCH_DT}	2026-09-30 10:06:14.372	8
+spw.batch.1110	00 11 * * *	{}		true		{}	2026-09-23 09:18:47.706	0
+spw.batch_log_test	*/5 * * * *	{}		false		{BATCH_DT}	2026-09-23 09:18:47.706	0
+spw.rrp_sync	20,50 * * * *	{}	30분 간격으로 배치 수행	true		{BATCH_DT}	2026-09-23 09:18:47.706	0
+liw.batch.0830	30 * * * *	{liw,EUTMS}	AM 08:30 Batch 	true		{PREV_BATCH_DT,BATCH_DT}	2026-09-23 09:18:47.706	0
+spw.batch.1500	0 15 * * *	{spw,sp}	SP 실행	true	2026-05-29 17:25:36.532	{}	2026-09-23 09:18:47.706	0
+liw.batch.0800	0 8 * * *	{liw,M_SO_LINE}	M_SO_LINE	true	2026-06-01 02:15:02.867	{}	2026-09-23 09:18:47.706	0
+spw.batch_close_data_chk	0 9,16 * * *	{}		true		{}	2026-10-02 08:48:08.704	4
+liw.batch.1h	0 * * * *	{}		true		{PREV_BATCH_DT,BATCH_DT}	2026-10-02 17:22:40.516	19
+liw.batch.SO	30 * * * *	{"Sales Order",SO,liw}		false		{PREV_BATCH_DT,BATCH_DT}	2026-09-23 09:18:47.706	0

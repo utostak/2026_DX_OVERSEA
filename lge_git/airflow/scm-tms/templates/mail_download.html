@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Mail Download</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <style>
+        body {
+            margin: 0;
+            background: #F2F3F1;
+            font-family: 'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dl-card {
+            width: 100%;
+            max-width: 480px;
+            margin: 24px;
+            background: #FFFFFF;
+            border: 1px solid #E3E1D8;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 24px rgba(0,0,0,.06);
+        }
+        .dl-head {
+            background: #0B2A43;
+            color: #fff;
+            padding: 18px 28px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+        .dl-head .sub { display:block; font-size:11px; font-weight:400; color:#9FB7CC; margin-top:2px; }
+        .dl-body { padding: 28px; }
+        .dl-icon {
+            width: 56px; height: 56px; border-radius: 12px;
+            background: #EAF3DE; color: #27500A;
+            display:flex; align-items:center; justify-content:center;
+            font-size: 26px; margin-bottom: 18px;
+        }
+        .dl-fname { font-size: 16px; font-weight: 700; color: #1A1A18; word-break: break-all; }
+        .dl-meta { margin-top: 14px; border-top: 1px solid #EDEBE3; padding-top: 14px; }
+        .dl-meta dl { margin: 0; display: grid; grid-template-columns: 120px 1fr; row-gap: 8px; }
+        .dl-meta dt { font-size: 12px; color: #8A8880; font-weight: 600; }
+        .dl-meta dd { margin: 0; font-size: 13px; color: #1A1A18; }
+        .dl-btn {
+            display: block; width: 100%; box-sizing: border-box;
+            margin-top: 22px; padding: 13px 0;
+            background: #0B2A43; color: #fff; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 700; text-align: center; text-decoration: none;
+            cursor: pointer; transition: background .15s;
+        }
+        .dl-btn:hover:not(.dl-btn--disabled) { background: #123a5c; }
+        .dl-btn--disabled {
+            background: #9AA6AE; cursor: not-allowed; pointer-events: none; opacity: .75;
+        }
+        .dl-count { display:inline-block; background:#EAF1F8; color:#185FA5; border-radius:12px;
+                    padding:3px 10px; font-size:12px; font-weight:700; }
+        .dl-empty { text-align:center; color:#8A8880; padding: 20px 0; }
+        .dl-foot { padding: 0 28px 24px; font-size: 11px; color:#B4B2A9; }
+        /* 로딩 표시 */
+        .dl-loading {
+            display: none;
+            align-items: center; justify-content: center; gap: 10px;
+            margin-top: 14px; padding: 11px 16px;
+            background: #EAF1F8; border-radius: 8px;
+            color: #185FA5; font-size: 13px; font-weight: 600;
+        }
+        .dl-loading.show { display: flex; }
+        .dl-spinner {
+            flex-shrink: 0;
+            width: 16px; height: 16px;
+            border: 2px solid #B9D2EC; border-top-color: #185FA5;
+            border-radius: 50%; animation: dl-spin .7s linear infinite;
+        }
+        @keyframes dl-spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="dl-card">
+        <div class="dl-head"> 
+            <a href="{{ url_for('web.active_po_page', le=file.le if file else 'LGEPH') }}" target="_blank" style="color:#fff; text-decoration:none;">LIW</a>
+            <span class="sub"><a href="{{ url_for('web.active_po_page', le=file.le if file else 'LGEPH') }}" target="_blank" style="color:#9FB7CC; text-decoration:none;">Logistics Innovation Web</a> · Mail Download</span>
+        </div>
+        <div class="dl-body">
+        {% if file and not file.empty %}
+            <div class="dl-icon"><i class="fas fa-file-excel"></i></div>
+            <div class="dl-fname">{{ file.file_name }}</div>
+            <div class="dl-meta">
+                <dl>
+                    <dt>Entity</dt>       <dd>{{ file.subsdr_name or '-' }}</dd>
+                    <dt>Base Date</dt>    <dd>{{ file.ppt_str }}</dd>
+                    {% if file.biz_groups %}<dt>Biz Groups</dt> <dd>{{ file.biz_groups }}</dd>{% endif %}
+                    <dt>Downloads</dt>    <dd><span class="dl-count"><span id="dlCount">{{ '{:,}'.format(download_count) }}</span> times</span></dd>
+                </dl>
+            </div>
+            <!-- 진입 시 비활성화 상태로 시작 (JS 가 로드 후 활성화/다운로드) -->
+            <a class="dl-btn dl-btn--disabled" id="downloadBtn"
+               data-url="{{ file.download_api if file.download_api else url_for('mail_file.mail_file_download', le=file.le, ppt=file.ppt) }}"
+               data-fname="{{ file.file_name }}"
+               href="#" onclick="return false;">
+                <i class="fas fa-download" style="margin-right:6px;"></i>Download Excel
+            </a>
+            <!-- 로딩 표시 div (진입 시 표시, 완료 시 숨김) -->
+            <div class="dl-loading" id="dlLoading">
+                <span class="dl-spinner"></span>
+                파일을 생성하고 있습니다. Preparing download…
+            </div>
+        {% else %}
+            <div class="dl-icon" style="background:#FCEBEB;color:#A32D2D;"><i class="fas fa-triangle-exclamation"></i></div>
+            <div class="dl-fname">No data available</div>
+            <p class="dl-empty">해당 기준일의 변경 내역이 없거나 파일을 생성할 수 없습니다.<br>No ETA change data is available for the requested date.</p>
+        {% endif %}
+        </div>
+        <div class="dl-foot">&copy; 2026 LGE. All rights reserved. · Built by Oversea Sales BI Team</div>
+    </div>
+    {% if file and not file.empty %}
+    <script>
+        var _dlBusy = false;
+
+        function _setState(busy) {
+            _dlBusy = busy;
+            var btn     = document.getElementById('downloadBtn');
+            var loading = document.getElementById('dlLoading');
+            // 다운로드 중: 버튼 비활성화 + 로딩 표시
+            // 완료 후  : 버튼 활성화   + 로딩 숨김
+            if (btn) {
+                if (busy) {
+                    btn.classList.add('dl-btn--disabled');
+                    btn.onclick = function() { return false; };
+                } else {
+                    btn.classList.remove('dl-btn--disabled');
+                    btn.onclick = function(e) { triggerDownload(e); };
+                }
+            }
+            if (loading) loading.classList.toggle('show', busy);
+        }
+
+        function _bumpCount() {
+            var el = document.getElementById('dlCount');
+            if (!el) return;
+            var n = parseInt((el.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
+            el.textContent = (n + 1).toLocaleString();
+        }
+
+        // fetch → blob 방식: 완료 시점 정확히 감지, 새 창 없음
+        function doDownload() {
+            if (_dlBusy) return;
+            var btn = document.getElementById('downloadBtn');
+            if (!btn) return;
+            var url   = btn.getAttribute('data-url');
+            var fname = btn.getAttribute('data-fname') || 'ETA_List.xlsx';
+
+            _setState(true);
+
+            fetch(url, { credentials: 'same-origin' })
+                .then(function(res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.blob();
+                })
+                .then(function(blob) {
+                    // 브라우저 저장 다이얼로그 트리거 (새 창 없음)
+                    var a = document.createElement('a');
+                    var objUrl = URL.createObjectURL(blob);
+                    a.href        = objUrl;
+                    a.download    = fname;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(function() { URL.revokeObjectURL(objUrl); }, 1000);
+                    // 다운로드 완료 → 횟수 +1
+                    _bumpCount();
+                })
+                .catch(function(err) {
+                    alert('다운로드에 실패했습니다. Download failed.\n' + err.message);
+                })
+                .finally(function() {
+                    _setState(false);  // 버튼 활성화, 로딩 숨김
+                });
+        }
+
+        // 버튼 수동 클릭
+        function triggerDownload(e) {
+            if (e) e.preventDefault();
+            doDownload();
+        }
+
+        // 페이지 진입 시 자동 다운로드 시작 (로딩 즉시 표시, 버튼 비활성화)
+        window.addEventListener('DOMContentLoaded', function() {
+            doDownload();  // doDownload() 내부에서 _setState(true) 호출하므로 중복 호출 불필요
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

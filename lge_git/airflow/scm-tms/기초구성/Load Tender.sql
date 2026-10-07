@@ -1,0 +1,299 @@
+
+ select * from(
+ select inner_temp.*,
+ /*add*/
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 1, ',') AS REQUEST_BY,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 2, ',') AS REQUEST_DATE,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 3, ',') AS ACCEPT_BY,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 4, ',') AS ACCEPT_DATE,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 5, ',') AS REJECT_BY,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 6, ',') AS REJECT_DATE,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 7, ',') AS EQMTNO_UPDATE_DATE,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 8, ',') AS TOUR_NO,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 9, ',') AS TOUR_NO_SEQ,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 10, ',') AS CARRIER_TERMINAL_CODE1,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 11, ',') AS CARRIER_TERMINAL_NAME1,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 12, ',') AS CARRIER_TERMINAL_CODE2,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 13, ',') AS CARRIER_TERMINAL_NAME2,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 14, ',') AS CARRIER_SUB_TERMINAL_CODE1,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 15, ',') AS CARRIER_SUB_TERMINAL_NAME1,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 16, ',') AS CARRIER_SUB_TERMINAL_CODE2,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 17, ',') AS CARRIER_SUB_TERMINAL_NAME2,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 18, ',') AS CUSTOMER_LEVEL_CODE,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 19, ',') AS RESPONSE_ARRIVAL_LG_WH,  
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 20, ',') AS CARRIER_JOB_NO,
+        TMS_IF.FN_GET_SPLIT(INNER_TEMP.BUFFER, 21, ',') AS TENDER_REMARKS,     
+ /*add*/         
+  rownum as devonindex from  ( 
+        
+        SELECT /*+ LEADING(T2) USE_NL(T1 T2) */
+            TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(T1.FRST_SHPG_LOC_CD,T1.CRTD_DTT), 'YYYY-MM-DD HH24:MI:SS') as CRTD_DTT,
+            T1.LD_LEG_ID, -- Load ID 
+            T1.CARR_CD, -- Carrier Code
+            CASE
+                WHEN T1.CARR_CMTD_YN = 'T' OR T1.LD_LEG_ID IS NOT NULL THEN
+                    (SELECT NAME FROM TMSPROD.CARR_T CARR WHERE CARR.CARR_CD = T1.CARR_CD)
+                ELSE NULL END AS CARR_NAME, -- Carrier Name
+            T1.FRST_SHPG_LOC_CD AS ORIGIN_CODE, -- Warehouse Code
+            T1.FRST_SHPG_LOC_NAME AS ORIGIN_NAME, -- Warehouse Name
+            T1.LAST_SHPG_LOC_CD AS SHIP_TO_CODE, -- Shipto Code
+            T1.LAST_SHPG_LOC_NAME AS SHIP_TO_NAME, -- Shipto Name
+            T1.CUR_OPTLSTAT_ID AS STATUS_CD, -- Status Code
+            (SELECT S.STAT_SHRT_DESC FROM TMSPROD.STAT_T S WHERE S.STAT_ID = T1.CUR_OPTLSTAT_ID) AS STATUS, -- Status Name
+            T1.LAST_CTY_NAME,
+            (SELECT ST_NAME FROM TMSPROD.ADDR_T R WHERE R.ADDR_ID = LAST_ADDR_ID) AS ADDRESS,
+            (SELECT PSTL_CD FROM TMSPROD.ADDR_T R WHERE R.ADDR_ID = LAST_ADDR_ID) AS TO_PSTL_CD,
+            SRVC_CD AS SERVICE_TYPE,
+            CASE
+                WHEN T1. EQMT_TYP_CMTD_YN = 'T' OR T1.LD_LEG_ID IS NOT NULL THEN
+                    T1.EQMT_TYP
+                ELSE NULL
+                END AS VEHICLE_TYPE,
+            DECODE(T2.DISTANCE_USE_FLAG, 'Y', T2.DISTANCE_LEAD_TIME, T2.LEAD_TIME) AS LEAD_TIME,-- ETA ���� ����
+            --TO_CHAR((SELECT CRTD_DTT FROM TMSPROD.TDR_REQ_T TDR WHERE TDR.TDR_REQ_ID = TDR_REQ_ID AND ROWNUM = 1), 'YYYY-MM-DD HH24:MI:SS') AS TENDER_REQUEST_DATE,
+            TO_CHAR((SELECT FC_GTM_GET_DATE_SYSTOLOC(T1.FRST_SHPG_LOC_CD,CRTD_DTT) FROM TMSPROD.TDR_REQ_T TDR WHERE TDR.TDR_REQ_ID = T1.TDR_REQ_ID AND ROWNUM = 1), 'YYYY-MM-DD HH24:MI:SS') AS TENDER_REQUEST_DATE,    
+            TO_CHAR(CUSTOMER_APPOINTMENT_DATE - DECODE(T2.DISTANCE_USE_FLAG, 'Y', T2.DISTANCE_LEAD_TIME, T2.LEAD_TIME), 'YYYY-MM-DD HH24:MI:SS') AS REQUEST_SHIP_OUT_DATE, --ETA ���� ����
+            TO_CHAR(CUSTOMER_APPOINTMENT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS CUSTOMER_APPOINTMENT_DATE,
+            T1.TOT_VOL,
+            T1.TOT_PCE,
+            T1.TRCTR_NUM AS VEHICLE_NO1,
+            T1.TRLR_NUM AS VEHICLE_NO2,
+            T1.DRVR_LIC_NUM AS DRIVER_LICENSE,
+            T1.DRVR AS DRIVER,
+            T1.TRCTR_LIC_NUM AS DRIVER_PHONE_NUMBER,
+            T1.TRLR_LIC_NUM AS REQUEST_DELIVERY_DATE,
+            T1.LAST_STA_CD AS STATE,
+            T2.TFF_CD,
+            NVL(T1.UPDT_USR_CD,T1.CRTD_USR_CD) AS UPDATE_BY,
+            decode((select cur_optlstat_id from tmsprod.ld_leg_t where ld_leg_id=T1.LD_LEG_ID),315,(SELECT RSPS_SEC_CD FROM TMSPROD.TDR_REQ_T S5 WHERE TDR_REQ_ID = (SELECT MAX(TDR_REQ_ID) FROM TMSPROD.TDR_REQ_T S4 WHERE  S4.LD_LEG_ID = T1.LD_LEG_ID AND REQ_STAT_ENU = '315' )),null) AS REJECT_REASON,
+            (select GERP_SHIPTO_CODE from (SELECT SHIP.GERP_SHIPTO_CODE,STOPT.LD_LEG_ID
+            FROM TMSPROD.STOP_T           STOPT
+                ,TMSPROD.LD_LEG_DETL_T    LEGD
+                ,TB_GTM_SHIPMENT_TMS_S_IF SHIP
+           WHERE STOPT.LD_LEG_ID = LEGD.LD_LEG_ID
+             AND LEGD.DROP_STOP_ID=STOPT.STOP_ID 
+             AND LEGD.SHPM_NUM = SHIP.SHIPMENTNUMBER
+        ORDER BY STOPT.SEQ_NUM DESC) s where ROWNUM = 1 and s.ld_leg_id=T1.LD_LEG_ID) as GERP_SHIPTO_CODE,
+        T1.DIV_CD,
+        LOAD_CREATE_BY
+    /*add*/                    
+      /*,(
+        SELECT A.REQUEST_BY || ',' || A.REQUEST_DATE || ',' || 
+               A.ACCEPT_BY || ',' || A.ACCEPT_DATE || ',' || 
+               A.REJECT_BY || ',' || A.REJECT_DATE
+        FROM   TMS_IF.TB_GTM_TENDER_HISTORY A
+        WHERE  (A.LD_LEG_ID, A.SEQ_NO) = ( SELECT LD_LEG_ID, MAX(SEQ_NO)  
+                                           FROM   TMS_IF.TB_GTM_TENDER_HISTORY
+                                           WHERE  LD_LEG_ID = T1.LD_LEG_ID
+                                           GROUP BY LD_LEG_ID )
+        ) AS BUFFER                                  -- TENDER HISTORY*/
+        /*add*/        
+       ,(SELECT /*+ index_desc(A TB_GTM_TENDER_HISTORY_PK01) */ A.REQUEST_BY || ',' || TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(loadt.FRST_SHPG_LOC_CD,A.REQUEST_DATE),'YYYY-MM-DD HH24:MI:SS') || ',' || 
+               A.ACCEPT_BY || ',' || TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(loadt.FRST_SHPG_LOC_CD,A.ACCEPT_DATE),'YYYY-MM-DD HH24:MI:SS') || ',' || 
+               A.REJECT_BY || ',' || TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(loadt.FRST_SHPG_LOC_CD,A.REJECT_DATE),'YYYY-MM-DD HH24:MI:SS')|| ',' || TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(loadt.FRST_SHPG_LOC_CD,A.EQMTNO_UPDATE_DATE),'YYYY-MM-DD HH24:MI:SS')
+           || ',' ||A.TOUR_NO|| ',' ||A.TOUR_NO_SEQ|| ',' ||A.CARRIER_TERMINAL_CODE1|| ',' ||A.CARRIER_TERMINAL_NAME1|| ',' ||A.CARRIER_TERMINAL_CODE2
+           || ',' ||A.CARRIER_TERMINAL_NAME2|| ',' ||A.CARRIER_SUB_TERMINAL_CODE1|| ',' ||A.CARRIER_SUB_TERMINAL_NAME1|| ',' ||A.CARRIER_SUB_TERMINAL_CODE2
+           || ',' ||A.CARRIER_SUB_TERMINAL_NAME2|| ',' ||A.CUSTOMER_LEVEL_CODE|| ',' ||TO_CHAR(A.RESPONSE_ARRIVAL_LG_WH,'YYYY-MM-DD HH24:MI:SS')
+         || ',' ||A.CARRIER_JOB_NO|| ',' ||A.TENDER_REMARKS
+        
+        FROM   TMS_IF.TB_GTM_TENDER_HISTORY A, 
+              tmsprod.ld_leg_t loadt 
+        where a.ld_leg_id = loadt.ld_leg_id
+    and   A.LD_LEG_ID =  T1.LD_LEG_ID 
+    and rownum = 1) as BUFFER,
+    NVL(( SELECT TGD.REQ_ARVL_LG_WH_MANDATORY_FLAG FROM TB_GTM_DCCONFIG TGD WHERE TGD.DC_CD = T1.FRST_SHPG_LOC_CD AND ROWNUM =1 ),'N') AS REQ_ARVL_LG_WH_MANDATORY_FLAG,
+    
+      (SELECT SHIP2.ZONE_CODE 
+       FROM   TB_GTM_SHIPMENT_TMS_S_IF SHIP2, TMSPROD.LD_LEG_T LEG2, TMSPROD.LD_LEG_DETL_T LEGD2
+       WHERE  LEG2.LD_LEG_ID = LEGD2.LD_LEG_ID
+       AND    LEGD2.SHPM_NUM = SHIP2.SHIPMENTNUMBER
+       AND    SHIP2.SHIPTOLOCATIONCODE = T1.LAST_SHPG_LOC_CD
+       AND    LEG2.LD_LEG_ID = T1.LD_LEG_ID 
+       AND    ROWNUM = 1) AS ZONE,
+      (SELECT ZN.ZN_DESC
+       FROM   TB_GTM_SHIPMENT_TMS_S_IF SHIP3, TMSPROD.LD_LEG_T LEG3, TMSPROD.LD_LEG_DETL_T LEGD3, TMSPROD.ZN_T ZN
+       WHERE  LEG3.LD_LEG_ID = LEGD3.LD_LEG_ID
+       AND    LEGD3.SHPM_NUM = SHIP3.SHIPMENTNUMBER
+       AND    SHIP3.SHIPTOLOCATIONCODE = T1.LAST_SHPG_LOC_CD
+       AND    LEG3.LD_LEG_ID = T1.LD_LEG_ID 
+       AND    SHIP3.ZONE_CODE = ZN.ZN_CD
+       AND    ROWNUM = 1) AS ZONE_NAME,
+       T1.NUM_STOP-1 AS NUM_STOP,
+       (select CD_NM from tb_gtm_code_mst where cd_type = 'WMS_STATUS' AND CD = (select max(load.LOAD_STATUS) from tb_gtm_load load where load.LD_LEG_ID = t1.LD_LEG_ID)) AS  WMS_STATUS,
+       NVL(T1.RFRC_NUM6,CEIL(T1.TOT_VOL /(SELECT MAX(A.CD_NM2) FROM TB_GTM_CODEMAPPING_MST A WHERE A.LEGAL_ENTITY_NAME = T2.LEGAL_ENTITY_NAME AND A.USE_YN = 'Y' AND A.CD_TYPE = 'PALLET_TYPE' AND A.CD = 'STD_PALLET'))) AS PALLET_QTY,
+       DECODE(T1.RFRC_NUM6,NULL,'Y','N') AS RFRC6_NULL_YN,  
+       (SELECT SUM(B.RES_QUANTITY * C.GROSS_WEIGHT)
+          FROM TMSPROD.LD_LEG_DETL_T     A,
+               TB_GTM_CONTAINER_TMS_S_IF B,
+               VI_GTM_MODEL              C
+         WHERE A.SHPM_NUM = B.SHIPMENTNUMBER
+           AND B.CONTAINERTYPECODE = C.MODEL_CODE
+           AND B.AFFILIATE_CODE = C.affiliate_code
+           AND A.LD_LEG_ID = T1.LD_LEG_ID) TOTAL_WEIGHT                    
+      ,T2.SHIPMENT_LEG -- Hub ���� �÷� �߰� 20150507 �̵���
+      ,T2.HUB -- Hub ���� �÷� �߰� 20150507 �̵���
+      ,T2.HUB_LOAD_ID -- Hub ���� �÷� �߰� 20150507 �̵���
+      ,CASE WHEN T2.HUB IS NULL 
+            THEN T2.SHIP_TO_SHORT_NAME
+            ELSE T2.HUB
+       END AS SHIP_TO_SHORT_NAME -- LGEDG ���� �÷� �߰� 20150617 �̵���
+      ,T1.RFRC_NUM7  AS linear_meter -- LGEFS ���� �÷� �߰� 20151111 BJSONG
+      ,T2.FREIGHT_COST AS FREIGHT_COST -- [C20161116_21409] FREIGHT_COST �÷��߰�
+      ,T2.LOAD_VALUE AS LOAD_VALUE -- [C20161116_21409] LOAD_VALUE �÷��߰�
+      ,T2.CONSIGNEE_PHONE1_NO AS CONSIGNEE_PHONE1_NO -- C20181106_37257 CONSIGNEE PHONE NO �߰� 20181128 ���ۿ�
+      ,T2.CURRENCY_CODE AS CURRENCY_CODE  --C20200904_97370 CURRENCY CODE �߰�   
+      ,T2.TO_CTRY_CD AS TO_CTRY_CD --C20200904_97370 COUNTRY CODE �߰�   
+      ,T2.BEST_OFFER AS BEST_OFFER --����� ���� �߰�                                                            
+    --,T2.AWARDED_OFFER AS   AWARDED_OFFER--����� ���� �߰�
+    ,CASE WHEN T2.BEST_OFFER > 0 THEN 'Y' ELSE 'N' END OFFER_FLAG  --RITM0412600
+    ,T2.LC_BY AS LC_BY -- PJ2024A029 ADD 20250929
+    ,T2.AR_BY AS AR_BY -- PJ2024A029
+    ,T2.AC_BY AS AC_BY -- PJ2024A029
+    ,T2.TA_BY AS TA_BY -- PJ2024A029
+    ,T2.WR_BY AS WR_BY -- PJ2024A029
+    ,T2.SC_BY AS SC_BY -- RITM2628561
+        FROM (
+            SELECT
+                MAX(M1.LD_LEG_ID) AS LD_LEG_ID,
+                M1.TFF_CD,
+                MAX(M1.LEAD_TIME) AS LEAD_TIME, --ETA ���� ����
+                MAX(ROUND(M1.CMPD_ARVL_DTT - M1.CMPD_DPTR_DTT,2)) AS DISTANCE_LEAD_TIME, --ETA ���� ����
+                MAX((SELECT MAX(S1.APPOINTMENT_DATE) FROM TMS_IF.TB_GTM_BOOKINGHISTORY S1 WHERE S1.BOOKINGHISTORY_ID = M1.BOOKINGHISTORY_ID)) AS CUSTOMER_APPOINTMENT_DATE,
+                MAX(LOAD_CREATE_BY) AS LOAD_CREATE_BY,
+                MAX(M1.DISTANCE_USE_FLAG) AS DISTANCE_USE_FLAG, --ETA ���� ����
+                MAX(M1.LEGAL_ENTITY_NAME) AS LEGAL_ENTITY_NAME,
+                M1.TOTAL_WEIGHT
+               ,MAX(M1.SHIPMENT_LEG) AS SHIPMENT_LEG -- Hub ���� �÷� �߰� 20150507 �̵���
+               ,MAX(M1.HUB) AS HUB -- Hub ���� �÷� �߰� 20150507 �̵���
+               ,MAX(M1.HUB_LOAD_ID) AS HUB_LOAD_ID -- Hub ���� �÷� �߰� 20150507 �̵���
+               ,MAX(M1.SHIP_TO_SHORT_NAME) AS SHIP_TO_SHORT_NAME -- Hub ���� �÷� �߰� 20150617 �̵���
+               ,MAX(M1.FREIGHT_COST) AS FREIGHT_COST  -- [C20161116_21409] FREIGHT_COST �÷��߰�
+               ,MAX(M1.LOAD_VALUE) AS LOAD_VALUE  -- [C20161116_21409] LOAD_VALUE �÷��߰�
+               ,MAX(M1.CONSIGNEE_PHONE1_NO) AS CONSIGNEE_PHONE1_NO -- C20181106_37257 CONSIGNEE PHONE NO �߰� 20181128 ���ۿ�
+               ,MAX(M1.CURRENCY_CODE) AS CURRENCY_CODE  --C20200904_97370 CURRENCY CODE �߰�   
+               ,MAX(M1.TO_CTRY_CD) AS TO_CTRY_CD --C20200904_97370 COUNTRY CODE �߰�
+               ,MAX(M1.BEST_OFFER) AS BEST_OFFER --����� ���� �߰�                                                            
+         ,MAX(M1.AWARDED_OFFER) AS   AWARDED_OFFER--����� ���� �߰�
+         ,MAX(M1.LC_BY) AS LC_BY -- PJ2024A029 ADD 20250929
+               ,MAX(M1.AR_BY) AS AR_BY -- PJ2024A029
+               ,MAX(M1.AC_BY) AS AC_BY -- PJ2024A029
+               ,MAX(M1.TA_BY) AS TA_BY -- PJ2024A029
+               ,MAX(M1.WR_BY) AS WR_BY -- PJ2024A029
+               ,MAX(M1.SC_BY) AS SC_BY -- RITM2628561
+            FROM (
+                SELECT /*+ NO_MERGE LEADING(T1) INDEX(T1 LD_LEG_N01) */  
+                    T1.LD_LEG_ID,
+                    MAX(T4.TFF_CD) AS TFF_CD,
+                    MAX(FC_GTM_GET_PLAN_LEADTIME2(T2.SHPM_NUM)) AS LEAD_TIME, --ETA ���� ����
+                    MAX(( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ B.BOOKINGHISTORY_ID FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=T2.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = T2.SEQ_NUM AND ROWNUM=1 )) AS BOOKINGHISTORY_ID, -- HUB ���� ���� �߰� 20150515 �̵���
+                    (SELECT MAX(S4.CMPD_ARVL_DTT) FROM TMSPROD.STOP_T S4 WHERE S4.LD_LEG_ID = T1.LD_LEG_ID) AS CMPD_ARVL_DTT,
+                    (SELECT MIN(S3.CMPD_DPTR_DTT) FROM TMSPROD.STOP_T S3 WHERE S3.LD_LEG_ID = T1.LD_LEG_ID) AS CMPD_DPTR_DTT,
+                    MAX(DECODE(T1.LD_SRC_ENU,1,T1.CRTD_USR_CD,T5.CREATE_BY)) AS LOAD_CREATE_BY,
+                    MAX(LT.DISTANCE_USE_FLAG) AS DISTANCE_USE_FLAG, --ETA ���� ����
+                    T6.LEGAL_ENTITY_NAME,
+          T1.SCLD_WGT AS TOTAL_WEIGHT
+          ,MAX(T2.SEQ_NUM) AS SHIPMENT_LEG -- Hub ���� �÷� �߰� 20150507 �̵���
+                  ,MAX((SELECT /*+INDEX_DESC(H PK_HUB)*/
+                               H.NAME
+                          FROM TMSPROD.HUB_T H
+                         WHERE H.SHPG_LOC_CD = T2.TO_SHPG_LOC_CD)) AS HUB -- Hub ���� �÷� �߰� 20150507 �̵���
+                  ,MAX(CASE
+                         WHEN T2.SEQ_NUM > 100 THEN
+                          (SELECT /*+INDEX_DESC(LDT FKLLD_SHPM)*/
+                                  LDT.LD_LEG_ID
+                             FROM TMSPROD.LD_LEG_DETL_T LDT
+                            WHERE LDT.SHPM_ID = T2.SHPM_ID
+                              AND LDT.SEQ_NUM = T2.SEQ_NUM - 100)
+                       ELSE
+                        NULL
+                   END) AS HUB_LOAD_ID -- Hub ���� �÷� �߰� 20150507 �̵���
+                  --,MAX(SHIPD.SHIP_TO_SHORT_NAME) AS SHIP_TO_SHORT_NAME -- Hub ���� �÷� �߰� 20150617 �̵���
+                  ,MAX(CASE WHEN (SELECT /*+INDEX_DESC(H PK_HUB)*/
+                                   H.NAME
+                              FROM TMSPROD.HUB_T H
+                             WHERE H.SHPG_LOC_CD = T2.TO_SHPG_LOC_CD) IS NULL
+                      THEN (SELECT SD.SHIP_TO_SHORT_NAME
+                              FROM TB_GTM_SHIPMENT_DETAIL SD
+                             WHERE T2.LD_LEG_ID = T1.LD_LEG_ID
+                               AND T2.TO_SHPG_LOC_CD = T1.LAST_SHPG_LOC_CD
+                               AND T2.SHPM_NUM = SD.SHIPMENTNUMBER)
+                      ELSE T2.TO_SHPG_LOC_NAME
+                 END) AS SHIP_TO_SHORT_NAME -- LGEDG ���� �÷� �߰� 20150617 �̵���
+            ,MAX(T1.CHGD_AMT_DLR) AS FREIGHT_COST -- [C20161116_21409] FREIGHT_COST �÷��߰�
+            ,TRUNC(SUM(NVL(T6.TAX_EXCLUSIVE_PRICE, 0) * NVL((SELECT C.RES_QUANTITY
+                                                                       FROM TB_GTM_CONTAINER_TMS_S_IF C
+                                                                      WHERE C.SHIPMENTNUMBER = T6.SHIPMENTNUMBER), 0)), 2) AS LOAD_VALUE -- [C20161116_21409] LOAD_VALUE �÷��߰�
+                    ,MAX((SELECT MAX(O.CONSIGNEE_PHONE1_NO)
+                     FROM TB_GTM_ORDERS_GERP_R_IF O
+                    WHERE O.MOVE_ORDER_LINE_ID = T6.MOVE_ORDER_LINE_ID
+                      AND O.PICK_ORDER_NO = T6.SHIPMENTDESCRIPTION)) AS CONSIGNEE_PHONE1_NO  -- C20181106_37257 CONSIGNEE PHONE NO �߰� 20181128 ���ۿ�   
+           ,(SELECT MAX(C.CNCY_CD) FROM TMSPROD.CNCY_T C WHERE C.CNCY_TYP = T4.CNCY_TYP) AS CURRENCY_CODE  --C20200904_97370 CURRENCY CODE �߰�
+           ,MAX(T2.TO_CTRY_CD) AS TO_CTRY_CD --C20200904_97370 COUNTRY CODE �߰�
+           ,(SELECT MIN(OFFER.OFFER_RATE) FROM TB_GTM_COST_OFFER_HIS OFFER WHERE OFFER.LOAD_ID = T1.LD_LEG_ID)  AS BEST_OFFER                                                            
+           ,(SELECT OFFER.OFFER_RATE FROM TB_GTM_COST_OFFER_HIS OFFER WHERE OFFER.LOAD_ID = T1.LD_LEG_ID AND OFFER.AWARDED = 'Y')  AS AWARDED_OFFER
+                  /*
+              ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'LC', null),'YYYY-MM-DD HH24:MI:SS')    AS LC_BY -- PJ2024A029 ADD 20250929
+             ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'AR', null),'YYYY-MM-DD HH24:MI:SS')   AS AR_BY -- PJ2024A029
+             ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'AC', null),'YYYY-MM-DD HH24:MI:SS')   AS AC_BY -- PJ2024A029
+             ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'TA', null),'YYYY-MM-DD HH24:MI:SS')    AS TA_BY -- PJ2024A029
+             ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'WR', null),'YYYY-MM-DD HH24:MI:SS')   AS WR_BY -- PJ2024A029
+                    ,TO_CHAR(PK_GTM_DATE.GET_DUE_DATE(MAX(T2.SHPM_NUM), 'SC', null),'YYYY-MM-DD HH24:MI:SS')   AS SC_BY -- PJ2024A029
+                    */
+       
+       /*Due Date RITM2628561*/
+       ,(SELECT TO_CHAR(MIN(DUE.LOAD_CREATE_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS LC_BY
+       ,(SELECT TO_CHAR(MIN(DUE.APPOINTMENT_REQUEST_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS AR_BY
+       ,(SELECT TO_CHAR(MIN(DUE.APPOINTMENT_CONFIRM_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS AC_BY
+       ,(SELECT TO_CHAR(MIN(DUE.TENDER_RESPONSE_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS TA_BY
+       ,(SELECT TO_CHAR(MIN(DUE.RELEASE_TO_WH_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS WR_BY
+       ,(SELECT TO_CHAR(MIN(DUE.SHIP_CONFIRM_DUE),'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_DUE_DATE_CALC DUE WHERE 1=1 AND DUE.LOAD_ID = T1.LD_LEG_ID)     AS SC_BY
+                FROM TMSPROD.LD_LEG_T             T1,
+                    TMSPROD.LD_LEG_DETL_T        T2,
+--                    TMS_IF.TB_GTM_BOOKINGHISTORY T3,
+                    TMSPROD.TFF_T                T4,
+                    TB_GTM_LOAD_HISTORY          T5,
+                    TB_GTM_SHIPMENT_TMS_S_IF     T6,
+                    TB_GTM_SERVICE_LEADTIME LT  -- ETA ���� ����
+                   ,TB_GTM_SHIPMENT_DETAIL   SHIPD -- LGEDG ���� ���̺� �߰� 20150617 �̵���
+                WHERE --T2.SHPM_NUM = T3.SHPM_NUM(+)
+                     T2.LD_LEG_ID = T1.LD_LEG_ID
+                    AND T1.TFF_ID = T4.TFF_ID(+)
+                    AND T1.LD_LEG_ID = T5.LD_LEG_ID(+)
+                    AND T2.SHPM_NUM = T6.SHIPMENTNUMBER
+                    AND T1.DIV_CD = LT.DIV_CD(+) -- ETA ���� ����
+                    AND T1.SRVC_CD = LT.SERVICE_CODE(+) -- ETA ���� ����
+                    AND T1.CUR_OPTLSTAT_ID IN (305, 310, 315, 320, 325, 330, 335, 345)
+                    AND SHIPD.SHIPMENTNUMBER = T2.SHPM_NUM -- LGEDG ���� ���� �߰� 20150617 �̵���
+                    
+                    
+                    AND T1.DIV_CD IN (SELECT /*+ no_unnest push_subq */ D.DIV_CD FROM TMSPROD.DIV_T D WHERE D.CORP1_ID  IN ('LGECL'))                                                      --Subsidiary 
+                AND T1.FRST_SHPG_LOC_CD IN ( 'N2U' ) 
+                    
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                AND T1.FRST_SHPG_LOC_CD IN ( 'N2U' ) 
+                
+                AND T1.CUR_OPTLSTAT_ID IN ( '305' , '320'  , '315'  , '310'  ) -- Load Status (Search) 
+                AND T1.CRTD_DTT BETWEEN TO_DATE('20260402','YYYYMMDD') - 1 AND TO_DATE( '20260409', 'YYYYMMDD')+2 
+            AND TO_CHAR((SELECT FC_GTM_GET_DATE_SYSTOLOC(T1.FRST_SHPG_LOC_CD,T1.CRTD_DTT)FROM DUAL),'YYYYMMDD') BETWEEN '20260402' AND '20260409'            -- Load Create Date 
+                AND T2.SEQ_NUM IN ( 100 ) 
+                     AND ROWNUM <('0'+1) * '100'* 50
+                GROUP BY T1.LD_LEG_ID,T6.LEGAL_ENTITY_NAME, T1.SCLD_WGT, T4.CNCY_TYP ) M1 --ETA ���� ����
+            GROUP BY M1.LD_LEG_ID, M1.TFF_CD, M1.TOTAL_WEIGHT
+            ) T2,
+            TMSPROD.LD_LEG_T T1
+        WHERE T1.LD_LEG_ID = T2.LD_LEG_ID
+        
+        order by LD_LEG_ID DESC                      
+        ) inner_temp         
+        where 1= 1 
+                
+        and rownum <= ('0'+1) * '100'
+) where devonindex between  '1' and '1'+99 

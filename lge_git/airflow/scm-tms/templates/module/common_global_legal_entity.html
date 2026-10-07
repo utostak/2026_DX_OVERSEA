@@ -1,0 +1,152 @@
+<!-- 공통 JavaScript 함수 - 전역 법인 선택 처리 (localStorage 기반) -->
+<style>
+.select2-container--bootstrap-5 .select2-results__option,
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    white-space: nowrap;
+    font-size: 0.8rem !important;
+}
+</style>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+/**
+ * 전역 법인 선택자 - localStorage 기반 관리
+ */
+const LE_STORAGE_KEY = 'scm_tms_legal_entity';
+
+// 현재 법인값을 JS 변수로 관리 (Select2 DOM 읽기 타이밍 문제 방지)
+let _currentLegalEntity = localStorage.getItem(LE_STORAGE_KEY) || null;
+
+// Select2 초기화 및 localStorage 로드
+function initGlobalLegalEntity(onChangeCallback) {
+    const $sel = $('#globalLegalEntity');
+
+    // 초기값 결정
+    const stored = localStorage.getItem(LE_STORAGE_KEY);
+    let valueToSet;
+    if (stored && $sel.find('option[value="' + stored + '"]').length > 0) {
+        valueToSet = stored;
+        console.log('✅ localStorage 로드:', stored);
+    } else {
+        if (stored) {
+            console.warn('⚠️ 저장된 법인(' + stored + ')이 목록에 없어 첫 번째 항목으로 초기화');
+            localStorage.removeItem(LE_STORAGE_KEY);
+        }
+        valueToSet = $sel.find('option').first().val();
+        console.log('ℹ️ 저장값 없음 → 첫 번째 항목 선택:', valueToSet);
+        if (valueToSet) localStorage.setItem(LE_STORAGE_KEY, valueToSet);
+    }
+
+    // JS 변수에 즉시 반영 (DOM/Select2 완료 전에도 안전하게 사용 가능)
+    _currentLegalEntity = valueToSet;
+
+    // Select2 초기화 (값 설정 후 한번에 표시)
+    $sel.val(valueToSet);
+    $sel.select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Search Legal Entity...',
+        allowClear: false,
+        width: '230px',
+        minimumResultsForSearch: 5  // 검색창 표시 최소 항목 수
+    });
+    // Select2 초기화 완료 후 표시 (깜빡임 방지)
+    setTimeout(() => {
+        $sel.next('.select2-container').css('opacity', '1');
+    }, 0);
+
+    // 법인 변경 시 JS 변수 + localStorage 동기화 후 콜백 실행
+    $sel.on('change', function() {
+        const selectedEntity = $(this).val();
+        if (!selectedEntity) return;
+        _currentLegalEntity = selectedEntity;
+        localStorage.setItem(LE_STORAGE_KEY, selectedEntity);
+        console.log('💾 법인 변경:', selectedEntity);
+
+        // 내비게이션/메뉴 동기화 모듈에 별도 통지.
+        // (페이지 콜백에서 예외가 나더라도 navbar 처리가 항상 실행되도록 이벤트 체인에서 분리)
+        try {
+            document.dispatchEvent(new CustomEvent('legalEntityChanged', {
+                detail: { legalEntity: selectedEntity }
+            }));
+        } catch (e) {
+            console.warn('⚠️ legalEntityChanged 이벤트 디스패치 실패:', e);
+        }
+
+        // 페이지별 콜백은 try/catch 로 격리 — 여기서 예외가 나도 다른 change 핸들러에 영향 없음
+        if (onChangeCallback) {
+            try {
+                onChangeCallback();
+            } catch (e) {
+                console.error('❌ 법인 변경 콜백 오류:', e);
+            }
+        }
+    });
+
+    // 초기 조회 (JS 변수가 이미 세팅된 후 실행)
+    if (onChangeCallback) onChangeCallback();
+}
+
+// 현재 선택된 법인 가져오기 (JS 변수 우선 → localStorage 폴백)
+function getGlobalLegalEntity() {
+    return _currentLegalEntity
+        || localStorage.getItem(LE_STORAGE_KEY)
+        || 'ALL';
+}
+
+// 필터 객체 생성
+function getFiltersWithGlobalEntity() {
+    const startDate = document.getElementById('startDate')?.value;
+    const endDate   = document.getElementById('endDate')?.value;
+    return {
+        start_date:   startDate || '',
+        end_date:     endDate   || '',
+        carrier:      'ALL',
+        legal_entity: getGlobalLegalEntity()
+    };
+}
+
+// ============================================================
+// 전역 Division 선택자 - localStorage 기반 관리 (법인별 분리)
+// ============================================================
+let _currentDivision = '[ALL]';
+
+function _divisionKey() {
+    return `scmtms_division_${getGlobalLegalEntity()}`;
+}
+
+function initGlobalDivision() {
+    const sel = document.getElementById('globalDivision');
+    if (!sel) return;
+
+    resetGlobalDivision();  // 현재 법인의 저장값으로 select 세팅
+    sel.style.visibility = 'visible';
+
+    sel.addEventListener('change', function() {
+        const val = this.value;
+        _currentDivision = val;
+        localStorage.setItem(_divisionKey(), val);
+        console.log('💾 Division 변경:', val, '→ 페이지 리프레시');
+        location.reload();
+    });
+}
+
+// 법인 전환 시 Division 셀렉트를 새 법인의 저장값으로 갱신 (이벤트 재등록 없이)
+function resetGlobalDivision() {
+    const sel = document.getElementById('globalDivision');
+    if (!sel) return;
+
+    const stored = localStorage.getItem(_divisionKey()) || '[ALL]';
+    const exists = Array.from(sel.options).some(o => o.value === stored);
+    const valueToSet = exists ? stored : '[ALL]';
+
+    _currentDivision = valueToSet;
+    localStorage.setItem(_divisionKey(), valueToSet);
+    sel.value = valueToSet;
+}
+
+function getGlobalDivision() {
+    return _currentDivision
+        || localStorage.getItem(_divisionKey())
+        || '[ALL]';
+}
+</script>

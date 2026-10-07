@@ -1,0 +1,54 @@
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     Customer Orders Modal — Bill To Customer 클릭 시 R4 Sparkline 팝업
+     참조: 참조/mockup-multi-order-v5.html
+══════════════════════════════════════════════════════════════════════════════ -->
+<div id="custOrdersBackdrop" class="iod-modal-backdrop" style="display:none;">
+    <div class="cust-orders-modal iod-modal" role="dialog" aria-modal="true">
+        <div class="iod-modal-header">
+            <div class="iod-modal-header-left" style="flex:1; min-width:0;">
+                <div class="iod-modal-title">
+                    <i class="fas fa-building" style="color:var(--primary);"></i>
+                    <span id="custOrdersTitle">—</span>
+                </div>
+                <div class="iod-modal-subtitle" id="custOrdersSubtitle">—</div>
+            </div>
+            <button class="iod-modal-close" onclick="closeCustomerOrders()" title="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="iod-modal-body">
+            <!-- 요약 카드 -->
+            <div class="cust-summary-row">
+                <div class="cust-summary-card">
+                    <span class="cs-label">Active Amount</span>
+                    <span class="cs-value" id="custOrdersTotalAmt">—</span>
+                </div>
+                <div class="cust-summary-card">
+                    <span class="cs-label">Active Qty</span>
+                    <span class="cs-value" id="custOrdersTotalQty">—</span>
+                </div>
+                <div class="cust-summary-card risk">
+                    <span class="cs-label">Risk Alert</span>
+                    <span class="cs-value" id="custOrdersRiskCnt">—</span>
+                </div>
+            </div>
+
+            <!-- 범례 -->
+            <div class="cust-legend">
+                <span class="lg-item"><span class="lg-dot"></span>Cleared</span>
+                <span class="lg-item"><span class="lg-dot current"></span>Current stage</span>
+                <span class="lg-item"><span class="lg-dot hold"></span>HOLD</span>
+                <span class="lg-item"><span class="lg-dot est"></span>Est. Arrival</span>
+                <span class="lg-item"><span class="lg-line"></span>Completed</span>
+                <span class="lg-item"><span class="lg-line est"></span>Projected</span>
+                <span class="lg-item"><span class="lg-line rad"></span>RAD</span>
+                <span class="lg-item"><span class="lg-line rad moved"></span>RAD moved</span>
+            </div>
+
+            <!-- 오더 리스트 (Ship To 그룹 + Sparkline) -->
+            <div class="cust-list-wrap" id="custOrdersListWrap"></div>
+        </div>
+    </div>
+</div>
+
+<div class="cust-tooltip" id="custTooltip"></div>

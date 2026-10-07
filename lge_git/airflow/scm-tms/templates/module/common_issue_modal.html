@@ -1,0 +1,499 @@
+<!-- Issue Detail Modal -->
+<div class="im-backdrop" id="imBackdrop">
+    <div class="im-modal">
+        <div class="im-header">
+            <h2 class="im-title"><span class="num" id="imNum"></span> <span id="imTitle"></span></h2>
+            <span class="pill" id="imStatus"></span>
+            <button class="im-close" onclick="IssueModal.close()" title="Close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="im-body">
+            <div class="im-meta" id="imMeta"></div>
+            <div class="action-box" id="imAction" style="display:none;"></div>
+            <div id="imDescription" style="display:none; padding:10px 14px; font-size:13px; line-height:1.7;
+                 background:var(--surface); border:1px solid var(--border); border-radius:10px;
+                 color:var(--foreground); white-space:pre-wrap; word-break:break-word;"></div>
+            <div class="im-card">
+                <div class="im-card-h"><i class="fas fa-boxes-stacked"></i> Target Orders</div>
+                <div style="display:grid; grid-template-columns:110px 1fr 80px 100px 110px 110px; gap:10px;
+                            padding:6px 14px; background:var(--surface-muted); font-size:10.5px; font-weight:700;
+                            color:var(--muted-foreground); border-bottom:1px solid var(--border);">
+                    <div>Order No</div><div>Customer / Model</div><div style="text-align:right">Qty</div>
+                    <div style="text-align:right">Amount</div>
+                    <div style="text-align:right">Stage (Created)</div>
+                    <div style="text-align:right">Current Stage</div>
+                </div>
+                <div id="imOrders"></div>
+            </div>
+            <div class="im-card">
+                <div class="im-card-h"><i class="fas fa-comments"></i> Thread</div>
+                <div class="thread" id="imThread"></div>
+                <div class="cmt-input">
+                    <textarea id="imCommentInput" placeholder="Add a comment…"
+                              rows="1"
+                              oninput="IssueModal.autoResizeTextarea(this)"></textarea>
+                    <button class="btn" onclick="IssueModal.addComment()"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+        <div class="im-footer" id="imFooter"></div>
+    </div>
+</div>
+
+<script>
+/**
+ * IssueModal - 공통 이슈 모달 컴포넌트
+ * 다른 화면에서 include하여 사용 가능
+ */
+window.IssueModal = (function() {
+    let curIssue = null;   // {issue, orders, comments}
+    let currentUserId = null;
+    let onIssueUpdatedCallback = null;
+
+    const STATUS_LABEL = {
+        OPEN: 'OPEN',
+        IN_PROGRESS: 'IN PROGRESS',
+        RESOLVED: 'RESOLVED',
+        CLOSED: 'CLOSED',
+        CANCELLED: 'CANCELLED'
+    };
+
+    const CAT_LABEL = {
+        BO: 'Back Order',
+        AR_HOLD: 'AR/Finance Hold',
+        APPT: 'Appointment',
+        PICK: 'Pick/Release',
+        CUST: 'Customer',
+        ETC: 'Etc'
+    };
+
+    const fmtUsd = n => '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const fmtCurr = (amt, curr) => {
+        if (amt == null) return '-';
+        const sym = curr === 'USD' ? '$' : curr === 'EUR' ? '€' : curr === 'KRW' ? '₩' : ((curr || 'USD') + ' ');
+        return sym + Number(amt).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    };
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    /**
+     * 초기화
+     * @param {string} userId - 현재 로그인한 사용자 ID
+     * @param {function} onUpdated - 이슈가 업데이트되었을 때 호출할 콜백 함수
+     */
+    function init(userId, onUpdated) {
+        currentUserId = userId;
+        onIssueUpdatedCallback = onUpdated;
+    }
+
+    /**
+     * 이슈 상세 모달 열기
+     * @param {number} issueId - 이슈 ID
+     */
+    function open(issueId) {
+        fetch(`/api/issues/${issueId}`)
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    alert(res.message || ' Error loading issue');
+                    return;
+                }
+                curIssue = res.data;
+                renderDetail();
+                document.getElementById('imBackdrop').classList.add('open');
+            });
+    }
+
+    /**
+     * 이슈 모달 닫기
+     */
+    function close() {
+        document.getElementById('imBackdrop').classList.remove('open');
+        curIssue = null;
+    }
+
+    /**
+     * 상세 정보 렌더링
+     */
+    function renderDetail() {
+        const m = curIssue.issue;
+        document.getElementById('imNum').textContent = '#' + m.issue_id;
+        document.getElementById('imTitle').textContent = m.title;
+        
+        const st = document.getElementById('imStatus');
+        st.className = 'pill st-' + m.status;
+        st.textContent = STATUS_LABEL[m.status] || m.status;
+
+        document.getElementById('imMeta').innerHTML = `
+            <span>
+                <i class="fas fa-user"></i> From 
+                <b>${esc(m.sender_user_name || '-')}</b>
+            </span>
+            <span>
+                <i class="fas fa-arrow-right"></i> To 
+                <b id="imReceiverName" style="cursor:pointer;text-decoration:underline;color:var(--primary,#A50034);" 
+                   onclick="IssueModal.editReceiver()" 
+                   title="Click to change receiver">${esc(m.receiver_user_name || m.receiver_dept || '-')} <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i></b>
+            </span>
+            <span><i class="fas fa-tag"></i> ${CAT_LABEL[m.category] || m.category}</span>
+            <span>
+                <i class="fas fa-calendar"></i> Due 
+                <b id="imDueDate" style="cursor:pointer;text-decoration:underline;color:var(--primary,#A50034);" 
+                   onclick="IssueModal.editDueDate()" 
+                   title="Click to change due date">${m.due_date || '-'} <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i></b>
+            </span>
+            <span><i class="fas fa-dollar-sign"></i> <b>${(() => {
+                const ords = curIssue.orders || [];
+                const byCurr = {};
+                ords.forEach(o => {
+                    const c = o.currency_code || 'USD';
+                    byCurr[c] = (byCurr[c] || 0) + (o.order_amount != null ? o.order_amount : (o.usd_amount || 0));
+                });
+                const entries = Object.entries(byCurr);
+                if (!entries.length) return fmtUsd(m.total_amount);
+                return entries.map(([c,v]) => fmtCurr(v, c)).join(' + ');
+            })()}</b></span>`;
+
+        const ab = document.getElementById('imAction');
+        if (m.action_text) {
+            ab.style.display = 'block';
+            ab.innerHTML = `<i class="fas fa-hand-point-right"></i> ${esc(m.action_text)}`;
+        } else {
+            ab.style.display = 'none';
+        }
+
+        const db = document.getElementById('imDescription');
+        if (m.description && m.description.trim()) {
+            db.style.display = 'block';
+            db.textContent = m.description;
+        } else {
+            db.style.display = 'none';
+        }
+
+        document.getElementById('imOrders').innerHTML = (curIssue.orders || []).map(o => `
+            <div class="im-order">
+                <div class="ono">${esc(o.sales_order_no)}${o.line_no && o.line_no !== '*' ? '-' + esc(o.line_no) : ''}</div>
+                <div>${esc(o.customer_name || o.customer_code || '-')}<span style="color:var(--muted-foreground);font-family:monospace;font-size:11px;"> ${esc(o.model_code || '')}</span></div>
+                <div class="n">${o.order_qty != null ? Number(o.order_qty).toLocaleString() : '-'}</div>
+                <div class="n">${o.order_amount != null ? fmtCurr(o.order_amount, o.currency_code || 'USD') : (o.usd_amount != null ? fmtUsd(o.usd_amount) : '-')}</div>
+                <div class="n"><span class="pill st-OPEN" title="At issue creation">${esc(o.stage_snapshot || '-')}</span></div>
+                <div class="n"><span class="pill ${o.current_stage ? 'st-IN_PROGRESS' : ''}" title="Current stage">${o.current_stage ? esc(o.current_stage) : '…'}</span></div>
+            </div>`).join('') || '<div style="padding:14px;color:var(--muted-foreground);">—</div>';
+
+        document.getElementById('imThread').innerHTML = (curIssue.comments || []).map(c => {
+            const isMine = c.author_user_id === currentUserId;
+            const side = isMine ? 'mine' : 'other';
+            const initials = esc((c.author_name || '?').slice(0, 1));
+            const avatar = `<div class="cmt-av ${c.author_role || ''}">${initials}</div>`;
+            return `
+            <div class="cmt ${side}">
+                ${avatar}
+                <div class="cmt-wrap">
+                    ${!isMine ? `<div class="cmt-name">${esc(c.author_name || 'System')}</div>` : ''}
+                    <div class="cmt-b">${esc(c.body).replace(/\n/g, '<br>')}</div>
+                    <div class="cmt-time">${c.input_dt || ''}</div>
+                </div>
+            </div>`;
+        }).join('') || '<div style="color:var(--muted-foreground);padding:4px;">No comments yet.</div>';
+
+        // Scroll thread to bottom
+        setTimeout(() => {
+            const threadEl = document.getElementById('imThread');
+            if (threadEl) {
+                threadEl.scrollTop = threadEl.scrollHeight;
+            }
+        }, 0);
+
+        renderFooter();
+    }
+
+    /**
+     * 푸터 버튼 렌더링
+     */
+    function renderFooter() {
+        const m = curIssue.issue;
+        const btns = [];
+        
+        // Action buttons (left side)
+        if (m.status === 'OPEN')
+            btns.push(`<button class="btn primary" onclick="IssueModal.changeStatus('IN_PROGRESS')"><i class="fas fa-hand"></i> Start</button>`);
+        if (m.status === 'IN_PROGRESS')
+            btns.push(`<button class="btn success" onclick="IssueModal.resolveIssue()"><i class="fas fa-check"></i> Mark Resolved</button>`);
+        if (m.status === 'RESOLVED') {
+            btns.push(`<button class="btn success" onclick="IssueModal.changeStatus('CLOSED')"><i class="fas fa-check-double"></i> Approve &amp; Close</button>`);
+            btns.push(`<button class="btn danger" onclick="IssueModal.changeStatus('IN_PROGRESS')"><i class="fas fa-rotate-left"></i> Request Rework</button>`);
+        }
+        if (['OPEN', 'IN_PROGRESS'].includes(m.status))
+            btns.push(`<button class="btn danger" onclick="IssueModal.changeStatus('CANCELLED')"><i class="fas fa-ban"></i> Cancel Issue</button>`);
+        
+        // Close button always on the right
+        btns.push(`<button class="btn" onclick="IssueModal.close()" style="margin-left:auto;"><i class="fas fa-xmark"></i> Close</button>`);
+        
+        document.getElementById('imFooter').innerHTML = btns.join('');
+    }
+
+    /**
+     * Resolve 처리
+     */
+    function resolveIssue() {
+        const note = prompt('Enter resolution note (required):');
+        if (note === null) return;
+        if (!note.trim()) {
+            alert('Resolution note is required.');
+            return;
+        }
+        changeStatus('RESOLVED', note.trim());
+    }
+
+    /**
+     * 상태 변경
+     */
+    function changeStatus(newStatus, note) {
+        const m = curIssue.issue;
+        fetch(`/api/issues/${m.issue_id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: newStatus,
+                expected_status: m.status,
+                expected_version: m.state_version,
+                resolution_note: note || ''
+            })
+        }).then(r => r.json().then(j => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+            if (!ok) {
+                alert(j.message || ' Failed to change status');
+            }
+            open(m.issue_id);   // reload
+            if (onIssueUpdatedCallback) {
+                onIssueUpdatedCallback();
+            }
+        });
+    }
+
+    /**
+     * Textarea 자동 리사이징
+     */
+    function autoResizeTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    /**
+     * 댓글 추가
+     */
+    function addComment() {
+        const inp = document.getElementById('imCommentInput');
+        const body = inp.value.trim();
+        if (!body) return;
+        
+        fetch(`/api/issues/${curIssue.issue.issue_id}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body })
+        }).then(r => r.json())
+        .then(res => {
+            if (!res.success) {
+                alert(res.message || ' Failed to add comment');
+                return;
+            }
+            inp.value = '';
+            inp.style.height = 'auto';
+            open(curIssue.issue.issue_id);
+        });
+    }
+
+    /**
+     * 현재 조회 중인 법인 코드 반환 (페이지 전역 변수 참조)
+     */
+    function _getLegalEntity() {
+        // active_orders / issues 페이지의 전역 함수/변수 우선 사용
+        if (typeof getGlobalLegalEntity === 'function') return getGlobalLegalEntity();
+        if (typeof _currentLegalEntity !== 'undefined' && _currentLegalEntity) return _currentLegalEntity;
+        return curIssue ? (curIssue.issue.sender_subsdr || '') : '';
+    }
+
+    /**
+     * Receiver 수정 — 인라인 콤보박스 (현재 조회 법인 기준 사용자 목록)
+     */
+    function editReceiver() {
+        const m = curIssue.issue;
+        const el = document.getElementById('imReceiverName');
+        if (!el || el.querySelector('select')) return;  // 이미 편집 중
+
+        const legalEntity = _getLegalEntity();
+        el.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;"></i>';
+
+        fetch(`/api/issues/users?legal_entity=${encodeURIComponent(legalEntity)}`)
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    el.innerHTML = esc(m.receiver_user_name || m.receiver_dept || '-') + ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+                    alert(res.message || 'Failed to load users');
+                    return;
+                }
+
+                const users = res.data;
+                const select = document.createElement('select');
+                select.style.cssText = [
+                    'border:1px solid var(--border)',
+                    'border-radius:5px',
+                    'padding:2px 6px',
+                    'font-size:12px',
+                    'color:var(--foreground)',
+                    'background:var(--surface)',
+                    'cursor:pointer',
+                    'max-width:180px',
+                ].join(';');
+
+                const blankOpt = document.createElement('option');
+                blankOpt.value = '';
+                blankOpt.textContent = '-- Select --';
+                select.appendChild(blankOpt);
+
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.user_id;
+                    opt.textContent = u.user_name;
+                    if (u.user_id === m.receiver_user_id) opt.selected = true;
+                    select.appendChild(opt);
+                });
+
+                let saved = false;
+
+                select.onchange = function() {
+                    if (!this.value) return;
+                    saved = true;
+                    const userName = this.options[this.selectedIndex].text;
+                    updateIssueField('receiver', { user_id: this.value, user_name: userName });
+                };
+
+                select.onblur = function() {
+                    setTimeout(() => {
+                        if (!saved && el.contains(select)) {
+                            el.innerHTML = esc(m.receiver_user_name || m.receiver_dept || '-') +
+                                ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+                            el.onclick = () => IssueModal.editReceiver();
+                        }
+                    }, 150);
+                };
+
+                select.onkeydown = function(e) {
+                    if (e.key === 'Escape') {
+                        saved = true;  // prevent blur restore from fighting
+                        el.innerHTML = esc(m.receiver_user_name || m.receiver_dept || '-') +
+                            ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+                        el.onclick = () => IssueModal.editReceiver();
+                    }
+                };
+
+                el.onclick = null;
+                el.innerHTML = '';
+                el.appendChild(select);
+                select.focus();
+            })
+            .catch(() => {
+                el.innerHTML = esc(m.receiver_user_name || m.receiver_dept || '-') +
+                    ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+            });
+    }
+
+    /**
+     * Due Date 수정 — 인라인 날짜 피커
+     */
+    function editDueDate() {
+        const m = curIssue.issue;
+        const el = document.getElementById('imDueDate');
+        if (!el || el.querySelector('input')) return;  // 이미 편집 중
+
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.value = m.due_date || '';
+        input.style.cssText = [
+            'border:1px solid var(--border)',
+            'border-radius:5px',
+            'padding:2px 6px',
+            'font-size:12px',
+            'color:var(--foreground)',
+            'background:var(--surface)',
+            'cursor:pointer',
+        ].join(';');
+
+        let saved = false;
+
+        input.onchange = function() {
+            saved = true;
+            updateIssueField('due_date', this.value || null);
+        };
+
+        input.onblur = function() {
+            setTimeout(() => {
+                if (!saved && el.contains(input)) {
+                    el.innerHTML = (m.due_date || '-') +
+                        ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+                    el.onclick = () => IssueModal.editDueDate();
+                }
+            }, 150);
+        };
+
+        input.onkeydown = function(e) {
+            if (e.key === 'Escape') {
+                saved = true;
+                el.innerHTML = (m.due_date || '-') +
+                    ' <i class="fas fa-pen" style="font-size:9px;opacity:0.6;"></i>';
+                el.onclick = () => IssueModal.editDueDate();
+            }
+        };
+
+        el.onclick = null;
+        el.innerHTML = '';
+        el.appendChild(input);
+        input.focus();
+        // 캘린더 팝업 즉시 오픈 (브라우저 지원 시)
+        try { input.showPicker(); } catch(e) { /* showPicker 미지원 브라우저 무시 */ }
+    }
+
+    /**
+     * 이슈 필드 업데이트 (공통)
+     */
+    function updateIssueField(fieldName, value) {
+        const m = curIssue.issue;
+        
+        fetch(`/api/issues/${m.issue_id}/update-field`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                field: fieldName,
+                value: value,
+                expected_version: m.state_version
+            })
+        }).then(r => r.json().then(j => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+            if (!ok) {
+                alert(j.message || 'Update failed');
+                return;
+            }
+            open(m.issue_id);   // reload
+            if (onIssueUpdatedCallback) {
+                onIssueUpdatedCallback();
+            }
+        })
+        .catch(err => {
+            alert('Update failed: ' + err.message);
+        });
+    }
+
+    // Public API
+    return {
+        init: init,
+        open: open,
+        close: close,
+        changeStatus: changeStatus,
+        resolveIssue: resolveIssue,
+        autoResizeTextarea: autoResizeTextarea,
+        addComment: addComment,
+        editReceiver: editReceiver,
+        editDueDate: editDueDate
+    };
+})();
+</script>

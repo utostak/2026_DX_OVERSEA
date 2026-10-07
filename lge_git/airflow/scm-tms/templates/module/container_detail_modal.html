@@ -1,0 +1,162 @@
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     Container Detail Modal
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="containerDetailBackdrop">
+    <div class="container-detail-modal">
+        <!-- Header -->
+        <div class="container-detail-header">
+            <div class="container-detail-title-group">
+                <h2 class="container-detail-title">
+                    <i class="fas fa-box-open"></i>
+                    <span id="detailContainerNo">—</span>
+                </h2>
+                <p class="container-detail-subtitle">
+                    <span id="detailContainerSubsdr">—</span>
+                    <span id="detailContainerType" style="margin-left:1rem;"></span>
+                </p>
+                <div class="container-detail-badges" id="detailContainerBadges"></div>
+            </div>
+            <button class="container-detail-close" onclick="closeContainerDetail()" aria-label="Close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="container-detail-body">
+            <!-- Basic Info Grid -->
+            <div class="container-info-grid">
+                <!-- Invoice Info -->
+                <div class="container-info-card">
+                    <h3 class="container-info-card-title">
+                        <i class="fas fa-file-invoice"></i> Invoice Info
+                    </h3>
+                    <div class="container-info-row">
+                        <span class="container-info-label">Invoice No.</span>
+                        <span class="container-info-value mono" id="detailContainerInvoice">—</span>
+                    </div>
+                    <div class="container-info-row">
+                        <span class="container-info-label">Invoice Date</span>
+                        <span class="container-info-value mono" id="detailContainerInvoiceDate">—</span>
+                    </div>
+                    <div class="container-info-row">
+                        <span class="container-info-label">BL Date</span>
+                        <span class="container-info-value mono" id="detailContainerBLDate">—</span>
+                    </div>
+                </div>
+
+                <!-- Route Info -->
+                <div class="container-info-card">
+                    <h3 class="container-info-card-title">
+                        <i class="fas fa-route"></i> Route Info
+                    </h3>
+                    <div class="container-info-row">
+                        <span class="container-info-label">From Site</span>
+                        <span class="container-info-value" id="detailContainerFromSite">—</span>
+                    </div>
+                    <div class="container-info-row">
+                        <span class="container-info-label">To Site</span>
+                        <span class="container-info-value" id="detailContainerToSite">—</span>
+                    </div>
+                    <div class="container-info-row">
+                        <span class="container-info-label">Ship To Customer</span>
+                        <span class="container-info-value" id="detailContainerShipTo">—</span>
+                    </div>
+                    <div class="container-info-row">
+                        <span class="container-info-label">RSD Date</span>
+                        <span class="container-info-value mono" id="detailContainerRSD">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model List Grid -->
+            <div class="container-model-grid-section">
+                <h3 class="container-info-card-title" style="margin-bottom:0.75rem;">
+                    <i class="fas fa-list"></i> Model List
+                    <span class="container-model-grid-count" id="detailContainerLineCount"></span>
+                </h3>
+                <div class="container-model-grid-wrap">
+                    <table class="container-model-grid" id="detailContainerModelGrid">
+                        <thead>
+                            <tr>
+                                <th>BL NO.</th>
+                                <th>PO NO.</th>
+                                <th>PO LINE</th>
+                                <th>BIZ TYPE</th>
+                                <th>DIVISION</th>
+                                <th>MODEL</th>
+                                <th class="num">QTY</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailContainerModelGridBody">
+                            <tr><td colspan="7" class="loading-row"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="container-timeline">
+                <h3 class="container-timeline-title">
+                    <i class="fas fa-clock-rotate-left"></i> Shipment Timeline
+                </h3>
+                <div class="container-timeline-steps" id="detailContainerTimeline"></div>
+            </div>
+
+            <!-- Customs + CY Combined Info -->
+            <div class="container-info-card">
+                <h3 class="container-info-card-title">
+                    <i class="fas fa-shield-halved"></i> Customs &amp; CY Info
+                </h3>
+                <div class="container-combined-info-grid">
+                    <div class="container-combined-col">
+                        <div class="container-combined-subhead">CY</div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">CY ETA</span>
+                            <span class="container-info-value mono" id="detailContainerCyEta">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">CY ATA</span>
+                            <span class="container-info-value mono" id="detailContainerCyAta">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">CY ETD</span>
+                            <span class="container-info-value mono" id="detailContainerCyEtd">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">CY ATD</span>
+                            <span class="container-info-value mono" id="detailContainerCyAtd">—</span>
+                        </div>
+                        <div class="container-combined-subhead" style="margin-top:0.75rem;">Final Dest</div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">FDEST ETA</span>
+                            <span class="container-info-value mono" id="detailContainerFdestEta">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">FDEST ATA</span>
+                            <span class="container-info-value mono" id="detailContainerFdestAta">—</span>
+                        </div>
+                    </div>
+                    <div class="container-combined-col">
+                        <div class="container-combined-subhead">Customs Clearance</div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">Request Date</span>
+                            <span class="container-info-value mono" id="detailContainerCustomsReq">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">Declare Date</span>
+                            <span class="container-info-value mono" id="detailContainerCustomsDec">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">Complete Date</span>
+                            <span class="container-info-value mono" id="detailContainerCustomsComp">—</span>
+                        </div>
+                        <div class="container-info-row">
+                            <span class="container-info-label">Status</span>
+                            <span class="container-info-value" id="detailContainerCustomsStatus">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Current Inventory</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <style>
+        #invGrid { width: 100%; height: calc(100vh - 330px); min-height: 460px; }
+        .ag-header-center .ag-header-cell-label { justify-content: center; }
+        .inv-kpi { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+        .inv-kpi .card { background: var(--surface-muted); border:1px solid var(--border); border-radius: var(--radius-lg); padding: 0.75rem 0.9rem; }
+        .inv-kpi .label { color: var(--muted-foreground); font-size: 12px; }
+        .inv-kpi .value { font-size: 1.4rem; font-weight: 700; margin-top: 0.2rem; }
+        @media (max-width: 1200px) { .inv-kpi { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        @media (max-width: 800px) { .inv-kpi { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    </style>
+</head>
+<body>
+    {% set active_page = 'inventory' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+
+        <!-- ── Division Filter Bar ── -->
+        <div class="section" style="padding:0.6rem 1.25rem; margin-bottom:0; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                <div class="filter-inline">
+                    <label>Division</label>
+                    <select id="globalDivision" class="input" style="width:160px;">
+                        {% for div in divisions_list %}
+                        <option value="{{ div.div_nm }}">{{ div.div_nm }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="dataTimestampBadge" style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted-foreground); white-space:nowrap; flex-shrink:0;">
+                    <i class="fas fa-clock"></i>
+                    <span style="font-weight:500;">Data as of</span>
+                    <span id="dataTimestampValue" style="font-weight:600; color:var(--foreground);">—</span>
+                </div>
+            </div>
+        </div>
+
+        <section class="section" style="position:relative;">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Current Inventory</h1>
+                    <p class="section-subtitle">Latest snapshot stock quantities by model / subinventory</p>
+                </div>
+            </div>
+
+            <div class="inv-kpi">
+                <div class="card"><div class="label">Snapshot Date</div><div class="value" id="kPtt">-</div></div>
+                <div class="card"><div class="label">Models</div><div class="value num" id="kModels">-</div></div>
+                <div class="card"><div class="label">Onhand Qty</div><div class="value num" id="kOnhand">-</div></div>
+                <div class="card"><div class="label">Available Qty</div><div class="value num" id="kAvail">-</div></div>
+            </div>
+        </section>
+
+        <section class="section section-flush">
+            <div class="section-header">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <h2 class="section-title">Inventory Detail</h2>
+                    <span id="invRowCount" class="pill pill-emerald">— rows</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="search-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="gridSearch" class="input input-search" placeholder="Quick filter…">
+                    </div>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+
+            <div style="position:relative;">
+                <div id="invLoadingOverlay" class="loading-overlay">
+                    <div class="spinner"></div>
+                </div>
+                <div class="grid-scroll-wrap">
+                    <div id="invGrid" class="ag-theme-alpine"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {% include 'module/common_select2_init.html' %}
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+
+    <script>
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    const invColDefs = [
+        dateCol('P_PTT', 'Snapshot', { width: 120, pinned: 'left' }),
+        setCol('LEGAL_ENTITY_NAME', 'Legal Entity', { width: 120, pinned: 'left' }),
+        setCol('DIV_NM', 'Division', { width: 120, pinned: 'left' }),
+        txtCol('MODEL_CODE', 'Model', { width: 150, pinned: 'left', cellClass: 'num' }),
+        setCol('MODEL_CATEGORY_NAME', 'Model Category', { width: 140 }),
+        setCol('INVENTORY_ORGANIZATION_CODE', 'Inv Org', { width: 110 }),
+        setCol('SUBINVENTORY_CODE', 'Subinv Code', { width: 110 }),
+        txtCol('SUBINVENTORY_NAME', 'Subinventory Name', { width: 180 }),
+        setCol('ITEM_STATUS_CODE', 'Item Status', { width: 110 }),
+        qtyCol('ONHAND_QTY', 'Onhand Qty', { width: 120 }),
+        qtyCol('AVAILABLE_QTY', 'Available Qty', { width: 120 }),
+        qtyCol('BOOKED_QTY', 'Booked Qty', { width: 120 }),
+        qtyCol('INTRANSIT_OUT_QTY', 'Intransit Out', { width: 120 }),
+        qtyCol('PO_ORDERED_QTY', 'PO Ordered', { width: 120 }),
+    ];
+
+    let invGridApi = null;
+    const invGridOptions = {
+        columnDefs: invColDefs,
+        defaultColDef: {
+            resizable: true, sortable: true, filter: true, wrapHeaderText: true, autoHeaderHeight: true,
+            headerClass: 'ag-header-center',
+            menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        },
+        rowData: [],
+        pagination: true,
+        paginationPageSize: 500,
+        paginationPageSizeSelector: [100, 500, 1000, 2000, 5000],
+        rowSelection: 'multiple',
+        suppressRowClickSelection: true,
+        enableRangeSelection: true,
+        enableCharts: true,
+        sideBar: { toolPanels: ['filters', 'columns'] },
+        onGridReady: (params) => { invGridApi = params.api; },
+    };
+
+    const nfmt = (v) => (v == null || !isFinite(v)) ? '-' : Math.trunc(v).toLocaleString();
+
+    function renderSummary(row) {
+        row = row || {};
+        document.getElementById('kPtt').textContent    = row.p_ptt || '-';
+        document.getElementById('kModels').textContent = nfmt(row.model_cnt);
+        document.getElementById('kOnhand').textContent = nfmt(row.onhand_qty);
+        document.getElementById('kAvail').textContent  = nfmt(row.available_qty);
+    }
+
+    function exportGrid() {
+        if (invGridApi) invGridApi.exportDataAsExcel({ fileName: 'current_inventory.xlsx' });
+    }
+
+    function loadDataTimestamp() {
+        const le = getGlobalLegalEntity();
+        const el = document.getElementById('dataTimestampValue');
+        if (el) el.textContent = '…';
+        fetch('/api/inventory/data-timestamp?legal_entity=' + encodeURIComponent(le))
+            .then(r => r.json())
+            .then(res => {
+                if (!el) return;
+                if (res.success && res.log_ts) {
+                    const tz = res.timezone || 'UTC';
+                    let displayTs = '—';
+                    let tzLabel = tz;
+                    try {
+                        const utcStr = res.log_ts.replace(' ', 'T').replace(/\+.*$/, '') + 'Z';
+                        const date = new Date(utcStr);
+                        if (!isNaN(date)) {
+                            const fmt = new Intl.DateTimeFormat('sv-SE', {
+                                timeZone: tz,
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                hour12: false,
+                            });
+                            displayTs = fmt.format(date).replace('T', ' ');
+                        }
+                    } catch (e) {
+                        displayTs = res.log_ts.replace('T', ' ').substring(0, 19);
+                        tzLabel = 'UTC';
+                    }
+                    el.textContent = `${displayTs} (${tzLabel})`;
+                } else {
+                    el.textContent = '—';
+                }
+            })
+            .catch(() => { if (el) el.textContent = '—'; });
+    }
+
+    function loadAll() {
+        const qParams = new URLSearchParams({
+            legal_entity: getGlobalLegalEntity(),
+            division:     getGlobalDivision(),
+        }).toString();
+
+        document.getElementById('invLoadingOverlay').style.display = 'flex';
+        loadDataTimestamp();
+
+        fetch('/api/inventory/current-summary?' + qParams)
+            .then(r => r.json())
+            .then(res => { if (res.success) renderSummary((res.data || [])[0] || {}); })
+            .catch(err => console.error('inventory summary error', err));
+
+        fetch('/api/inventory/current-raw?' + qParams)
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) return;
+                const rows = res.data || [];
+                invGridApi.setGridOption('rowData', rows);
+                document.getElementById('invRowCount').textContent = rows.length.toLocaleString() + ' rows';
+            })
+            .catch(err => console.error('inventory raw error', err))
+            .finally(() => { document.getElementById('invLoadingOverlay').style.display = 'none'; });
+    }
+
+    $(document).ready(function() {
+        const el = document.getElementById('invGrid');
+        agGrid.createGrid(el, invGridOptions);
+
+        document.getElementById('gridSearch').addEventListener('input', e => {
+            if (invGridApi) invGridApi.setQuickFilter(e.target.value);
+        });
+
+        initGlobalDivision();
+        initGlobalLegalEntity(loadAll);
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>

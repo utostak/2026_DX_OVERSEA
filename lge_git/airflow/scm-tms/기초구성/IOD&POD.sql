@@ -1,0 +1,830 @@
+이 쿼리의 전체 목적 (한 문장 요약)
+
+특정 DC(N2U), 기간(출하지 기준), 법인(LGECL), 미확정(IOD_CONFIRM_FLAG = 'N') 배송 건에 대해
+Shipment + Load + IOD + POD + Irregular(이슈) + ETA KPI 정보를 한 번에 조회하는 통합 리포트 쿼리
+즉 “출고는 됐는데, 아직 IOD/POD가 확정되지 않은 건들”을 모니터링/업무처리하기 위한 쿼리입니다.
+
+추가 설명
+UNION ALL
+
+일반 Shipment 기반 물류 흐름
+DIO 방식 (운송 leg 없이 바로 IOD 입력되는 비정형 케이스)
+ 
+rownum pagination
+KPI, ETA, Irregular History를 다수 Subquery로 끌어옴
+
+
+
+
+🔹 1. TMSPROD.LD_LEG_DETL_T (LEGD)
+
+운송 Leg 상세 테이블
+
+용도 : 설명
+배송 흐름의 Backbone : Shipment → Load → Delivery 단위
+SEQ_NUM : 다차 Leg / HUB 구분
+FRM / TO LOC : 출발지 / 도착지
+SHPM_NUM : Shipment ID
+
+✅ 이 쿼리의 기준 테이블
+→ “어느 Shipment가 어떤 배송 경로로 이동했는가”
+
+
+
+🔹 2. TMSPROD.LD_LEG_T (LOAD)
+
+Load(차량/운송 단위) 정보
+
+컬럼 : 용도
+CUR_OPTLSTAT_ID : 운송 상태 (335=In Transit 등)
+CARR_CD : 운송사
+TRCTR / TRLR : 차량 번호
+SHIPPING_DATE : 실제 출고일
+
+✅ 운송 상태, ETA 계산의 기준
+
+
+
+🔹 3. TB_GTM_LOAD (GTMLOAD)
+
+GTM 확장 Load 정보
+
+용도 : 설명
+INVO_NO / DATE : 송장
+DELIVERY_QTY : 출고 수량
+SHIPPING_DATE : KPI 기준 날짜
+EPOD 관련 컬럼 : ePOD 저장/메일
+
+✅ ERP/재무/EPOD 연계를 위한 핵심 테이블
+
+
+
+🔹 4. TB_GTM_SHIPMENT_TMS_S_IF (SHIP)
+
+ERP(GERP) ↔ TMS Shipment 인터페이스
+
+용도 : 설명
+GERP_ORDER_NO : 고객 주문
+PICK_RELEASE_DATE : 출고 기준
+SHIPTO / BILLTO : 거래처
+DELIVERY_TYPE : B2B/B2C
+가격 (단가) : SELLING PRICE
+
+✅ “이 배송이 어떤 주문에서 왔는가”
+
+
+
+🔹 5. TB_GTM_CONTAINER_TMS_S_IF (CNTR)
+
+컨테이너/상품 단위 정보
+
+용도
+SHIPPING_QTY
+CBM
+MODEL_CODE
+SALESPERSON
+
+✅ 수량/물량 KPI 계산
+
+
+
+🔹 6. TB_GTM_IOD
+
+IOD (상품 인수 확인) 메인 테이블
+
+컬럼 : 의미
+IOD_DATE : 실제 수령
+IOD_INPUT_DATE : 시스템 입력일
+POD_FILE_NAME : POD 파일
+IOD_CONFIRM_FLAG : 'Y' 확정 / 'N' 미확정
+DIO_FLAG : 비정형 입력 여부
+
+✅ 이 쿼리의 핵심 관심 대상
+
+IOD_CONFIRM_FLAG = 'N'
+아직 완료되지 않은 배송
+
+
+
+🔹 7. TB_GTM_IOD_IRREGULAR_HIST
+
+배송 이슈 / 클레임 / 반품 이력
+
+정보
+IRREGULAR_TYPE
+EVENT_CODE
+책임 주체
+RMA
+Charge
+Solution
+Return Date
+
+✅ Hub / 클레임 KPI / 사고 분석
+
+※ 쿼리에서 최신 1건 (ROWNUM=1, index_desc) 만 반복 조회
+
+
+
+🔹 8. 코드/마스터 테이블
+
+테이블 : 역할
+TB_GTM_CODEMAPPING_MST : Irregular 코드 → 명칭
+TMSPROD.STATUS_R : 상태 코드
+TMSPROD.ZN_T : Zone
+TB_GTM_DCCONFIG : DC별 운영 정책
+TB_GTM_SHIPTO : Ship-To 설정
+TB_GTM_BILLTO : Bill-To / 고객
+TMSPROD.HUB_T : Hub 정보
+
+✅ 화면 표시용 Label / 정책 판단용
+
+
+
+4️⃣ KPI / 비즈니스 로직 요약
+
+✅ IOD_STATUS
+
+Plain Text
+Multi Pending / IOD Pending / POD Pending / Closed
+Show more lines
+
+→ 업무 모니터링 화면 상태
+
+
+
+✅ ETA / Delay 계산
+
+SQL
+LEAD_TIME
+IOD_DELAY
+DISTANCE_IOD_DELAY
+IOD_DELAY2
+Show more lines
+
+→ 계획 ETA vs 실제 날짜 비교
+
+
+
+✅ KPI
+
+컬럼 : 의미
+IOD_LT : IOD 입력 소요
+RTN_LT : 반품 리드타임
+OTA_LT : 약속 대비 지연
+
+
+5️⃣ 이 쿼리가 실제 쓰이는 업무 용도
+
+🎯 OTMS 화면 기준
+
+IOD & POD 미확정 리스트
+물류 클레임 관리 화면
+Hub 배송 모니터링
+EPOD 대상 / 비대상 구분
+IOD KPI 리포트
+
+🎯 사용자
+
+물류 운영팀
+클레임/CS 팀
+SCM KPI 담당
+해외법인 물류 관리자
+
+
+
+6️⃣ 한 줄 정리 (실무 관점)
+
+이 쿼리는
+“특정 기간/법인의 출고된 Shipment 중, 아직 IOD/POD가 완결되지 않았고
+ETA·지연·이슈(반품/클레임)까지 함께 봐야 하는 운영용 핵심 쿼리” 입니다.
+
+
+
+
+select * from(
+ select inner_temp.*, rownum as devonindex from  ( 
+        
+                SELECT  T.LOAD_ID,  
+      T.CUR_OPTLSTAT_ID ,
+      T.SEQ_NUM,
+      T.IOD_LD_LEG_ID,
+      T.LD_LEG_ID,
+      T.SHIPMENT_ID,
+      T.GERP_ORDER_NO,
+      T.GERP_PICK_NO,
+      T.ORDER_TYPE,
+      T.FRM_SHPG_LOC_CD,
+      T.FRM_SHPG_LOC_NAME,
+      T.TO_SHPG_LOC_CD,
+      T.TO_SHPG_LOC_NAME,
+      T.CARR_CD,
+      T.CARR_NAME,
+      T.LOAD_STATUS,
+      T.SHIPMENT_STATUS,
+      T.CITY,
+      T.SERVICE_TYPE,
+      T.VEHICLE_TYPE,
+      T.PL1,
+      T.SHIPPING_QTY,
+      T.SHIPPING_CBM,
+      T.RECEIPT_QTY,
+      T.REJECT_QTY,
+      T.REJECT_REASON,
+      T.IOD_REMARKS,
+      TO_CHAR(T.APPOINTMENT_DATE,'YYYY-MM-DD HH24:MI:SS') AS APPOINTMENT_DATE,
+      T.IOD_DATE,
+      T.IOD_INPUT_DATE,
+      NVL2(T.IRREGULAR_TYPE,
+      '['||T.IRREGULAR_TYPE||']'||(SELECT MST.CD_LOC_NM
+                                     FROM (SELECT /*+index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02)*/
+                                                  A.IRREGULAR_TYPE
+                                                  ,ROW_NUMBER() OVER(PARTITION BY A.LD_LEG_ID ORDER BY A.HISTORY_ID DESC) AS RN
+                                          FROM TB_GTM_IOD_IRREGULAR_HIST A
+                                          WHERE 1=1
+                                          AND A.SHIPMENTNUMBER = T.SHIPMENT_ID
+                                          AND NVL(TO_CHAR(A.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID)) HIST
+                                         ,TB_GTM_CODEMAPPING_MST MST
+                                    WHERE 1=1
+                                      AND HIST.IRREGULAR_TYPE = MST.CD
+                                      AND MST.CD_TYPE='IRREGULAR'
+                                      AND MST.LEGAL_ENTITY_NAME = T.LEGAL_ENTITY_NAME
+                                      AND RN=1),      --RITM1758108
+      T.IRREGULAR_TYPE) AS IRREGULAR_TYPE,
+      T.POD,
+      T.POD_INPUT_DATE,
+      T.IOD_STATUS,
+      T.IOD_CONFIRM_FLAG,
+      T.IOD_CONFIRM_DATE,
+      T.TRCTR_NUM,
+      T.TRLR_NUM,
+      T.DELAY_QTY,
+      T.ACTUAL_SHIP_OUT_DATE,
+      T.POD_ORIGIN_FILE_NAME,
+      T.UPDATE_BY,
+      T.CREATED_BY,
+      T.MASTER_LOAD_ID,
+      T.CUSTOMER_PO_NO,
+      T.MODEL_SUFFIX,
+      T.CONSIGNEE_NUMBER,
+      T.DELIVERY_NO,
+      T.DRIVER,
+      DECODE(T.DISTANCE_USE_FLAG, 'Y', T.DISTANCE_LEAD_TIME, T.LEAD_TIME) AS LEAD_TIME, -- ETA 관련 수정
+      --T.LEAD_TIME,-- ETA 관련 수정
+      --T.DISTANCE_LEAD_TIME,-- ETA 관련 수정
+      DECODE(T.DISTANCE_USE_FLAG, 'Y', T.DISTANCE_IOD_DELAY, 'N', T.IOD_DELAY, NULL) AS IOD_DELAY, --ETA 관련 수정
+      --T.IOD_DELAY,-- ETA 관련 수정
+      --T.DISTANCE_IOD_DELAY,-- ETA 관련 수정
+      T.IOD_KPI_VALIDATION ,
+      T.GERP_SHIPTO_CODE,
+      T.ZONE,
+      T.ZONE_NAME,
+      T.SHRT_DESC,
+      T.INVO_NO,
+      T.INVO_DATE,
+      T.POD_REMARK,
+      T.LEGAL_ENTITY_NAME,
+      DECODE(T.DISTANCE_USE_FLAG, 'Y', T.DISTANCE_ETA, 'N', T.ETA, NULL) AS ETA,-- ETA 관련 수정
+      T.LTIME_IOD_USE_YN_DC,
+      T.LTIME_IOD_USE_YN_SHIP_TO,
+      T.LTIME_IOD_INPUT_YN,
+      T.IOD_QTY_INPUT_AVAIL_YN,
+      DECODE(TRIM(TRANSLATE(T.LD_LEG_ID, '1234567890', '          ')),NULL,(SELECT /*+ index_desc(A TB_GTM_TENDER_HISTORY_PK01) */ H.TOUR_NO        
+         FROM TMS_IF.TB_GTM_TENDER_HISTORY H, 
+            tmsprod.ld_leg_t loadt 
+      where H.ld_leg_id = loadt.ld_leg_id
+        and H.LD_LEG_ID = T.LD_LEG_ID 
+      and rownum = 1),'') AS TOUR_NO,
+    (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ MST.CD_NM FROM TB_GTM_IOD_IRREGULAR_HIST HIST,TB_GTM_CODEMAPPING_MST MST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND HIST.IRREGULAR_TYPE = MST.CD AND MST.CD_TYPE='IRREGULAR' AND MST.LEGAL_ENTITY_NAME = T.LEGAL_ENTITY_NAME AND ROWNUM=1) as EVENT_TYPE, -- HUB 관련 조건 추가 20150515 이동현
+    (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ MST.CD FROM TB_GTM_IOD_IRREGULAR_HIST HIST,TB_GTM_CODEMAPPING_MST MST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND HIST.IRREGULAR_TYPE = MST.CD AND MST.CD_TYPE='IRREGULAR' AND MST.LEGAL_ENTITY_NAME = T.LEGAL_ENTITY_NAME AND ROWNUM=1) as EVENT_CD, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.REASON_CODE FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as REASON_CODE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.RESPONSIBILITY_CODE FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as SUB_EVENT_TYPE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.EVENT_QTY FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as EVENT_QTY, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.EVENT_CODE FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as EVENT_CODE,  -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.EVENT_RESPONSIBILITY FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as EVENT_RESPONSIBILITY, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.SOLUTION FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as SOLUTION, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.SOLUTION_ENTRY_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS SOLUTION_ENTRY_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.RETURN_GOODS_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS RETURN_GOODS_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.SALES_MAN_ADVISE_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS SALES_MAN_ADVISE_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.NEW_DELIVERY_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS NEW_DELIVERY_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.EVENT_REMARKS FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as EVENT_REMARKS, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.RMA_NO FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as RMA_NO,  -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.RMA_ENTRY_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as RMA_ENTRY_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.CHARGE FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as CHARGE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.COMUNICATION_OF_CHARGE_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS COMUNICATION_OF_CHARGE_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.CREDIT_NOTE_NO FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) as CREDIT_NOTE_NO, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.CREDIT_NOTE_ENTRY_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS CREDIT_NOTE_ENTRY_DATE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.EVENT_QTY FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) * T.TAX_EXCLUSIVE_PRICE AS EVENT_SELLING_PRICE, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.RETURNS_REMARK FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS RETURNS_REMARK, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ HIST.CHARGE_REMARK FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS CHARGE_REMARK, -- HUB 관련 조건 추가 20150515 이동현
+      (SELECT /*+ index_desc(HIST TB_GTM_IRREGULARHISTORY_IX02) */ TO_CHAR(HIST.COMUNICATION_OF_RMA_DATE, 'YYYY-MM-DD HH24:MI:SS') FROM TB_GTM_IOD_IRREGULAR_HIST HIST WHERE HIST.SHIPMENTNUMBER = T.SHIPMENT_ID AND NVL(TO_CHAR(HIST.LD_LEG_ID), '0') = DECODE(T.DIO_FLAG,'Y', '0',T.LD_LEG_ID) AND ROWNUM=1) AS COMUNICATION_OF_RMA_DATE -- HUB 관련 조건 추가 20150515 이동현                
+      --T.ETA, -- ETA 관련 수정
+      --T.DISTANCE_ETA, -- ETA 관련 수정                
+      --T.DISTANCE_USE_FLAG -- ETA 관련 수정
+      ,TO_CHAR(T.POD_DATE,'YYYY-MM-DD HH24:MI:SS') as POD_DATE
+      ,FC_GTM_GET_GERP_LINE_NO(T.SHIPMENT_ID) as GERP_ORDER_LINE_NO
+      ,T.BILL_TO_NAME
+      ,T.BILL_TO_CODE
+      ,T.SHIP_TO_STATE
+      ,T.GBU
+      ,T.PL4
+      ,T.DELIVERY_TYPE
+      ,T.TOTAL_SELLING_PRICE
+      ,T.SHIPPING_MONTH
+      ,T.SHIPPING_WEEK
+      ,T.POD_UPLOAD_RESTRICT_YN
+      ,T.UNIT_SELLING_PRICE
+      ,T.SALESPERSON_NAME
+    ,T.BUYING_GROUP_CODE                       
+      ,CASE WHEN (T.IOD_CONFIRM_FLAG = 'N' AND (TO_DATE(TO_CHAR(T.APPOINTMENT_DATE,'YYYYMMDD'),'YYYYMMDD') < TO_DATE(TO_CHAR(FC_GTM_GET_DATE_SYSTOLOC(T.FRM_SHPG_LOC_CD,SYSDATE),'YYYYMMDD'),'YYYYMMDD'))) 
+              OR (T.IOD_CONFIRM_FLAG = 'Y' AND (TO_DATE(TO_CHAR(T.APPOINTMENT_DATE,'YYYYMMDD'),'YYYYMMDD') < TO_DATE(TO_CHAR(TO_DATE(T.IOD_DATE,'YYYY-MM-DD HH24:MI:SS'),'YYYYMMDD'),'YYYYMMDD'))) 
+          THEN 'Y' 
+          ELSE 'N' 
+          END AS IOD_DELAY2
+      ,POD_FILE_LINK_ADDRESS
+      ,T.CTRY_NAME
+      ,T.CTY_NAME
+    ,T.SEAL_NUM
+    ,T.ADDRESS
+    ,T.TRCTR_LIC_NUM
+    ,T.SHIPPING_REMARK
+    ,T.PICKING_REMARK -- Q20190322_00433 PICKING REMARK 컬럼 추가
+    ,TO_CHAR(T.PICK_RELEASE_DATE,'YYYY-MM-DD HH24:MI:SS') AS PICK_RELEASE_DATE
+    ,SUB_INVENTORY_CODE
+    ,T.LOAD_REMARK     
+    ,T.COLLECTION
+    ,RTN_LT
+    ,IOD_LT
+    ,OTA_LT
+    ,POSTALCODE
+    ,CONSIGNEE_PHONE1_NO
+      ,CONSIGNEE_POSTAL_CODE
+      ,TO_CHAR(CNEE_WH_ARRIVAL_DATE,'YYYY-MM-DD HH24:MI:SS') AS CNEE_WH_ARRIVAL_DATE
+      ,WH_ARRIVAL_DELAY_REASON
+      ,TO_CHAR(GERP_REQUEST_ARRIVAL_DATE,'YYYY-MM-DD HH24:MI:SS') AS GERP_REQUEST_ARRIVAL_DATE
+      ,T.POD_RECEIVE_DATE           
+      ,T.HUB -- Hub 관련 컬럼 추가 20150507 이동현
+      ,T.HUB_LOAD_ID -- Hub 관련 컬럼 추가 20150507 이동현
+      ,T.SEQ_NUM AS SHIPMENT_LEG -- HUB 관련 컬럼 추가 20150615 이동현
+      ,CASE WHEN T.HUB IS NULL AND NVL(T.DIO_FLAG, 'N') <> 'Y'
+          THEN (SELECT MAX(SHIPD.SHIP_TO_SHORT_NAME)
+                  FROM TB_GTM_SHIPMENT_DETAIL SHIPD
+                 WHERE SHIPD.SHIPMENTNUMBER IN (SELECT LLDT.SHPM_NUM
+                                                  FROM TMSPROD.LD_LEG_DETL_T LLDT
+                                                 WHERE LLDT.LD_LEG_ID = T.LD_LEG_ID
+                                                   AND LLDT.TO_SHPG_LOC_CD = T.TO_SHPG_LOC_CD
+                                                   AND LLDT.SEQ_NUM = T.SEQ_NUM))
+          ELSE T.HUB
+     END AS SHIP_TO_SHORT_NAME -- LGEDG 관련 컬럼 추가 20150617 이동현
+    ,T.SHIPPING_METHOD          -- LGEFS 관련 컬럼 추가 20151130 BJSONG
+    ,T.LOAD_GROUP_ID --LGEPH 20160609 ADD LOAD GORUP NO
+    ,T.CUSTOMER_RECEIPT_CODE -- <<C20180413_62205>> Kim Jongho - Customer Receipt Code 컬럼 추가
+    ,T.CONSUMER_EMAIL_ID AS CONSUMER_EMAIL_ID    -- <<C20180612_12363>> Kim Jongho - Consumer Email ID 컬럼 추가
+    ,T.CURRENCY_CODE AS CURRENCY_CODE  --C20200904_97370 CURRENCY CODE 추가 
+    ,T.RTMS_IOD_STATUS AS RTMS_IOD_STATUS  --C20201111_31876 RTMS_IOD_STATUS 추가
+    ,T.EPOD_SAVE_FLAG AS EPOD_SAVE_FLAG -- EPOD 관련 컬럼 추가
+    ,T.EPOD_MAILING_FLAG AS EPOD_MAILING_FLAG -- EPOD 관련 컬럼 추가
+    ,(SELECT CASE WHEN COUNT(1) > 0 THEN 'Y' ELSE 'N' END FROM TB_GTM_EPOD_BILLTO BILL WHERE BILL.BILL_TO_CODE = T.BILL_TO_CODE AND BILL.DIVISION_CODE = T.LEGAL_ENTITY_NAME AND BILL.USE_YN = 'Y') AS EPOD_TARGET_FLAG
+    ,T.FROM_CTRY_NAME AS FROM_CTRY_NAME
+    ,T.EPOD_IOD_DATE AS EPOD_IOD_DATE
+    ,T.POD_UPLOAD_CHECK AS POD_UPLOAD_CHECK -- RITM1183491
+       FROM(
+          SELECT /*+ LEADING(GTMLOAD LEGD IOD) INDEX(LEGD LD_LEG_DETL_I11) */ 
+                  TO_CHAR(LEGD.LD_LEG_ID) AS LOAD_ID,  
+                  LOAD.CUR_OPTLSTAT_ID ,
+                  LEGD.SEQ_NUM,
+                  IOD.LD_LEG_ID AS IOD_LD_LEG_ID,
+                  TO_CHAR(LEGD.LD_LEG_ID) AS LD_LEG_ID,
+                  LEGD.SHPM_NUM AS SHIPMENT_ID,
+                  SHIP.SOURCE_HEADER_NO AS GERP_ORDER_NO,
+                  SHIP.SHIPMENTDESCRIPTION AS GERP_PICK_NO,
+                  SHIP.TMS_ORDER_TYPE AS ORDER_TYPE,
+                  LEGD.FRM_SHPG_LOC_CD,
+                  LEGD.FRM_SHPG_LOC_NAME,
+                  LEGD.TO_SHPG_LOC_CD,
+                  LEGD.TO_SHPG_LOC_NAME,
+                  LOAD.CARR_CD AS CARR_CD,
+                  (SELECT NAME FROM TMSPROD.CARR_T CARR WHERE LOAD.CARR_CD=CARR.CARR_CD ) AS CARR_NAME,
+                  STATUS.STAT_SHRT_DESC AS LOAD_STATUS,
+                  STATUS2.STAT_SHRT_DESC AS SHIPMENT_STATUS,
+                  LEGD.TO_CTY_NAME AS CITY,
+                  LOAD.SRVC_CD AS SERVICE_TYPE,
+                  LOAD.EQMT_TYP AS VEHICLE_TYPE,
+                  MODL.PRODUCT_LEVEL1_CODE AS PL1,
+                  CNTR.RES_QUANTITY AS SHIPPING_QTY,
+                  (CNTR.RES_QUANTITY * ROUND(CNTR.VOLUME, 4)) AS SHIPPING_CBM,
+                  IOD.DELIVERY_QTY AS RECEIPT_QTY,
+                  IOD.REJECT_QTY,
+                  IOD.REJECT_REASON_CD AS REJECT_REASON,
+                  IOD.IOD_REMARKS AS IOD_REMARKS,
+                  ( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 ) AS APPOINTMENT_DATE, -- HUB 관련 조건 추가 20150515 이동현
+                 
+                  TO_CHAR(IOD.IOD_DATE,'YYYY-MM-DD HH24:MI:SS') AS IOD_DATE,
+                  TO_CHAR(IOD.IOD_INPUT_DATE,'YYYY-MM-DD HH24:MI:SS') AS IOD_INPUT_DATE,
+                  ( SELECT /*+index_desc(IRRE TB_GTM_IRREGULARHISTORY_IX02)*/ IRRE.IRREGULAR_TYPE FROM TB_GTM_IOD_IRREGULAR_HIST IRRE WHERE IRRE.SHIPMENTNUMBER=LEGD.SHPM_NUM AND IRRE.LD_LEG_ID = LEGD.LD_LEG_ID AND IRRE.CREATION_DATE<=SYSDATE AND ROWNUM=1 ) AS IRREGULAR_TYPE, -- HUB 관련 조건 추가 20150515 이동현
+                  IOD.POD_FILE_NAME AS POD,
+                  TO_CHAR(IOD.POD_INPUT_DATE,'YYYY-MM-DD HH24:MI:SS') AS POD_INPUT_DATE,
+                  CASE WHEN (IOD.IOD_INPUT_DATE IS NULL AND IOD.POD_INPUT_DATE IS NULL) THEN 'Multi Pending'
+                       WHEN (IOD.IOD_INPUT_DATE IS NULL AND IOD.POD_INPUT_DATE IS NOT NULL) THEN 'IOD Pending'
+                       WHEN (IOD.IOD_INPUT_DATE IS NOT NULL AND ((IOD.POD_FILE_PATH IS NULL AND IOD.POD_FILE_LINK_ADDRESS IS NULL) OR (IOD.POD_FILE_PATH IS NULL AND IOD.POD_FILE_LINK_ADDRESS IS NOT NULL AND FR.POD_URL_INSERT_YN = 'N' ))) THEN 'POD Pending'
+                       ELSE 'Closed'
+                  END AS IOD_STATUS,
+                  NVL(IOD.IOD_CONFIRM_FLAG,'N') IOD_CONFIRM_FLAG,
+                  TO_CHAR(IOD.IOD_CONFIRM_DATE,'YYYY-MM-DD HH24:MI:SS') AS IOD_CONFIRM_DATE,
+                  LOAD.TRCTR_NUM,
+                  LOAD.TRLR_NUM,
+                  IOD.RECEIPT_DELAY_QTY AS DELAY_QTY,
+                  TO_CHAR(GTMLOAD.SHIPPING_DATE,'YYYY-MM-DD HH24:MI:SS') AS ACTUAL_SHIP_OUT_DATE,
+                  POD_ORIGIN_FILE_NAME,
+                  NVL(IOD.LAST_UPDATE_USER_ID,IOD.CREATION_USER_ID) AS UPDATE_BY,
+                  IOD.CREATION_USER_ID AS CREATED_BY,
+                  LOAD.RFRC_NUM2 AS MASTER_LOAD_ID,
+                    SHIP.CUSTOMER_ORDER_NO AS CUSTOMER_PO_NO,
+                    CNTR.Containertypecode AS MODEL_SUFFIX,
+                    GTMLOAD.CONSIGNEE_NUMBER,
+                    GTMLOAD.DELIVERY_NO,
+                    LOAD.DRVR AS DRIVER,
+                FC_GTM_GET_PLAN_LEADTIME2(LEGD.SHPM_NUM) AS LEAD_TIME,-- ETA 관련 수정
+                ROUND(LOAD.END_DTT - LOAD.STRD_DTT,2) AS DISTANCE_LEAD_TIME,-- ETA 관련 수정
+                CASE WHEN LOAD.CUR_OPTLSTAT_ID = 335 AND NVL(IOD.IOD_CONFIRM_FLAG,'N') = 'N' AND 
+                          GTMLOAD.SHIPPING_DATE + 
+                          NVL(FC_GTM_GET_PLAN_LEADTIME2(LEGD.SHPM_NUM),1) - 
+                          FC_GTM_GET_DATE_SYSTOLOC(LEGD.FRM_SHPG_LOC_CD,SYSDATE) < 0 THEN 'Y'
+                     ELSE 'N' END AS IOD_DELAY,-- ETA 관련 수정
+                CASE WHEN LOAD.CUR_OPTLSTAT_ID = 335 AND NVL(IOD.IOD_CONFIRM_FLAG,'N') = 'N' AND 
+                          GTMLOAD.SHIPPING_DATE + 
+                          ROUND(LOAD.END_DTT - LOAD.STRD_DTT,2) - 
+                          FC_GTM_GET_DATE_SYSTOLOC(LEGD.FRM_SHPG_LOC_CD,SYSDATE) < 0 THEN 'Y'
+                     ELSE 'N' END AS DISTANCE_IOD_DELAY,-- ETA 관련 수정
+                CASE
+                     WHEN IOD.IOD_INPUT_DATE IS NULL THEN ''
+                     WHEN IOD.IOD_INPUT_DATE - IOD.IOD_DATE < 1 THEN 'Within 1 day'
+                     ELSE 'Over 1 Day'
+                 END AS IOD_KPI_VALIDATION ,
+                ship.GERP_SHIPTO_CODE as GERP_SHIPTO_CODE,
+                ZN.ZN_CD AS ZONE,
+                ZN.ZN_DESC AS ZONE_NAME,
+                ZN.SHRT_DESC,
+                GTMLOAD.INVO_NO,
+                TO_CHAR(GTMLOAD.INVO_DATE,'YYYY-MM-DD HH24:MI:SS') AS INVO_DATE,
+                IOD.POD_REMARK,
+                SHIP.LEGAL_ENTITY_NAME,
+                TO_CHAR(GTMLOAD.SHIPPING_DATE + FC_GTM_GET_PLAN_LEADTIME2(LEGD.SHPM_NUM),'YYYY-MM-DD HH24:MI:SS') AS ETA, -- ETA 관련 수정
+                TO_CHAR(GTMLOAD.SHIPPING_DATE + ROUND(LOAD.END_DTT - LOAD.STRD_DTT,2),'YYYY-MM-DD HH24:MI:SS') AS DISTANCE_ETA, -- ETA 관련 수정     
+                LT.DISTANCE_USE_FLAG, -- ETA 관련 수정 
+                FR.LTIME_IOD_USE_YN AS LTIME_IOD_USE_YN_DC,
+                ST.LTIME_IOD_USE_YN AS LTIME_IOD_USE_YN_SHIP_TO,
+                FR.LTIME_IOD_INPUT_YN,
+                FR.IOD_QTY_INPUT_AVAIL_YN,     
+                IOD.POD_DATE,
+                GTMLOAD.Source_Line_No AS GERP_ORDER_LINE_NO,
+                BT.CUSTOMER_NAME AS BILL_TO_NAME,
+                BT.CUSTOMER_NO AS BILL_TO_CODE,
+                ST.STATE_NAME AS SHIP_TO_STATE,
+                MODL.DIVISION_CODE AS GBU,
+                MODL.PRODUCT_LEVEL4_CODE AS PL4,
+                SHIP.DELIVERY_TYPE_CODE AS DELIVERY_TYPE,
+                GTMLOAD.DELIVERY_QTY*tax_exclusive_price AS TOTAL_SELLING_PRICE,
+                to_char(GTMLOAD.Shipping_Date,'MM') AS SHIPPING_MONTH,
+                FC_GET_WEEK_NO(GTMLOAD.Shipping_Date) AS SHIPPING_WEEK,          
+                FR.POD_UPLOAD_RESTRICT_YN,
+                SHIP.TAX_INCLUSIVE_PRICE AS UNIT_SELLING_PRICE,
+                SHIP.tax_exclusive_price AS TAX_EXCLUSIVE_PRICE,
+                CNTR.SALESPERSON_NAME,
+                BT.BUYING_GROUP_CODE,
+                IOD.POD_FILE_LINK_ADDRESS,
+                (SELECT B.CTRY_NAME 
+                FROM TMSPROD.ADDR_T A,
+                     TMSPROD.CTRY_T B,
+                     TMSPROD.STA_T  C
+               WHERE A.CTRY_CD = B.CTRY_CD
+                 and A.CTRY_CD = C.CTRY_CD
+                 AND A.STA_CD = C.STA_CD
+                 AND A.ADDR_ID = LEGD.TO_ADDR_ID) AS CTRY_NAME,
+          
+              (SELECT  A.CTY_NAME 
+                FROM TMSPROD.ADDR_T A
+               WHERE A.ADDR_ID = LEGD.TO_ADDR_ID) AS CTY_NAME,
+                   LOAD.SEAL_NUM,
+                   (SELECT ST_NAME FROM TMSPROD.ADDR_T R WHERE R.ADDR_ID = LEGD.TO_ADDR_ID) AS ADDRESS,
+                   LOAD.TRCTR_LIC_NUM,
+                   SHIP.NONPRINTABLEMEMO AS SHIPPING_REMARK,
+                   REPLACE(SHIP.PRINTABLEMEMO, ':::', '') AS PICKING_REMARK, -- Q20190322_00433 PICKING REMARK 컬럼 추가
+                   SHIP.PICK_RELEASE_DATE,
+                   CNTR.MODEL_GRADE AS SUB_INVENTORY_CODE,
+                   LOAD.RFRC_NUM3 AS LOAD_REMARK,
+                   DECODE(SHIPD.RECEIPT_REFUSAL_FLAG, 'N', 'Y', 'Y', 'N', '') AS COLLECTION,
+                   CASE WHEN (TRUNC(IOD.IOD_INPUT_DATE) - TRUNC(IOD.IOD_DATE))<0 THEN 0 ELSE TRUNC(IOD.IOD_INPUT_DATE) - TRUNC(IOD.IOD_DATE) END AS IOD_LT,
+                   CASE WHEN (TRUNC(IOD.IOD_DATE) - TRUNC(SHIP.PICK_RELEASE_DATE))<0 THEN 0 ELSE TRUNC(IOD.IOD_DATE) - TRUNC(SHIP.PICK_RELEASE_DATE) END  AS RTN_LT,
+                   CASE WHEN (TRUNC(IOD.IOD_DATE) - TRUNC(( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND NVL(B.SEQ_NUM, 100) = LEGD.SEQ_NUM AND ROWNUM=1 )))<0 THEN 0 ELSE TRUNC(IOD.IOD_DATE) - TRUNC(( SELECT /*+index_desc(B TB_GTM_BOOKINGHISTORY_IX04)*/ APPOINTMENT_DATE FROM TB_GTM_BOOKINGHISTORY B WHERE B.SHPM_NUM=LEGD.SHPM_NUM AND B.REG_DATE<=SYSDATE+1 AND ROWNUM=1 )) END AS OTA_LT, -- HUB 관련 조건 추가 20150515 이동현
+                   SHIP.POSTALCODE,
+                   GTMLOAD.CONSIGNEE_PHONE1_NO,
+                     GTMLOAD.CONSIGNEE_POSTAL_CODE,
+                     IOD.CNEE_WH_ARRIVAL_DATE,
+                     IOD.WH_ARRIVAL_DELAY_REASON,
+                     SHIP.ORI_DELY_TO AS GERP_REQUEST_ARRIVAL_DATE,
+           TO_CHAR(IOD.POD_COLLECT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS POD_RECEIVE_DATE     
+                                   
+            ,(SELECT /*+INDEX_DESC(H PK_HUB)*/
+                     H.NAME
+                FROM TMSPROD.HUB_T H
+               WHERE H.SHPG_LOC_CD = LEGD.TO_SHPG_LOC_CD) AS HUB -- Hub 관련 컬럼 추가 20150507 이동현
+            ,CASE
+               WHEN LEGD.SEQ_NUM > 100 THEN
+                (SELECT /*+INDEX_DESC(LDT FKLLD_SHPM)*/
+                         LDT.LD_LEG_ID
+                   FROM TMSPROD.LD_LEG_DETL_T LDT
+                  WHERE LDT.SHPM_ID = LEGD.SHPM_ID
+                    AND LDT.SEQ_NUM = LEGD.SEQ_NUM - 100)
+               ELSE
+                NULL
+             END AS HUB_LOAD_ID -- Hub 관련 컬럼 추가 20150507 이동현
+             ,IOD.DIO_FLAG
+            ,(SELECT max(OD.SHIPPING_METHOD_CODE) FROM TB_GTM_ORDERS_GERP_R_IF OD 
+              WHERE OD.MOVE_ORDER_LINE_ID = SHIP.MOVE_ORDER_LINE_ID 
+              AND   OD.LEGAL_ENTITY_NAME  = SHIP.LEGAL_ENTITY_NAME 
+              AND   OD.TMS_PRCS_FLAG = 'Y') AS SHIPPING_METHOD  --LGEFS 20151130 BJSONG SHIPPING_METHOD_CODE ADD
+            ,LOAD.RFRC_NUM4 AS LOAD_GROUP_ID --LGEPH 20160609 ADD LOAD GORUP NO
+            ,IOD.CUSTOMER_RECEIPT_CODE AS CUSTOMER_RECEIPT_CODE -- <<C20180413_62205>> Kim Jongho - Customer Receipt Code 컬럼 추가
+                ,(SELECT max(OD.ATTRIBUTE8) FROM TB_GTM_ORDERS_GERP_R_IF OD 
+                  WHERE OD.MOVE_ORDER_LINE_ID = SHIP.MOVE_ORDER_LINE_ID 
+                  AND   OD.LEGAL_ENTITY_NAME  = SHIP.LEGAL_ENTITY_NAME 
+                  AND   OD.TMS_PRCS_FLAG = 'Y') AS CONSUMER_EMAIL_ID  -- <<C20180612_12363>> Kim Jongho - Consumer Email ID 컬럼 추가
+                ,GTMLOAD.CURRENCY_CODE AS CURRENCY_CODE  --C20200904_97370 CURRENCY CODE 추가 
+                ,CASE WHEN (IOD.SOURCE_SYSTEM_CODE = 'RTMS' AND IOD.SHIP_QTY != IOD.DELIVERY_QTY AND IOD.IOD_CONFIRM_FLAG = 'N') THEN 'Hold'
+                       WHEN (IOD.SOURCE_SYSTEM_CODE = 'RTMS' AND IOD.SHIP_QTY = IOD.DELIVERY_QTY AND IOD.IOD_CONFIRM_FLAG = 'Y') THEN 'Close(Auto)'
+                       WHEN (IOD.SOURCE_SYSTEM_CODE = 'RTMS' AND IOD.SHIP_QTY != IOD.DELIVERY_QTY AND IOD.IOD_CONFIRM_FLAG = 'Y') THEN 'Close(manual)'                       
+                       ELSE 'Open'
+                  END AS RTMS_IOD_STATUS  --C20201111_31876 RTMS_IOD_STATUS 추가
+                  ,NVL2(IOD.EPOD_FILE_NAME,'Y','N') AS EPOD_SAVE_FLAG -- EPOD 관련 컬럼 추가
+                  ,NVL2(IOD.EPOD_MAIL_SEND_YN,'Y','N') AS EPOD_MAILING_FLAG -- EPOD 관련 컬럼 추가
+                  ,(SELECT B.CTRY_NAME 
+                FROM TMSPROD.ADDR_T A,
+                     TMSPROD.CTRY_T B,
+                     TMSPROD.STA_T  C
+               WHERE A.CTRY_CD = B.CTRY_CD
+                 and A.CTRY_CD = C.CTRY_CD
+                 AND A.STA_CD = C.STA_CD
+                 AND A.ADDR_ID = LEGD.FRM_ADDR_ID) AS FROM_CTRY_NAME
+            ,TO_CHAR(IOD.IOD_DATE,'YYYYMMDD') AS EPOD_IOD_DATE
+            ,(SELECT CM.CD FROM TB_GTM_CODEMAPPING_MST CM WHERE CM.CD_TYPE = 'POD_UPLOAD_CHECK' AND CM.LEGAL_ENTITY_NAME =  GTMLOAD.LEGAL_ENTITY_NAME) AS POD_UPLOAD_CHECK --RITM1183491
+              FROM   TMSPROD.LD_LEG_DETL_T LEGD,
+                     TB_GTM_SHIPMENT_TMS_S_IF SHIP,
+                     TB_GTM_CONTAINER_TMS_S_IF CNTR,
+                     TB_GTM_MODEL MODL,
+                     TMSPROD.LD_LEG_T LOAD,
+                     TB_GTM_IOD IOD,
+                     TMSPROD.STATUS_R STATUS,
+                     TMSPROD.ZN_T              ZN,
+                   TMSPROD.STATUS_R STATUS2,
+                 TB_GTM_LOAD GTMLOAD,
+                 TB_GTM_SERVICE_LEADTIME LT, -- ETA 관련 수정
+                    TB_GTM_DCCONFIG FR,
+                    TB_GTM_SHIPTO ST,
+                     TB_GTM_BILLTO BT,
+                     TB_GTM_CARRIER_HUB_MST CHM,
+                     TB_GTM_SHIPMENT_DETAIL SHIPD
+                     
+              WHERE  LEGD.SHPM_NUM = SHIP.SHIPMENTNUMBER
+                AND SHIP.SHIPMENTNUMBER = CNTR.SHIPMENTNUMBER
+                AND CNTR.AFFILIATE_CODE = MODL.AFFILIATE_CODE(+)
+                AND CNTR.CONTAINERTYPECODE = MODL.MODEL_CODE(+)
+                AND LEGD.LD_LEG_ID = LOAD.LD_LEG_ID
+                AND LEGD.LD_LEG_ID = IOD.LD_LEG_ID(+)
+                AND LEGD.SHPM_NUM = IOD.SHIPMENTNUMBER(+)
+                AND LOAD.CUR_OPTLSTAT_ID = STATUS.STAT_ID                
+                AND LEGD.LD_LEG_ID = GTMLOAD.LD_LEG_ID
+                AND LEGD.SHPM_NUM = GTMLOAD.SHIPMENTNUMBER 
+                AND SHIP.ZONE_CODE = ZN.ZN_CD(+)
+                AND LOAD.DIV_CD = LT.DIV_CD(+) -- ETA 관련 수정
+              AND LOAD.SRVC_CD = LT.SERVICE_CODE(+) -- ETA 관련 수정
+              AND SHIP.LEGAL_ENTITY_NAME = CHM.LEGAL_ENTITY_NAME(+)
+                AND SHIP.GERP_SHIPTO_CODE  = CHM.SALES_SHIP_TO_CODE(+)
+                AND SHIP.SHIPTOLOCATIONCODE = CHM.HUB_CONSIGNEE(+)
+                AND NVL(CHM.HUB_CONSIGNEE, SHIP.GERP_SHIPTO_CODE) = ST.CUSTOMER_NO
+              AND SHIP.LEGAL_ENTITY_NAME = ST.LEGAL_ENTITY_NAME
+                AND SHIP.SHIPFROMLOCATIONCODE = FR.DC_CD
+                AND SHIP.ORGANIZATION_CODE = FR.GERP_ORG_CODE
+                AND SHIP.BILLTOCUSTOMERCODE = BT.CUSTOMER_NO
+                AND SHIP.LEGAL_ENTITY_NAME = BT.LEGAL_ENTITY_NAME      --NERP 관련 추가
+                AND SHIP.SHIPMENTNUMBER = SHIPD.SHIPMENTNUMBER
+                AND LOAD.CUR_OPTLSTAT_ID IN (335,345,350)
+        AND LEGD.CUR_OPTLSTAT_ID = STATUS2.STAT_ID
+        AND (IOD.DIO_FLAG!='Y' OR IOD.DIO_FLAG IS NULL)
+        AND LEGD.FRM_SHPG_LOC_CD IN ( 'N2U' ) 
+                    AND GTMLOAD.SHIPPING_DATE BETWEEN trunc(to_date('20260326','YYYYMMDD'))+0.0000 AND trunc(to_date('20260409','YYYYMMDD'))+0.9999 -- (SEARCH) Ship out Date 
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    AND NVL(IOD.IOD_CONFIRM_FLAG,'N') = 'N' -- IOD Confirm Flag (SEARCH) 
+                    
+                    
+                    AND GTMLOAD.LEGAL_ENTITY_NAME IN ('LGECL') 
+                    
+                    AND GTMLOAD.FRM_SHPG_LOC_CD IN ( 'N2U' ) 
+                    
+                     AND LOAD.SHPD_DTT BETWEEN TO_DATE( '20260326','YYYYMMDD')-1 AND TO_DATE( '20260409','YYYYMMDD')+2 
+                     
+                     
+                     
+                     AND LEGD.SEQ_NUM IN ( 100 ) 
+                     
+                     
+        AND ROWNUM <= ('0'+1) * '100'
+          
+          UNION ALL
+          
+          SELECT /*+ LEADING(A) */
+                 /* + LEADING(A) INDEX_DESC(A TB_GTM_IOD_IX02) USE_NL(A B) */ 
+               A.LOAD_ID,  
+               DECODE((SELECT SUM(DECODE(IOD_CONFIRM_FLAG, 'N', 1,'Y',0))
+                    FROM TB_GTM_IOD
+                   WHERE LOAD_ID = A.LOAD_ID
+                   GROUP BY LD_LEG_ID), 0, 345, 335) AS CUR_OPTLSTAT_ID, 
+                A.LD_LEG_SEQ_NO AS SEQ_NUM,
+                A.LD_LEG_ID AS IOD_LD_LEG_ID,
+                A.LOAD_ID AS LD_LEG_ID,
+                A.SHIPMENTNUMBER AS SHIPMENT_ID,
+                A.SOURCE_HEADER_NO AS GERP_ORDER_NO,
+                A.PICK_ORDER_NO AS GERP_PICK_NO,
+                A.TMS_ORDER_TYPE AS ORDER_TYPE,
+                A.FRM_SHPG_LOC_CD AS FRM_SHPG_LOC_CD,
+                A.FRM_SHPG_LOC_NAME AS FRM_SHPG_LOC_NAME,
+                A.TO_SHPG_LOC_CD AS TO_SHPG_LOC_CD,
+                A.TO_SHPG_LOC_NAME AS TO_SHPG_LOC_NAME,
+                A.CARR_CD AS CARR_CD,
+                A.CARR_NAME AS CARR_NAME,
+                DECODE((SELECT SUM(DECODE(IOD_CONFIRM_FLAG, 'N', 1,'Y',0))
+                FROM TB_GTM_IOD
+               WHERE LOAD_ID = A.LOAD_ID
+               GROUP BY LD_LEG_ID), 0, 'Completed', 'In Transit') AS LOAD_STATUS,
+        DECODE(A.IOD_CONFIRM_FLAG,'N','In Transit','Proof of Delivery') AS SHIPMENT_STATUS,
+                A.CITY AS,
+                A.SRVC_CD AS SERVICE_TYPE,
+                A.VEHICLE_TYPE AS VEHICLE_TYPE,
+                SUBSTR(A.PRODUCT_CODE,2) AS PL1,
+                A.SHIP_QTY AS SHIP_QTY,
+                A.SHIPPING_CBM AS SHIPPING_CBM,
+                A.DELIVERY_QTY AS RECEIPT_QTY,
+                A.REJECT_QTY AS REJECT_QTY,
+                A.REJECT_REASON_CD AS REJECT_REASON,
+                A.IOD_REMARKS AS IOD_REMARKS,
+                A.APPOINTMENT_FROM_DATE AS APPOINTMENT_DATE,
+                TO_CHAR(A.IOD_DATE,'YYYY-MM-DD HH24:MI:SS') AS IOD_DATE,
+                TO_CHAR(A.IOD_INPUT_DATE,'YYYY-MM-DD HH24:MI:SS') AS IOD_INPUT_DATE,
+                ( SELECT /*+index_desc(IRRE TB_GTM_IRREGULARHISTORY_IX02)*/
+                         IRRE.IRREGULAR_TYPE
+                    FROM TB_GTM_IOD_IRREGULAR_HIST IRRE
+                   WHERE IRRE.SHIPMENTNUMBER = A.SHIPMENTNUMBER
+                     AND NVL(TO_CHAR(IRRE.LD_LEG_ID), '0') = DECODE(A.DIO_FLAG,'Y', '0',A.LD_LEG_ID) -- HUB 관련 조건 추가 20150515 이동현
+                     AND IRRE.CREATION_DATE <= SYSDATE AND ROWNUM = 1 ) AS IRREGULAR_TYPE,
+                A.POD_FILE_NAME AS POD,
+                TO_CHAR(A.POD_INPUT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS POD_INPUT_DATE,
+                CASE
+                   WHEN (A.IOD_INPUT_DATE IS NULL AND A.POD_INPUT_DATE IS NULL) THEN
+                    'Multi Pending'
+                   WHEN (A.IOD_INPUT_DATE IS NULL AND A.POD_INPUT_DATE IS NOT NULL) THEN
+                    'IOD Pending'
+                   WHEN (A.IOD_INPUT_DATE IS NOT NULL AND A.POD_INPUT_DATE IS NULL) THEN
+                    'POD Pending'
+                   ELSE
+                    'Closed'
+                 END AS IOD_STATUS,
+                A.IOD_CONFIRM_FLAG AS IOD_CONFIRM_FLAG,
+                TO_CHAR(A.IOD_CONFIRM_DATE, 'YYYY-MM-DD HH24:MI:SS') AS IOD_CONFIRM_DATE,
+                A.VEHICLE_NUM AS TRCTR_NUM,
+                A.CONTAINER_NO AS TRLR_NUM,
+                A.RECEIPT_DELAY_QTY AS DELAY_QTY,
+                TO_CHAR(A.SHIP_DATE, 'YYYY-MM-DD HH24:MI:SS') AS ACTUAL_SHIP_OUT_DATE,
+                A.POD_ORIGIN_FILE_NAME AS POD_ORIGIN_FILE_NAME,
+                A.LAST_UPDATE_USER_ID AS UPDATE_BY,
+                A.CREATION_USER_ID AS CREATED_BY,
+                A.MASTER_LOAD_ID AS MASTER_LOAD_ID,
+                A.CUSTOMER_PO_NO AS CUSTOMER_PO_NO,
+                A.ITEM_CODE AS MODEL_SUFFIX,
+                '' AS CONSIGNEE_NUMBER,
+                '' AS DELIVERY_NO,
+                '' AS DRIVER,
+                NULL AS LEAD_TIME,-- ETA 관련 수정
+               NULL AS DISTANCE_LEAD_TIME,-- ETA 관련 수정
+                'N' AS IOD_DELAY,     -- ETA 관련 수정   
+                'N' AS DISTANCE_IOD_DELAY,     -- ETA 관련 수정        
+                CASE
+                   WHEN A.IOD_INPUT_DATE IS NULL THEN ''
+                 WHEN A.IOD_INPUT_DATE - A.IOD_DATE < 1 THEN 'Within 1 day'
+                  ELSE 'Over 1 Day'
+              END AS IOD_KPI_VALIDATION,
+          
+                A.TO_SHPG_LOC_CD AS GERP_SHIPTO_CODE,
+                FC_GTM_GET_ZONE_INFO(A.SHIP_TO_POSTAL_CODE, 'DESC') AS ZONE,
+                FC_GTM_GET_ZONE_INFO(A.SHIP_TO_POSTAL_CODE, 'DESC') AS ZONE_NAME,
+                '' AS SHRT_DESC,
+                '' AS INVO_NO,
+                '' AS INVO_DATE ,
+                A.POD_REMARK,
+                B.LEGAL_ENTITY_NAME,
+                NULL AS ETA,--관련 수정
+               NULL AS DISTANCE_ETA, --관련 수정
+                NULL AS DISTANCE_USE_FLAG, -- ETA 관련 수정
+                NULL AS LTIME_IOD_USE_YN_DC,
+                NULL AS LTIME_IOD_USE_YN_SHIP_TO,
+                NULL AS LTIME_IOD_INPUT_YN,
+              B.IOD_QTY_INPUT_AVAIL_YN,      
+              A.POD_DATE,
+              NULL AS GERP_ORDER_LINE_NO,
+              A.BILL_TO_NAME AS BILL_TO_NAME,
+              A.BILL_TO_CODE AS BILL_TO_CODE,
+              NULL AS SHIP_TO_STATE,
+              NULL AS GBU,
+              A.PRODUCT_CODE AS PL4,
+              NULL AS DELIVERY_TYPE,
+              A.TOTAL_SELLING_PRICE AS TOTAL_SELLING_PRICE,
+              to_char(A.SHIP_DATE,'MM') AS SHIPPING_MONTH,
+              FC_GET_WEEK_NO(A.SHIP_DATE) AS SHIPPING_WEEK,   
+              B.POD_UPLOAD_RESTRICT_YN,
+              NULL AS UNIT_SELLING_PRICE,
+              NULL AS  TAX_EXCLUSIVE_PRICE,
+            NULL AS SALESPERSON_NAME,
+            C.BUYING_GROUP_CODE AS BUYING_GROUP_CODE,
+            A.POD_FILE_LINK_ADDRESS,
+            '' AS CTRY_NAME,
+              '' AS CTY_NAME,
+            '' AS SEAL_NUM,
+            '' AS ADDRESS,
+            '' AS TRCTR_LIC_NUM,
+            '' AS SHIPPING_REMARK ,
+            '' AS PICKING_REMARK, -- Q20190322_00433 PICKING REMARK 컬럼 추가
+            NULL AS PICK_RELEASE_DATE,
+            '' AS SUB_INVENTORY_CODE,
+            '' AS LOAD_REMARK,
+            '' AS COLLECTION,
+            NULL AS IOD_LT,
+            NULL AS RTN_LT,
+            NULL AS OTA_LT,
+            NULL AS POSTALCODE,
+            NULL AS CONSIGNEE_PHONE1_NO,
+              NULL AS CONSIGNEE_POSTAL_CODE,
+              A.CNEE_WH_ARRIVAL_DATE,
+              A.WH_ARRIVAL_DELAY_REASON,
+              NULL AS GERP_REQUEST_ARRIVAL_DATE,
+        TO_CHAR(A.POD_COLLECT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS POD_RECEIVE_DATE
+        
+       ,NULL AS HUB -- Hub 관련 컬럼 추가 20150507 이동현 , 20150618 원송연
+         ,NULL AS HUB_LOAD_ID -- Hub 관련 컬럼 추가 20150507 이동현
+         ,A.DIO_FLAG
+         ,NULL AS SHIPPING_METHOD --LGEFS 관련 컬럼 추가 20151130 BJSONG
+         ,NULL AS LOAD_GROUP_ID --LGEPH 20160609 ADD LOAD GORUP NO
+         ,A.CUSTOMER_RECEIPT_CODE AS CUSTOMER_RECEIPT_CODE -- <<C20180413_62205>> Kim Jongho - Customer Receipt Code 컬럼 추가
+            ,NULL AS CONSUMER_EMAIL_ID -- <<C20180612_12363>> Kim Jongho - Consumer Email ID 컬럼 추가
+            ,NULL AS CURRENCY_CODE
+           ,CASE WHEN (A.SOURCE_SYSTEM_CODE = 'RTMS' AND A.SHIP_QTY != A.DELIVERY_QTY AND A.IOD_CONFIRM_FLAG = 'N') THEN 'Hold'
+                       WHEN (A.SOURCE_SYSTEM_CODE = 'RTMS' AND A.SHIP_QTY = A.DELIVERY_QTY AND A.IOD_CONFIRM_FLAG = 'Y') THEN 'Close(Auto)'
+                       WHEN (A.SOURCE_SYSTEM_CODE = 'RTMS' AND A.SHIP_QTY != A.DELIVERY_QTY AND A.IOD_CONFIRM_FLAG = 'Y') THEN 'Close(manual)'                       
+                       ELSE 'Open'
+                  END AS RTMS_IOD_STATUS  --C20201111_31876 RTMS_IOD_STATUS 추가
+              ,NVL2(A.EPOD_FILE_NAME,'Y','N') AS EPOD_SAVE_FLAG -- EPOD 관련 컬럼 추가   
+              ,NVL2(A.EPOD_MAIL_SEND_YN,'Y','N') AS EPOD_MAILING_FLAG -- EPOD 관련 컬럼 추가
+              ,NULL AS FROM_CTRY_NAME
+              ,TO_CHAR(A.IOD_DATE,'YYYYMMDD') AS EPOD_IOD_DATE  
+              ,(SELECT CM.CD FROM TB_GTM_CODEMAPPING_MST CM WHERE CM.CD_TYPE = 'POD_UPLOAD_CHECK' AND CM.LEGAL_ENTITY_NAME =  B.LEGAL_ENTITY_NAME) AS POD_UPLOAD_CHECK --RITM1183491
+            FROM TB_GTM_IOD A, TB_GTM_DCCONFIG B, TB_GTM_BILLTO C
+           WHERE A.DC_CD = B.DC_CD
+             AND A.BILL_TO_CODE = C.CUSTOMER_NO(+)
+             AND B.LEGAL_ENTITY_NAME  = C.LEGAL_ENTITY_NAME(+)
+                
+           AND DIO_FLAG = 'Y'
+           AND A.FRM_SHPG_LOC_CD IN ( 'N2U' ) 
+                    AND A.SHIP_DATE BETWEEN trunc(to_date('20260326','YYYYMMDD'))+0.0000 AND trunc(to_date('20260409','YYYYMMDD'))+0.9999 -- (SEARCH) Ship out Date 
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    AND A.IOD_CONFIRM_FLAG = 'N' -- IOD Confirm Flag (SEARCH) 
+                    
+                    
+                    AND B.LEGAL_ENTITY_NAME IN ('LGECL') 
+                    
+                    AND A.FRM_SHPG_LOC_CD IN ( 'N2U' ) 
+                     AND A.SHIP_DATE BETWEEN TO_DATE('20260326','YYYYMMDD')-1 AND TO_DATE( '20260409','YYYYMMDD')+2 
+                     
+                     
+                     AND A.LD_LEG_SEQ_NO IN ( 100 ) 
+                     
+                     
+           AND ROWNUM <= ('0'+1) * '100') T
+                     WHERE 1=1     
+                     
+                order by shipment_id, seq_num  ) inner_temp where rownum <= ('0'+1) * '100'
+) where devonindex between  '1' and '1'+99 

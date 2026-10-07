@@ -1,0 +1,175 @@
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     Order Detail Modal
+══════════════════════════════════════════════════════════════════════════════ -->
+<div id="orderDetailBackdrop" class="iod-modal-backdrop" style="display:none;">
+    <div class="order-detail-modal iod-modal" role="dialog" aria-modal="true">
+        <div class="iod-modal-header">
+            <div class="iod-modal-header-left">
+                <div class="iod-modal-title">
+                    <i class="fas fa-file-invoice" style="color:var(--primary);"></i>
+                    <span id="detailOrderNo" class="order-no">—</span>
+                    <span id="detailLineNo" class="line-no">/ Line —</span>
+                </div>
+                <div class="iod-modal-subtitle">
+                    <span>Cust PO: </span><span id="detailCustPo" class="cust-po">—</span>
+                    <span style="margin-left:1rem;">Type: </span><span id="detailOrderType">—</span>
+                    <span style="margin-left:1rem;">Division: </span><span id="detailDivision">—</span>
+                </div>
+            </div>
+            <div class="iod-modal-header-badges" id="detailHeaderBadges"></div>
+            <button class="iod-modal-close" onclick="closeOrderDetail()" title="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="iod-modal-body">
+            <!-- Overview Cards (2 columns) -->
+            <div class="overview-grid">
+                <!-- Customer Info -->
+                <div class="ov-card">
+                    <div class="ov-card-header">
+                        <i class="fas fa-building"></i> Customer Info
+                    </div>
+                    <table class="ov-table">
+                        <tr>
+                            <td class="k">Bill To</td>
+                            <td class="v">
+                                <div class="primary" id="detailBillName">—</div>
+                                <div class="mono sub" id="detailBillCode">—</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="k">Ship To</td>
+                            <td class="v">
+                                <div id="detailShipName">—</div>
+                                <div class="mono sub" id="detailShipCode">—</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="k">Biz Group</td>
+                            <td class="v"><span id="detailBiz">—</span><span class="sub" id="detailTeam"></span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Product Info -->
+                <div class="ov-card">
+                    <div class="ov-card-header">
+                        <i class="fas fa-box"></i> Product Info
+                    </div>
+                    <table class="ov-table">
+                        <tr>
+                            <td class="k">Model</td>
+                            <td class="v">
+                                <div class="primary mono" id="detailModel">—</div>
+                                <div class="sub" id="detailModelCat">—</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="k">Category</td>
+                            <td class="v" id="detailProdPath">—</td>
+                        </tr>
+                        <tr>
+                            <td class="k">Shipping</td>
+                            <td class="v"><span id="detailShipMethod">—</span><span class="sub" id="detailWarehouse"></span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Volume & Amount -->
+                <div class="ov-card">
+                    <div class="ov-card-header">
+                        <i class="fas fa-calculator"></i> Volume & Amount
+                    </div>
+                    <table class="ov-table">
+                        <tr>
+                            <td class="k">Quantity</td>
+                            <td class="v">
+                                <span class="primary" id="detailQty">—</span>
+                                <span class="sub" id="detailCancelQty"></span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="k">Order Amount</td>
+                            <td class="v">
+                                <span class="primary" id="detailAmt">—</span>
+                                <span class="sub" id="detailAmtUsd" style="margin-left: 0.5rem;"></span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="k">Unit Price</td>
+                            <td class="v" id="detailUnitPrice">—</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Delivery Dates -->
+                <div class="ov-card">
+                    <div class="ov-card-header">
+                        <i class="fas fa-calendar-alt"></i> Delivery Dates
+                    </div>
+                    <table class="ov-table">
+                        <tr>
+                            <td class="k">RAD</td>
+                            <td class="v" id="detailRadCell">—</td>
+                        </tr>
+                        <tr>
+                            <td class="k">Est. Arrival</td>
+                            <td class="v" id="detailEstArrival">—</td>
+                        </tr>
+                        <tr>
+                            <td class="k">Appointment</td>
+                            <td class="v" id="detailApptCell">—</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline-block">
+                <div class="timeline-block-header">
+                    <div class="tl-title">
+                        <i class="fas fa-route"></i> Delivery Timeline
+                    </div>
+                    <div class="tl-legend">
+                        <span><span class="lg-dot done"></span>Completed</span>
+                        <span><span class="lg-dot current"></span>Current</span>
+                        <span><span class="lg-dot pending"></span>Pending</span>
+                    </div>
+                </div>
+                <div class="timeline-wrap">
+                    <div class="timeline" id="detailTimeline">
+                        <!-- Timeline steps will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Dates (Accordion) -->
+            <div class="details-accordion" id="detailKeyDatesAcc">
+                <div class="acc-header" onclick="toggleDetailAcc('detailKeyDatesAcc')">
+                    <i class="fas fa-calendar-days acc-icon"></i>
+                    Key Dates
+                    <i class="fas fa-chevron-down acc-caret"></i>
+                </div>
+                <div class="acc-body">
+                    <div class="date-grid" id="detailDateGrid">
+                        <!-- Date tiles will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flags & Status (Accordion) -->
+            <div class="details-accordion" id="detailFlagsAcc">
+                <div class="acc-header" onclick="toggleDetailAcc('detailFlagsAcc')">
+                    <i class="fas fa-flag acc-icon"></i>
+                    Flags & Status
+                    <i class="fas fa-chevron-down acc-caret"></i>
+                </div>
+                <div class="acc-body">
+                    <div class="flag-grid" id="detailFlagGrid">
+                        <!-- Flag items will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

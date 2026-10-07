@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_env == 'dev' %}[DEV] {% endif %}[LIW] Active PO</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/lg-style.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon-dev.svg' if (app_env == 'dev' or app_env == 'development') else 'favicon.svg') }}">
+    <script src="{{ url_for('static', filename='js/common-popup.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <!-- AG Grid Enterprise -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@31.3.2/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-alpine.css">
+    <style>
+        #poGrid { width: 100%; height: calc(100vh - 260px); min-height: 480px; }
+        .ag-header-center .ag-header-cell-label { justify-content: center; }
+        
+        /* 링크 스타일 통일 */
+        #poGrid .container-no-link {
+            color: oklch(0.55 0.20 240) !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.15s !important;
+        }
+        
+        #poGrid .container-no-link:hover {
+            color: oklch(0.45 0.25 240) !important;
+            text-decoration: underline !important;
+        }
+    </style>
+    {% include 'module/container_detail_modal_styles.html' %}
+</head>
+<body>
+    {% set active_page = 'active_po' %}
+    {% include 'module/common_navbar.html' %}
+    {% include 'module/common_global_legal_entity.html' %}
+
+    <main class="app-main">
+
+        <!-- ── Division Filter Bar ── -->
+        <div class="section" style="padding:0.6rem 1.25rem; margin-bottom:0; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                <div class="filter-inline">
+                    <label>Division</label>
+                    <select id="globalDivision" class="input" style="width:160px;">
+                        {% for div in divisions_list %}
+                        <option value="{{ div.div_nm }}">{{ div.div_nm }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="dataTimestampBadge" style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted-foreground); white-space:nowrap; flex-shrink:0;">
+                    <i class="fas fa-clock"></i>
+                    <span style="font-weight:500;">Data as of</span>
+                    <span id="dataTimestampValue" style="font-weight:600; color:var(--foreground);">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Overview ── -->
+        <section class="section" style="position:relative;">
+            <div id="flowLoadingSpinner" class="loading-overlay" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Active PO <span class="muted">(In-Transit)</span></h1>
+                    <p class="section-subtitle">PO Tracking Flow &amp; Performance · Progress Status</p>
+                </div>
+
+            </div>
+
+            <div class="stage-grid" style="grid-template-columns:1fr;">
+                <!-- PO Stage -->
+                <div class="stage-group">
+                    <div class="stage-group-header">
+                        <h2 class="stage-group-title">PO Tracking Stage</h2>
+                        <span class="stage-group-meta">4 Step</span>
+                    </div>
+                    <div class="stage-cards" id="poStageCards">
+                        <div class="text-muted" style="font-size:12px; padding:8px;">Loading…</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Active PO table ── -->
+        <section class="section section-flush">
+            <div class="section-header">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <h2 class="section-title">Active PO</h2>
+                    <span id="poRowCount" class="pill pill-emerald">— rows</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="search-wrap">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="gridSearch" class="input input-search" placeholder="Quick filter…">
+                    </div>
+                    <button class="btn btn-accent btn-sm" onclick="exportGrid()">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+
+            <div style="position:relative;">
+                <div id="poLoadingOverlay" class="loading-overlay">
+                    <div class="spinner"></div>
+                </div>
+                <div class="grid-scroll-wrap">
+                    <div id="poGrid" class="ag-theme-alpine"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Container Detail Modal -->
+    {% include 'module/container_detail_modal.html' %}
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {% include 'module/common_select2_init.html' %}
+    <script src="{{ url_for('static', filename='js/ag-col-helpers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/container-detail-modal.js') }}"></script>
+
+    <script>
+    // ── AG Grid License ──
+    agGrid.LicenseManager.setLicenseKey("Using_this_{AG_Grid}_Enterprise_key_{AG-103461}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{LG_Electronics}_is_granted_a_{Multiple_Applications}_Developer_License_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_need_to_be_licensed_in_addition_to_the_ones_working_with_{AG_Grid}_Enterprise___This_key_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{15_September_2026}____[v3]_[01]_MTc4OTQyNjgwMDAwMA==3a9db29a7452ca453e84403260996fd3");
+
+    // ── PO Status pill ──
+    function poStatusRenderer(p) {
+        if (!p.value) return '';
+        const map = {
+            'On factory Processing': 'pill pill-slate',
+            'Factory Ship Out':      'pill pill-amber',
+            'Intransit (POL~POD)':   'pill pill-sky',
+            'Intransit (POD~FDEST)': 'pill pill-violet',
+            'F Dest Arrival':        'pill pill-emerald',
+        };
+        const cls = map[p.value] || 'pill pill-slate';
+        return `<span class="${cls}" style="font-weight:600;">${p.value}</span>`;
+    }
+
+    function riskAlertRenderer(p) {
+        if (p.value !== 'Y') return '';
+        return '<span class="pill pill-rose" style="width:20px;height:20px;border-radius:9999px;justify-content:center;font-size:10px;font-weight:700;padding:0;">Y</span>';
+    }
+
+    // ── Current Status pill (세부 진행 상태) ──
+    function currentStatusRenderer(p) {
+        if (!p.value) return '';
+        const map = {
+            // 도착/통관 완료 계열 (green)
+            'Final Destination': { cls: 'pill pill-emerald', icon: 'fa-circle-check'   },
+            'Customs Cleared':   { cls: 'pill pill-emerald', icon: 'fa-file-circle-check' },
+            // 통관 진행 계열 (amber/orange)
+            'Customs Declared':  { cls: 'pill pill-amber',   icon: 'fa-file-pen'        },
+            'Customs Requested': { cls: 'pill pill-amber',   icon: 'fa-file-arrow-up'   },
+            // CY 계열 (sky)
+            'CY Departure':      { cls: 'pill pill-sky',     icon: 'fa-truck-moving'     },
+            'CY Arrival':        { cls: 'pill pill-sky',     icon: 'fa-warehouse'        },
+            // PO 상태 fallback (기존 poStatusRenderer 색상 재활용)
+            'On factory Processing': { cls: 'pill pill-slate',  icon: 'fa-industry'      },
+            'Factory Ship Out':      { cls: 'pill pill-amber',  icon: 'fa-anchor'        },
+            'Intransit (POL~POD)':   { cls: 'pill pill-sky',    icon: 'fa-ship'          },
+            'Intransit (POD~FDEST)': { cls: 'pill pill-violet', icon: 'fa-truck-ramp-box'},
+        };
+        const m = map[p.value];
+        if (!m) return `<span class="pill pill-slate">${p.value}</span>`;
+        return `<span class="${m.cls}" style="font-weight:600; gap:4px;">` +
+               `<i class="fas ${m.icon}" style="font-size:10px;"></i>${p.value}</span>`;
+    }
+
+    const ltCol = (field, header, opts = {}) => c(field, header, {
+        width: 105, type: 'numericColumn', cellClass: 'num',
+        valueFormatter: p => (p.value != null && isFinite(p.value)) ? p.value + 'd' : '-',
+        ...opts,
+    });
+
+    const poColDefs = [
+        // ── 식별자 / 상태 ────────────────────────────────────────────────
+        setCol('po_status',        'Flow Stage',        { width:170, pinned:'left', cellRenderer: poStatusRenderer }),
+        setCol('risk_alert',       'Risk Alert',        { width:90,  pinned:'left', cellRenderer: riskAlertRenderer, cellStyle:{textAlign:'center'} }),
+        txtCol('bl_no',            'BL No.',            { width:140, pinned:'left' }),
+        txtCol('invoice_no',       'Invoice No.',       { width:140, pinned:'left' }),
+        txtCol('mdl_sffx_cd',      'Model',             { width:150, pinned:'left', cellClass:'num' }),
+        txtCol('po_no',            'PO No.',            { width:160, cellClass:'num' }),
+        txtCol('po_line_no',       'PO Line',           { width:90,  cellClass:'num' }),
+        txtCol('cntr_no',          'Container No.',     { width:150, cellClass:'num', cellRenderer: params => {
+            if (!params.value) return '—';
+            const subsdrNm = params.data.subsdr_nm || '';
+            return `<a href="#" class="container-no-link" data-subsdr="${subsdrNm}" data-container="${params.value}">${params.value}</a>`;
+        }}),
+        setCol('division_name',    'Division',          { width:130 }),
+        qtyCol('qty',              'Qty'),
+        dateCol('rsd_date',        'RSD',               { cellClass:'num' }),
+        c('days_to_rsd',           'Days to RSD',       { width:110, type:'numericColumn', cellClass:'num',
+            valueFormatter: p => (p.value != null && isFinite(p.value)) ? (p.value > 0 ? '+'+p.value : p.value) + 'd' : '-',
+            cellStyle: p => (p.value != null && p.value < 0) ? { color:'oklch(0.55 0.2 20)', fontWeight:'600' } : null
+        }),
+        c('rsd_margin_by_est',     'RSD Margin(Est)',   { width:130, type:'numericColumn', cellClass:'num',
+            headerTooltip: 'RSD - FDEST ETA (positive=buffer, negative=at risk)',
+            valueFormatter: p => (p.value != null && isFinite(p.value)) ? (p.value > 0 ? '+'+p.value : p.value) + 'd' : '-',
+            cellStyle: p => {
+                if (p.value == null) return null;
+                if (p.value < 0)  return { color:'oklch(0.55 0.2 20)', fontWeight:'600' };
+                if (p.value <= 7) return { color:'oklch(0.60 0.18 60)', fontWeight:'600' };
+                return null;
+            }
+        }),
+        // ── 기본 정보 ────────────────────────────────────────────────────
+        setCol('shipping_method',  'Ship Method',       { width:120 }),
+        setCol('biz_type',         'Biz Type',          { width:110 }),
+        setCol('otd_biz_type',     'OTD Biz Type',      { width:130 }),
+        setCol('from_site_name',   'From Site',         { width:160 }),
+        setCol('to_site_name',     'To Site',           { width:160 }),
+        setCol('to_subsdr_cd',     'To Subsdr',         { width:110 }),
+        setCol('subsdr_nm',        'Subsidiary',        { width:110 }),
+        txtCol('ship_to_customer', 'Ship To Customer',  { width:180 }),
+        setCol('cntr_type',        'Container Type',    { width:130 }),
+        txtCol('master_bl_no',     'Master BL No.',     { width:150, cellClass:'num' }),
+        setCol('PO_DETAIL_STATUS',   'Detail Status',    { width:190, cellRenderer: currentStatusRenderer,
+            headerTooltip: 'Detailed progress status based on actual date fields' }),
+        // ── 날짜 ─────────────────────────────────────────────────────────
+        dateCol('po_creation_date',      'PO Creation Date'),
+        dateCol('bl_date',               'BL Date'),
+        dateCol('invoice_date',          'Invoice Date'),
+        dateCol('stuffing_date',         'Stuffing Date',           { headerTooltip: 'Container Loading Date' }),
+        dateCol('cc_date',               'W/H In Date',             { headerTooltip: 'Airport/Port Warehouse In Date' }),
+        dateCol('factory_ship_out_date', 'Ship Out Date',           { headerTooltip: 'Factory Ship Out Date' }),
+        dateCol('pol_etd_date',          'POL ETD (Planned)',       { headerTooltip: 'Port of Loading - Estimated Departure Date' }),
+        dateCol('pol_atd_date',          'POL ATD (Actual)',        { headerTooltip: 'Port of Loading - Actual Departure Date' }),
+        dateCol('pod_eta_date',          'POD ETA (Planned)',       { headerTooltip: 'Port of Discharge - Estimated Arrival Date' }),
+        dateCol('pod_ata_date',          'POD ATA (Actual)',        { headerTooltip: 'Port of Discharge - Actual Arrival Date' }),
+        dateCol('cy1_eta_date',          'CY ETA (Planned)',        { headerTooltip: 'Container Yard - Estimated Arrival Date' }),
+        dateCol('cy1_ata_date',          'CY ATA (Actual)',         { headerTooltip: 'Container Yard - Actual Arrival Date' }),
+        dateCol('cy1_etd_date',          'CY ETD (Planned)',        { headerTooltip: 'Container Yard - Estimated Departure Date' }),
+        dateCol('cy1_atd_date',          'CY ATD (Actual)',         { headerTooltip: 'Container Yard - Actual Departure Date' }),
+        // ── Customs ──────────────────────────────────────────────────────
+        dateCol('ZCCREQDAT',        'Customs Req. Date',            { headerTooltip: 'Customs Clearance Request Date (ZCCREQDAT)' }),
+        dateCol('zimdec',          'Customs Dec. Date',            { headerTooltip: 'Customs Declaration Date (ZIMDEC)' }),
+        dateCol('zcccompt',        'Customs Compl. Date',          { headerTooltip: 'Customs Clearance Completion Date (ZCCCOMPT)' }),
+        setCol('zccstcd',          'Customs Status Code',               { width:130, headerTooltip: 'Customs Status Code (ZCCSTCD)' , hide:true }),
+        txtCol('zccstcd_tx',       'Customs Status.',         { width:200, headerTooltip: 'Customs Status Description (ZCCSTCD_TX)' }),
+        //-- Arrival ---------
+        dateCol('fdest_eta_date',        'FDest ETA (Planned)',     { headerTooltip: 'Final Destination - Estimated Arrival Date' }),
+        dateCol('fdest_ata_date',        'FDest ATA (Actual)',      { headerTooltip: 'Final Destination - Actual Arrival Date' }),
+        // ── ETA Change History ────────────────────────────────────────
+        dateCol('bf_fdest_eta_date',     'FDest ETA (Prev)',            { headerTooltip: 'Final Destination ETA Before Change' }),
+        { field: 'change_yn', headerName: 'ETA Changed',
+          width: 110, headerTooltip: 'ETA Change Flag (Y/N)',
+          cellStyle: params => params.value === 'Y' ? { color: '#d9534f', fontWeight: 'bold' } : null },
+        { field: 'dff_days',  headerName: 'ETA Change (Days)',
+          width: 130, headerTooltip: 'ETA Difference in Days (positive=delayed, negative=expedited)',
+          type: 'numericColumn',
+          cellStyle: params => {
+            if (params.value > 0)  return { color: '#d9534f', fontWeight: 'bold' };
+            if (params.value < 0)  return { color: '#5cb85c', fontWeight: 'bold' };
+            return null;
+          }
+        },
+        // ── 기타 ─────────────────────────────────────────────────────────
+        txtCol('div_cd',           'Div Code',                     { width:100, hide:true }),
+    ];
+
+    let poGridApi = null;
+
+    const poGridOptions = {
+        columnDefs: poColDefs,
+        defaultColDef: {
+            resizable: true, sortable: true, filter: true, wrapHeaderText: true, autoHeaderHeight: true,
+            headerClass: 'ag-header-center',
+            menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
+        },
+        rowData: [],
+        pagination: true,
+        paginationPageSize: 500,
+        paginationPageSizeSelector: [100, 500, 1000, 2000, 5000],
+        rowSelection: 'multiple',
+        suppressRowClickSelection: true,
+        enableRangeSelection: true,
+        enableCharts: true,
+        sideBar: { toolPanels: ['filters', 'columns'] },
+        statusBar: {
+            statusPanels: [
+                { statusPanel: 'agSelectedRowCountComponent', align: 'left' },
+                { statusPanel: 'agAggregationComponent',      align: 'right' },
+            ]
+        },
+        onGridReady: (params) => { poGridApi = params.api; },
+    };
+
+    // ── PO Tracking Stages ──
+    const PO_STAGES = [
+        { status: 'On factory Processing', name: 'On Factory',  sys: 'Factory', ltField: 'avg_po_factory_lt', ltLabel: 'po→shipout', showBl: false, showLt: true  },
+        { status: 'Factory Ship Out',      name: 'Ship Out',    sys: 'Factory', ltField: 'avg_ship_wh_lt',  ltLabel: 'ship→wh', showBl: false, showLt: true  },
+        { status: 'Intransit (POL~POD)',   name: 'POL → POD',   sys: 'Ocean',   ltField: 'avg_pod_lt',      ltLabel: 'pod lt',  showBl: true,  showLt: true  },
+        { status: 'Intransit (POD~FDEST)', name: 'POD → FDEST', sys: 'Inland',  ltField: 'avg_fdest_pod_lt', ltLabel: 'fdest lt', showBl: true,  showLt: true  },
+    ];
+
+    function renderPoFlow(data) {
+        const dataMap = {};
+        (data || []).forEach(row => {
+            const k = (row.po_status || '').trim();
+            dataMap[k] = row;
+        });
+
+        const container = document.getElementById('poStageCards');
+        container.innerHTML = '';
+
+        PO_STAGES.forEach(m => {
+            const r = dataMap[m.status] || {};
+            const lineCnt   = r.line_cnt   || 0;
+            const totalQty  = r.total_qty  || 0;
+            const blCnt     = r.bl_cnt     || 0;
+            const overRsd   = r.over_rsd_cnt || 0;
+            const avgLt     = r[m.ltField];
+
+            const overPct   = lineCnt > 0 ? overRsd / lineCnt : 0;
+
+            const qtyText  = totalQty > 0 ? Math.trunc(totalQty).toLocaleString() + ' ea' : '—';
+            const overText = lineCnt > 0 ? `${overRsd.toLocaleString()} (${(overPct*100).toFixed(0)}%)` : null;
+            const ltText   = (avgLt != null && isFinite(avgLt)) ? avgLt + 'd' : null;
+
+            // 단계별 표시 항목 (없으면 빈 행으로 높이 유지)
+            const blRow = m.showBl
+                ? `<div class="meta-row"><span>BL count</span><span class="num">${blCnt ? blCnt.toLocaleString() : '—'}</span></div>`
+                : `<div class="meta-row"><span>&nbsp;</span><span>&nbsp;</span></div>`;
+            const ltRow = m.showLt
+                ? `<div class="meta-row"><span>${m.ltLabel}</span><span class="num">${ltText || '—'}</span></div>`
+                : `<div class="meta-row"><span>&nbsp;</span><span>&nbsp;</span></div>`;
+
+            const card = document.createElement('div');
+            card.className = 'stage-card';
+            card.dataset.status = m.status;
+            card.onclick = () => filterByPoCard(card, m.status);
+
+            card.innerHTML = `
+                <div class="stage-card-top">
+                    <div class="stage-card-label">${m.name}</div>
+                </div>
+                <div class="stage-card-count num">${lineCnt.toLocaleString()}</div>
+                <div class="stage-card-amount num">${qtyText}</div>
+                <div class="stage-card-meta">
+                    <div class="meta-row ${overText && overPct > 0.1 ? 'bad' : ''}">
+                        <span>over RSD</span>
+                        <span class="num">${overText || '—'}</span>
+                    </div>
+                    ${blRow}
+                    ${ltRow}
+                </div>`;
+            container.appendChild(card);
+        });
+    }
+
+    function filterByPoCard(card, statusValue) {
+        if (!poGridApi) return;
+        const isActive = card.classList.contains('is-active');
+        document.querySelectorAll('.stage-card').forEach(c => c.classList.remove('is-active'));
+        if (isActive) {
+            poGridApi.setFilterModel(null);
+            return;
+        }
+        card.classList.add('is-active');
+        poGridApi.setFilterModel({ po_status: { filterType: 'set', values: [statusValue] } });
+        document.getElementById('poGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function exportGrid() {
+        if (poGridApi) poGridApi.exportDataAsExcel({ fileName: 'active_po.xlsx' });
+    }
+
+    // ── Load data ──
+    function loadDataTimestamp() {
+        const le = getGlobalLegalEntity();
+        const el = document.getElementById('dataTimestampValue');
+        if (el) el.textContent = '…';
+        const qParams = new URLSearchParams({
+            legal_entity: le,
+            division: getGlobalDivision(),
+        }).toString();
+        fetch('/api/po/data-timestamp?' + qParams)
+            .then(r => r.json())
+            .then(res => {
+                if (!el) return;
+                if (res.success && res.log_ts) {
+                    const tz = res.timezone || 'UTC';
+                    let displayTs = '—';
+                    let tzLabel = tz;
+                    try {
+                        const utcStr = res.log_ts.replace(' ', 'T').replace(/\+.*$/, '') + 'Z';
+                        const date = new Date(utcStr);
+                        if (!isNaN(date)) {
+                            const fmt = new Intl.DateTimeFormat('sv-SE', {
+                                timeZone: tz,
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                hour12: false,
+                            });
+                            displayTs = fmt.format(date).replace('T', ' ');
+                        }
+                    } catch (e) {
+                        displayTs = res.log_ts.replace('T', ' ').substring(0, 19);
+                        tzLabel = 'UTC';
+                    }
+                    el.textContent = `${displayTs} (${tzLabel})`;
+                } else {
+                    el.textContent = '—';
+                }
+            })
+            .catch(() => { if (el) el.textContent = '—'; });
+    }
+
+    function loadAll() {
+        const qParams = new URLSearchParams({
+            legal_entity: getGlobalLegalEntity(),
+            division:     getGlobalDivision(),
+        }).toString();
+
+        document.getElementById('flowLoadingSpinner').style.display = 'flex';
+        document.getElementById('poLoadingOverlay').style.display = 'flex';
+
+        loadDataTimestamp();
+
+        fetch('/api/po/active-flow?' + qParams).then(r => r.json()).then(res => {
+            if (res.success) renderPoFlow(res.data);
+        }).catch(err => console.error('po active-flow error', err))
+          .finally(() => { document.getElementById('flowLoadingSpinner').style.display = 'none'; });
+
+        fetch('/api/po/active-raw?' + qParams).then(r => r.json()).then(res => {
+            if (res.success) {
+                poGridApi.setGridOption('rowData', res.data);
+                const cnt = (res.data || []).length;
+                document.getElementById('poRowCount').textContent = cnt.toLocaleString() + ' rows';
+            }
+        }).catch(err => console.error('po active-raw error', err))
+          .finally(() => {
+              document.getElementById('poLoadingOverlay').style.display = 'none';
+              checkUrlContainerParam();
+              applyUrlFilterParams();
+          });
+    }
+
+    // ── URL 파라미터로 컨테이너 팝업 자동 오픈 ──
+    function checkUrlContainerParam() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const containerNo = urlParams.get('container');
+        if (!containerNo) return;
+
+        // 그리드 데이터에서 해당 컨테이너의 subsdr_nm 찾기
+        let subsdrNm = '';
+        if (poGridApi) {
+            poGridApi.forEachNode(node => {
+                if (node.data && node.data.cntr_no === containerNo) {
+                    subsdrNm = node.data.subsdr_nm || '';
+                }
+            });
+        }
+        openContainerDetail(subsdrNm, containerNo);
+    }
+
+    // ── URL 파라미터로 그리드 필터 자동 적용 ──
+    // 지원 파라미터:
+    //   ?change_yn=Y   → ETA Changed = Y 인 행만 표시
+    //   ?change_yn=N   → ETA Changed = N 인 행만 표시
+    function applyUrlFilterParams() {
+        if (!poGridApi) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const changeYn = urlParams.get('change_yn');
+        if (!changeYn) return;
+
+        const filterModel = poGridApi.getFilterModel() || {};
+        filterModel['change_yn'] = {
+            filterType: 'set',
+            values: [changeYn.toUpperCase()],
+        };
+        poGridApi.setFilterModel(filterModel);
+        document.getElementById('poGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Init ──
+    $(document).ready(function() {
+        const el = document.getElementById('poGrid');
+        agGrid.createGrid(el, poGridOptions);
+
+        document.getElementById('gridSearch').addEventListener('input', e => {
+            if (poGridApi) poGridApi.setQuickFilter(e.target.value);
+        });
+
+        // URL에 le 파라미터가 있으면 localStorage에 반영 (initGlobalLegalEntity보다 먼저 실행)
+        const urlParams = new URLSearchParams(window.location.search);
+        const leParam = urlParams.get('le');
+        if (leParam) {
+            localStorage.setItem('scm_tms_legal_entity', leParam);
+        }
+
+        initGlobalDivision();
+        initGlobalLegalEntity(loadAll);
+    });
+    </script>
+{% include 'module/common_footer.html' %}
+</body>
+</html>
