@@ -32,7 +32,7 @@ OBS AS (
        , COALESCE(T.UPDATED_DELIVERY_APPT_DATE_TIME, T.ORIGINAL_DELIVERY_APPT_DATE_TIME) AS req_date
        , T.IOD_CONFIRM_DATE
        , T.ACTUAL_ARRIAVL_DATE
-    FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_OBS_SO_LINE T, PARAM P
+    FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_OBS_SO_LINE T, PARAM P
     LEFT JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_NPT_MDL_NEW_MST M
       ON T.MODEL_SUFFIX = M.MDL_SFFX_CD
    WHERE T.ORDER_STATUS = 'Completed'
@@ -48,7 +48,9 @@ OBS AS (
      AND req_date IS NOT NULL
      AND ACTUAL_ARRIAVL_DATE IS NOT NULL
    GROUP BY period
-   ORDER BY CASE WHEN period LIKE '%4Q' THEN '0' ELSE '1' END, period
+   -- 월 라벨('26.10월')은 문자열 정렬 시 '26.1월' 앞에 오므로 월 숫자로 정렬
+   ORDER BY CASE WHEN period LIKE '%4Q' THEN 0 ELSE 1 END
+          , SAFE_CAST(REPLACE(SPLIT(period, '.')[SAFE_OFFSET(1)], '월', '') AS INT64)
 """
 
 QUERY_OBS_LT = """
@@ -78,7 +80,7 @@ OBS AS (
        , T.PICK_RELEASED_DATE_TIME
        , T.IOD_CONFIRM_DATE
        , T.ACTUAL_ARRIAVL_DATE
-    FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_OBS_SO_LINE T, PARAM P
+    FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_OBS_SO_LINE T, PARAM P
     LEFT JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_NPT_MDL_NEW_MST M
       ON T.MODEL_SUFFIX = M.MDL_SFFX_CD
    WHERE T.ORDER_STATUS = 'Completed'
@@ -99,7 +101,9 @@ OBS AS (
     FROM OBS
    WHERE period IS NOT NULL
    GROUP BY period
-   ORDER BY CASE WHEN period LIKE '%4Q' THEN '0' ELSE '1' END, period
+   -- 월 라벨('26.10월')은 문자열 정렬 시 '26.1월' 앞에 오므로 월 숫자로 정렬
+   ORDER BY CASE WHEN period LIKE '%4Q' THEN 0 ELSE 1 END
+          , SAFE_CAST(REPLACE(SPLIT(period, '.')[SAFE_OFFSET(1)], '월', '') AS INT64)
 """
 
 QUERY_OBS_RAW = """
@@ -150,7 +154,7 @@ WITH PARAM AS (
               THEN 'On-time/Early'
               ELSE 'Late'
          END                                      AS IRAD_RESULT
-    FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_OBS_SO_LINE T, PARAM P
+    FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_OBS_SO_LINE T, PARAM P
     LEFT JOIN `pjt-lge-oversea-sales-olap`.PRD_OLAP.D_NPT_MDL_NEW_MST M
       ON T.MODEL_SUFFIX = M.MDL_SFFX_CD
    WHERE T.ORDER_STATUS = 'Completed'
@@ -164,7 +168,7 @@ WITH PARAM AS (
 QUERY_OBS_LMSP_LIST = """
 -- 3PL(LMSP) 필터 옵션 목록
 SELECT DISTINCT LMSP_NAME
-  FROM `pjt-lge-oversea-sales-olap`.SCM_DEV.M_OBS_SO_LINE
+  FROM `pjt-lge-oversea-sales-olap`.SCM_OLAP.M_OBS_SO_LINE
  WHERE LMSP_NAME IS NOT NULL
    AND (@legal_entity = 'ALL' OR SUBSIDIARY IN UNNEST(SPLIT(@legal_entity, '|')))
  ORDER BY LMSP_NAME

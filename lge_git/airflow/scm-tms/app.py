@@ -58,6 +58,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # Flask-Session 설정 — 파일시스템 기반 세션 (개발 환경 안정성)
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_REFRESH_EACH_REQUEST'] = False
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_FILE_DIR'] = os.path.join(os.path.dirname(__file__), 'flask_session')
